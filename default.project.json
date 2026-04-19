@@ -1,0 +1,94 @@
+{
+  "name": "RobloxTemplate",
+  "tree": {
+    "$className": "DataModel",
+    "Lighting": {
+      "$properties": {
+        "Ambient": [1.0, 1.0, 1.0],
+        "Brightness": 0.0,
+        "EnvironmentDiffuseScale": 0.5,
+        "EnvironmentSpecularScale": 0.5,
+        "GlobalShadows": true,
+        "LightingStyle": "Soft",
+        "OutdoorAmbient": [0.27450981736183167, 0.27450981736183167, 0.27450981736183167],
+        "Technology": "Future",
+        "TimeOfDay": "14:30:00"
+      },
+      "$ignoreUnknownInstances": true,
+      "$path": "src/Lighting"
+    },
+    "MaterialService": {
+      "$properties": {
+        "Use2022MaterialsXml": true
+      },
+      "$ignoreUnknownInstances": true,
+      "$path": "src/MaterialService"
+    },
+    "ReplicatedFirst": {
+      "$ignoreUnknownInstances": true,
+      "$path": "src/ReplicatedFirst"
+    },
+    "ReplicatedStorage": {
+      "$ignoreUnknownInstances": true,
+      "$path": "src/ReplicatedStorage"
+    },
+    "ServerScriptService": {
+      "$ignoreUnknownInstances": true,
+      "$path": "src/ServerScriptService"
+    },
+    "ServerStorage": {
+      "$ignoreUnknownInstances": true,
+      "$path": "src/ServerStorage"
+    },
+    "SoundService": {
+      "$properties": {
+        "RespectFilteringEnabled": true
+      },
+      "$ignoreUnknownInstances": true,
+      "$path": "src/SoundService"
+    },
+    "StarterGui": {
+      "$properties": {
+        "ScreenOrientation": "Sensor",
+        "ShowDevelopmentGui": false
+      },
+      "$ignoreUnknownInstances": true,
+      "$path": "src/StarterGui"
+    },
+    "StarterPack": {
+      "$ignoreUnknownInstances": false,
+      "$path": "src/StarterPack"
+    },
+    "StarterPlayer": {
+      "StarterCharacterScripts": {
+        "$ignoreUnknownInstances": true,
+        "$path": "src/StarterPlayer/StarterCharacterScripts"
+      },
+      "StarterPlayerScripts": {
+        "$ignoreUnknownInstances": true,
+        "$path": "src/StarterPlayer/StarterPlayerScripts"
+      },
+      "$properties": {
+        "CameraMaxZoomDistance": 128.0,
+        "CameraMinZoomDistance": 8.0,
+        "CharacterJumpHeight": 8.0,
+        "CharacterUseJumpPower": false,
+        "CharacterWalkSpeed": 22.0,
+        "EnableMouseLockOption": false
+      }
+    },
+    "Workspace": {
+      "Sounds": {
+        "$path": "src/Workspace/Sounds"
+      },
+      "$properties": {
+        "Gravity": 160.0,
+        "SignalBehavior": "Deferred",
+        "StreamingEnabled": true,
+        "StreamingIntegrityMode": "PauseOutsideLoadedArea"
+      },
+      "$ignoreUnknownInstances": true,
+      "$path": "src/Workspace"
+    }
+  }
+}

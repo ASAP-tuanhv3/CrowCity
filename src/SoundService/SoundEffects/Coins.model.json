@@ -1,0 +1,14 @@
+{
+  "name": null,
+  "className": "Sound",
+  "properties": {
+    "AcousticSimulationEnabled": {
+      "Bool": true
+    },
+    "IsMutedForCapture": {
+      "Bool": false
+    },
+    "SoundId": "rbxassetid://9113849651",
+    "SourceAssetId": 9113849651.0
+  }
+}

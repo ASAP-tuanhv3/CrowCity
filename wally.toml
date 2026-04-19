@@ -1,0 +1,13 @@
+[package]
+name = "lap60698/hunt-giant-fish"
+version = "0.1.0"
+registry = "https://github.com/UpliftGames/wally-index"
+realm = "shared"
+
+[install]
+package_dir = "src/shared"
+
+[dependencies]
+testez = "roblox/testez@0.4.1"
+janitor = "howmanysmall/janitor@1.18.3"
+promise = "evaera/promise@4.0.0"

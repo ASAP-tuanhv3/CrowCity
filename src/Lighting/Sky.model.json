@@ -1,0 +1,19 @@
+{
+  "name": null,
+  "className": "Sky",
+  "properties": {
+    "SkyboxBk": "rbxassetid://9913075492",
+    "SkyboxDn": "rbxassetid://9913058613",
+    "SkyboxFt": "rbxassetid://9913075492",
+    "SkyboxLf": "rbxassetid://9913075492",
+    "SkyboxOrientation": {
+      "Vector3": [
+        0.0,
+        0.0,
+        0.0
+      ]
+    },
+    "SkyboxRt": "rbxassetid://9913075492",
+    "SkyboxUp": "rbxassetid://9913058718"
+  }
+}
