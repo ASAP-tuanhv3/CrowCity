@@ -48,6 +48,10 @@ See `docs/COLLABORATIVE-DESIGN-PRINCIPLE.md` for full protocol and examples.
 - **Packages**: Wally (`wally install` → installs to `Packages/`)
 - **Testing**: Manual verification in Roblox Studio via `rojo serve` (no automated CI tests)
 
+## Engine Version Reference
+
+@docs/engine-reference/roblox/VERSION.md
+
 ## What This Template Provides
 
 This is a Roblox game built on a genre-agnostic starter template. It ships ready-to-use infrastructure and leaves gameplay intentionally empty. Search for `-- TODO:` across the codebase to find every integration point.
