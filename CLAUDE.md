@@ -2,9 +2,55 @@
 
 This file provides guidance to Claude Code (claude.ai/code) when working with code in this repository.
 
+## Game Studio Agent Architecture
+
+Indie game development managed through coordinated Claude Code subagents.
+Each agent owns a specific domain, enforcing separation of concerns and quality.
+
+### Collaboration Protocol
+
+**User-driven collaboration, not autonomous execution.**
+Every task follows: **Question -> Options -> Decision -> Draft -> Approval**
+
+- Agents MUST ask "May I write this to [filepath]?" before using Write/Edit tools
+- Agents MUST show drafts or summaries before requesting approval
+- Multi-file changes require explicit approval for the full changeset
+- No commits without user instruction
+
+See `docs/COLLABORATIVE-DESIGN-PRINCIPLE.md` for full protocol and examples.
+
+> **First session?** If the project has no game concept, run `/start` to begin the guided onboarding flow.
+
+### Coordination Rules
+
+@.claude/docs/coordination-rules.md
+
+### Context Management
+
+@.claude/docs/context-management.md
+
+### Project Structure
+
+@.claude/docs/directory-structure.md
+
+### Technical Preferences
+
+@.claude/docs/technical-preferences.md
+
+## Technology Stack
+
+- **Engine**: Roblox
+- **Language**: Luau (`--!strict` at the top of every file)
+- **Version Control**: Git with trunk-based development
+- **Toolchain**: [aftman](https://github.com/LPGhatguy/aftman) — run `aftman install` to set up
+- **Sync**: Rojo (`rojo serve` for live sync into Studio, `rojo build -o Game.rbxl` for place files)
+- **Linting**: Selene (`selene src/`)
+- **Packages**: Wally (`wally install` → installs to `Packages/`)
+- **Testing**: Manual verification in Roblox Studio via `rojo serve` (no automated CI tests)
+
 ## What This Template Provides
 
-This is a genre-agnostic Roblox game starter template. It ships ready-to-use infrastructure and leaves gameplay intentionally empty. Search for `-- TODO:` across the codebase to find every integration point.
+This is a Roblox game built on a genre-agnostic starter template. It ships ready-to-use infrastructure and leaves gameplay intentionally empty. Search for `-- TODO:` across the codebase to find every integration point.
 
 **Included systems:**
 - Session-locked player data persistence (ProfileStore)
@@ -93,24 +139,7 @@ local Promise = require(Packages.promise)
 
 `ReplicatedStorage/Dependencies/Freeze` is an immutable data library (Dictionary + List modules). Use it when transforming player data or any shared state to avoid accidental mutation. Never mutate a table returned from `PlayerDataClient.getValue()` directly — use `Freeze.Dictionary.set(...)` to produce a new table and send it through the normal remote → server → `PlayerDataUpdated` flow.
 
-## Toolchain
-
-This project uses [aftman](https://github.com/LPGhatguy/aftman) to manage Roblox tooling:
-
-```sh
-aftman install
-```
-
-| Tool | Command | Purpose |
-|------|---------|---------|
-| Rojo | `rojo serve` | Sync `src/` into Roblox Studio live |
-| Rojo | `rojo build -o Game.rbxl` | Build the place file |
-| Selene | `selene src/` | Lint all Luau files |
-| Wally | `wally install` | Install package dependencies into `Packages/` |
-
-There are no automated tests. Verification is done by running in Roblox Studio via `rojo serve`.
-
-## Project Structure
+## Source Layout
 
 All source lives under `src/`. Rojo maps each subfolder to its Roblox service:
 
@@ -254,3 +283,7 @@ Every `RBXScriptConnection` must be added to `self._connections`. `destroy()` mu
 - `--!strict` at the top of every Luau file
 - Folder-as-module uses `init.luau` as entry (e.g. `Network/init.luau`, `FtueManagerServer/init.luau`)
 - Side-specific variants named `Server.luau` / `Client.luau` in their respective service directories
+
+## Coding & Design Standards
+
+@.claude/docs/coding-standards.md
