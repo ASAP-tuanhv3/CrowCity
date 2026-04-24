@@ -37,22 +37,23 @@ Pillars constrain the system set:
 | 5 | Zone Handler (template-provided) | Core | MVP | Approved (via template) | — | — |
 | 6 | ComponentCreator (template-provided) | Core | MVP | Approved (via template) | — | — |
 | 7 | Collision Groups (template-provided) | Core | MVP | Approved (via template) | — | — |
-| 8 | AssetId Registry | Core | MVP | Not Started | — | — |
-| 9 | NPC Spawner (inferred) | Gameplay | MVP | Not Started | — | AssetId Registry |
-| 10 | Follower Entity | Gameplay | MVP | Not Started | — | AssetId Registry, Crowd State Manager |
-| 11 | Follower LOD Manager (inferred) | Gameplay | MVP | Not Started | — | Follower Entity |
-| 12 | Crowd State Manager | Gameplay | MVP | Not Started | — | PlayerData, Network Layer |
-| 13 | Match State Machine (inferred) | Core | MVP | Not Started | — | Network Layer |
-| 14 | Absorb System | Gameplay | MVP | Not Started | — | Follower Entity, NPC Spawner, Crowd State Manager |
-| 15 | Crowd Collision Resolution | Gameplay | MVP | Not Started | — | Crowd State Manager, Follower Entity |
-| 16 | Chest System (T1/T2) | Gameplay | MVP | Not Started | — | Crowd State Manager, Relic System |
-| 17 | Relic System | Gameplay | MVP | Not Started | — | PlayerData, Match State Machine |
-| 18 | Round Lifecycle | Core | MVP | Not Started | — | Match State Machine, Crowd State Manager |
-| 19 | Crowd Replication Strategy (inferred) | Core | MVP | Not Started | — | Network Layer, Follower Entity |
-| 20 | HUD | UI | MVP | Not Started | — | UIHandler, Crowd State Manager, Round Lifecycle, Relic System |
-| 21 | Player Nameplate (inferred) | UI | MVP | Not Started | — | UIHandler, Crowd State Manager |
+| 8 | AssetId Registry | Core | MVP | Convention (art bible §8.9) | design/art/art-bible.md §8.8–8.9 | — |
+| 9 | NPC Spawner (inferred) | Gameplay | MVP | Consistency-sync 2026-04-24 (16 prior blockers; all cross-doc patches landed except ADR-0001 NPC-replication consumer doc — non-blocking) | design/gdd/npc-spawner.md | AssetId Registry, Crowd State Manager, Round Lifecycle, Network Layer, ADR-0001, Level Design |
+| 10 | Follower Entity | Gameplay | MVP | Batch 3 Applied 2026-04-24 (Overview tier 2 cap aligned; transfer rate dynamic) | design/gdd/follower-entity.md | AssetId Registry, Crowd State Manager, ADR-0001 |
+| 11 | Follower LOD Manager | Gameplay | MVP | Sole Owner Declared 2026-04-24 (render caps + LOD distances) | design/gdd/follower-lod-manager.md | Follower Entity, Crowd State Manager, ADR-0001 |
+| 12 | Crowd State Manager | Gameplay | MVP | Batch 1 Applied 2026-04-24 (pending Batches 2-5) | design/gdd/crowd-state-manager.md | PlayerData, Network Layer, ADR-0001 |
+| 13 | Match State Machine | Core | MVP | Batch 4 Close Applied 2026-04-24 (9-phase TickOrchestrator handler order locked; T6/T7 simultaneity resolved) | design/gdd/match-state-machine.md | Network Layer, Crowd State Manager |
+| 14 | Absorb System | Gameplay | MVP | Batch 2 Applied 2026-04-24 (radius range + ρ rename + F4 recalibrate; pending DSN-B-MATH Batch 5) | design/gdd/absorb-system.md | Follower Entity, NPC Spawner, Crowd State Manager, ADR-0001 |
+| 15 | Crowd Collision Resolution | Gameplay | MVP | Batch 2 Applied 2026-04-24 (radius range composed + 7 CSM-amendment flags cleared) | design/gdd/crowd-collision-resolution.md | Crowd State Manager, Follower Entity, ADR-0001 |
+| 15a | TickOrchestrator (spin-off — introduced by Crowd Collision Resolution) | Core | MVP | Designed (within Crowd Collision Resolution GDD) | design/gdd/crowd-collision-resolution.md | Network Layer, ADR-0001 |
+| 16 | Chest System (T1/T2) | Gameplay | MVP | Batch 4 Applied 2026-04-24 (Active-strict guard + modal-close-on-elim hook + minimap deferred; pending DSN-B-2 T1 toll design decision Batch 5) | design/gdd/chest-system.md | Crowd State Manager, Relic System, Round Lifecycle, Match State Machine, Network Layer, Level Design, AssetId Registry, ADR-0001 |
+| 17 | Relic System | Gameplay | MVP | CSM Batch 1 Sync 2026-04-24 (pending FLAG-1 Wingspan design decision) | design/gdd/relic-system.md | PlayerData, Match State Machine, Crowd State Manager, TickOrchestrator, ADR-0001 |
+| 18 | Round Lifecycle | Core | MVP | Consistency-sync 2026-04-24 (CountChanged flags cleared; CSM Batch 1 landed) — pending FLAG-3 placement design decision Batch 5 | design/gdd/round-lifecycle.md | Match State Machine, Crowd State Manager |
+| 19 | Crowd Replication Strategy | Core | MVP | Designed (pending review) | design/gdd/crowd-replication-strategy.md | ADR-0001, Network Layer, Crowd State Manager, Round Lifecycle, Match State Machine |
+| 20 | HUD | UI | MVP | Consistency-sync 2026-04-24 (7 CSM/Chest amendment flags cleared) | design/gdd/hud.md | UIHandler, Crowd State Manager, Match State Machine, Round Lifecycle, Relic System, AssetId Registry, Art Bible §7 |
+| 21 | Player Nameplate | UI | MVP | Consistency-sync 2026-04-24 (CrowdCreated flags cleared) | design/gdd/player-nameplate.md | UIHandler, Crowd State Manager, Match State Machine, Character/CharacterSpawner, Art Bible §7 |
 | 22 | Chest Billboard (inferred) | UI | MVP | Not Started | — | UIHandler, Chest System |
-| 23 | VFX Manager (inferred) | Presentation | MVP | Not Started | — | AssetId Registry |
+| 23 | VFX Manager (inferred) | Presentation | MVP | Consistency-sync 2026-04-24 (soft amendment flag annotated) | design/gdd/vfx-manager.md | AssetId Registry, CrowdStateClient, Network Layer, Absorb, Follower Entity, Crowd Collision Resolution, Chest, Relic, Match State Machine |
 | 24 | Skin System | Progression | Vertical Slice | Not Started | — | PlayerData, Follower Entity, AssetId Registry |
 | 25 | Relic Card / Reveal UI (inferred) | UI | Vertical Slice | Not Started | — | UIHandler, Relic System |
 | 26 | Round Result Screen (inferred) | UI | Vertical Slice | Not Started | — | UIHandler, Round Lifecycle |
@@ -242,11 +243,11 @@ Effort: S = 1 session, M = 2-3 sessions, L = 4+ sessions.
 
 | Metric | Count |
 |--------|-------|
-| Total systems identified | 41 (incl. 7 template-provided + 5 Full-Vision content) |
-| Design docs started | 0 |
-| Design docs reviewed | 0 |
-| Design docs approved | 7 (template-provided, implicit) |
-| MVP systems designed | 0 / 16 new MVP |
+| Total systems identified | 42 (incl. 7 template-provided + 5 Full-Vision content + TickOrchestrator spin-off) |
+| Design docs started | 14 |
+| Design docs reviewed | 1 (Follower LOD Manager) |
+| Design docs approved | 8 (7 template-provided + Follower LOD Manager) |
+| MVP systems designed | 14 / 16 new MVP — ALL MVP GDDs AUTHORED (CSM, MSM, Round Lifecycle, Follower Entity, Follower LOD Manager, Absorb, NPC Spawner, Crowd Collision Resolution, Relic, Chest, HUD, Player Nameplate, VFX Manager, Crowd Replication Strategy — LOD Manager approved; others pending review). AssetId Registry + Chest Billboard remain (Chest Billboard is UI-only MVP system still Not Started) |
 | Vertical Slice systems designed | 0 / 6 |
 
 ---

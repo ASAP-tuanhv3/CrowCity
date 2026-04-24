@@ -37,7 +37,7 @@
 #   Each entry: name, status, source, referenced_by[], attributes{}, added, revised
 
 version: 1
-last_updated: ""
+last_updated: "2026-04-24"  # /consistency-check post-Batch-5: 9 🔴 conflicts fixed. CSM L70 toll delta + Tuning rows semantic refresh; chest-system ChestSpec baseToll FLOOR + new tollPct field + §Tuning Per-tier FLOOR/PCT rows; §UI HUD minimap contradiction resolved (deferred VS+); relic-system queryChestToll signature doc + L196 TollBreaker late-game examples + L235 baseToll variable range; chest-system AC-7b + AC-8b added covering scaled-path + TollBreaker-on-scaled coverage. Registry 66→69 (added T1/T2/T3_TOLL_PCT). Prior: Batch 5 DSN-B-2 (T_TOLL → FLOOR + T_TOLL_PCT), DSN-B-3 (peak-dominance placement, round-lifecycle §F3), Batch 1 (CSM signals+APIs), Batch 2 (radius range + ρ rename), Batch 3 (LOD tier 2 cap ownership), Batch 4 (Chest Active-strict guard + MSM tick order).
 
 # ─── ENTITIES ────────────────────────────────────────────────────────────────
 # Named game-world objects: enemies, NPCs, characters, factions, bosses.
@@ -77,7 +77,59 @@ entities: []
 # Attribute fields: value_gold, weight, stackable, category, and any stat
 #   modifiers that another system (e.g., economy, crafting) might reference.
 
-items: []
+items:
+  - name: TollBreaker
+    status: active
+    source: design/gdd/relic-system.md
+    referenced_by:
+      - design/gdd/relic-system.md
+      - design/gdd/chest-system.md
+    category: relic
+    rarity: Common
+    effect_class: non-state
+    hook_set: [onAcquire, onExpire]
+    modifier_key: TollDiscount
+    modifier_value: 0.70
+    modifier_type: multiplier
+    allowed_tiers: [1, 2]
+    duration: permanent_round
+    notes: "Non-state modifier relic. Routes through ChestSystem.setRelicModifier. T1 10→7, T2 40→28. Excluded from T3 (proportionally weak vs. other T3 draft options)."
+    added: 2026-04-23
+    revised: ""
+
+  - name: Surge
+    status: active
+    source: design/gdd/relic-system.md
+    referenced_by:
+      - design/gdd/relic-system.md
+      - design/gdd/chest-system.md
+    category: relic
+    rarity: Rare
+    effect_class: count
+    hook_set: [onAcquire]
+    count_delta: 40
+    allowed_tiers: [2, 3]
+    duration: one_shot
+    notes: "One-shot count burst via CrowdStateServer.updateCount. Subject to CSM floor/ceil clamps. Excluded from T1 (would dominate early-game diversity)."
+    added: 2026-04-23
+    revised: ""
+
+  - name: Wingspan
+    status: active
+    source: design/gdd/relic-system.md
+    referenced_by:
+      - design/gdd/relic-system.md
+      - design/gdd/chest-system.md
+    category: relic
+    rarity: Epic
+    effect_class: radius
+    hook_set: [onAcquire, onExpire]
+    radius_multiplier: 1.35
+    allowed_tiers: [2, 3]
+    duration: permanent_round
+    notes: "Radius multiplier relic. Writes crowd.radiusMultiplier; CSM composes radius_from_count × μ. Affects both absorb and collision hitbox (shared field). Magnitude ceiling 1.5 beyond which sit-still strategy becomes viable. Excluded from T1."
+    added: 2026-04-23
+    revised: ""
 
 # Example:
 #
@@ -106,7 +158,110 @@ items: []
 #   output_range[min, max], added
 # Optional: expression (the actual formula), notes
 
-formulas: []
+formulas:
+  - name: population_at_rest
+    status: active
+    source: design/gdd/npc-spawner.md
+    referenced_by:
+      - design/gdd/npc-spawner.md
+      - design/gdd/absorb-system.md
+    variables:
+      - NPC_POOL_SIZE
+      - NPC_RESPAWN_DELAY_MIN
+      - NPC_RESPAWN_DELAY_MAX
+      - R_absorb_total
+    output_range: [0, 300]
+    expression: "NPC_POOL_SIZE * T_active_avg / (T_active_avg + T_respawn_avg)"
+    notes: "Steady-state active NPC count. T_respawn_avg = (MIN+MAX)/2 = 7.5s at defaults. At 8-player count=50: ~74 active; at 12-player count=100: ~44 (peak combat). Range [0, NPC_POOL_SIZE=300]. Feeds ρ_design check (F1 in npc-spawner.md) which validates Absorb F4 Pillar 5 calibration. AMENDED 2026-04-23: expression numerator corrected to T_active per npc-spawner.md L166 fix; NPC_POOL_SIZE updated 200→300; output_range widened accordingly."
+    added: 2026-04-22
+    revised: 2026-04-23
+
+  - name: radius_from_count
+    status: active
+    source: docs/architecture/adr-0001-crowd-replication-strategy.md
+    referenced_by:
+      - docs/architecture/adr-0001-crowd-replication-strategy.md
+      - design/gdd/crowd-state-manager.md
+      - design/gdd/absorb-system.md
+      - design/gdd/crowd-collision-resolution.md
+      - design/gdd/relic-system.md
+      - design/gdd/chest-system.md
+      - design/gdd/vfx-manager.md
+      - design/gdd/crowd-replication-strategy.md
+    variables:
+      - count
+    output_range: [1.53, 18.04]
+    expression: "2.5 + sqrt(count) * 0.55 [* crowd.radiusMultiplier if set]"
+    notes: "Hitbox radius for crowd-vs-crowd + crowd-vs-neutral overlap. count ∈ [1, 300]. sqrt compresses growth intentionally. AMENDED 2026-04-23: Relic System composes via crowd.radiusMultiplier ∈ [0.5, 1.5]; CSM stores post-multiplied value. Base output unchanged [3.05, 12.03]; composed output [1.53, 18.04]. AMENDED 2026-04-24 (CSM Batch 1 complete): CSM GDD added radiusMultiplier field + F1 composition + recomputeRadius API per this registry spec. Chest §G uses max composed output (16.24 at Wingspan 1.35) to derive CHEST_PROMPT_DISTANCE=20."
+    added: 2026-04-21
+    revised: 2026-04-24
+
+  - name: collision_transfer_per_tick
+    status: active
+    source: design/gdd/crowd-state-manager.md
+    referenced_by:
+      - design/gdd/crowd-state-manager.md
+      - design/gdd/follower-entity.md
+      - design/gdd/crowd-collision-resolution.md
+    variables:
+      - TRANSFER_RATE_BASE
+      - TRANSFER_RATE_SCALE
+      - TRANSFER_RATE_MAX
+      - SERVER_TICK_HZ
+      - count_delta
+    output_range: [1, 4]
+    expression: "ceil(clamp(TRANSFER_RATE_BASE + TRANSFER_RATE_SCALE * max(0, count_delta), TRANSFER_RATE_BASE, TRANSFER_RATE_MAX) / SERVER_TICK_HZ)"
+    notes: "Followers converted per 15 Hz tick per overlapping rival pair. Now DYNAMIC per-pair based on count_delta = attacker.count - victim.count. At defaults: equal counts → ceil(15/15)=1; 100-count advantage → ceil(30/15)=2; max advantage → ceil(60/15)=4. Follower Entity F6 observes actual count delta from broadcast, not static formula."
+    added: 2026-04-21
+    revised: 2026-04-22
+
+  - name: triple_overlap_drain
+    status: active
+    source: design/gdd/crowd-state-manager.md
+    referenced_by:
+      - design/gdd/crowd-state-manager.md
+      - design/gdd/crowd-collision-resolution.md
+    variables:
+      - collision_transfer_per_tick
+      - overlapping_rival_count
+    output_range: [0, -44]
+    expression: "-collision_transfer_per_tick * overlapping_rival_count"
+    notes: "Additive stacking. Max 11 simultaneous rivals (hard cap at 12 players - self). No drain cap; GraceWindow is the safety valve."
+    added: 2026-04-21
+    revised: ""
+
+  - name: hue_index_assignment
+    status: active
+    source: design/gdd/crowd-state-manager.md
+    referenced_by:
+      - design/gdd/crowd-state-manager.md
+      - design/art/art-bible.md
+      - design/gdd/hud.md
+      - design/gdd/player-nameplate.md
+    variables:
+      - join_order
+    output_range: [1, 12]
+    expression: "((join_order - 1) mod 12) + 1"
+    notes: "Maps 1-indexed player join order to safe palette index. Luau mod requires join_order >= 1 assertion. HUD mini-leaderboard rows + Player Nameplate text tinted by this hue."
+    added: 2026-04-21
+    revised: 2026-04-23
+
+  - name: effective_toll_chain
+    status: active
+    source: design/gdd/relic-system.md
+    referenced_by:
+      - design/gdd/relic-system.md
+      - design/gdd/chest-system.md
+      - design/gdd/vfx-manager.md
+    variables:
+      - baseToll
+      - relic_onChestOpen_returns
+      - TOLL_FLOOR
+    output_range: [1, 120]
+    expression: "floor(baseToll * product(M_s for s in active_slots_with_onChestOpen)) clamped to [TOLL_FLOOR, baseToll]"
+    notes: "Toll discount chain — multiplicative, slot-index order. At MVP scale (non-stackable, 1 toll relic max), chain simplifies to single multiplier. Floor clamp at 1 prevents zero-toll exploits at future stacking. Chest System calls RelicEffectHandler.queryChestToll before deduction; Chest §F1 consumes formula."
+    added: 2026-04-23
+    revised: 2026-04-23
 
 # Example:
 #
@@ -139,7 +294,732 @@ formulas: []
 #
 # Required fields: name, status, source, referenced_by, value, unit, added
 
-constants: []
+constants:
+  - name: MAX_CROWD_COUNT
+    status: active
+    source: design/gdd/crowd-state-manager.md
+    referenced_by:
+      - design/gdd/crowd-state-manager.md
+      - design/gdd/round-lifecycle.md
+      - design/gdd/follower-entity.md
+      - design/gdd/absorb-system.md
+      - design/gdd/crowd-collision-resolution.md
+      - design/art/art-bible.md
+      - docs/architecture/adr-0001-crowd-replication-strategy.md
+      - design/gdd/hud.md
+      - design/gdd/player-nameplate.md
+      - design/gdd/crowd-replication-strategy.md
+    value: 300
+    unit: followers
+    notes: "HUD §C Rule 5 MAX CROWD flash fires on CSM-broadcast `CrowdCountClamped` signal when clamp triggers at this ceiling. Player Nameplate uses as tier 3 upper bound (F1 tier_mult=2.5 for count ∈ [151, 300])."
+    added: 2026-04-21
+    revised: 2026-04-23
+
+  - name: CROWD_START_COUNT
+    status: active
+    source: design/gdd/crowd-state-manager.md
+    referenced_by:
+      - design/gdd/crowd-state-manager.md
+      - design/gdd/round-lifecycle.md
+      - design/gdd/crowd-collision-resolution.md
+      - design/gdd/npc-spawner.md
+      - design/gdd/chest-system.md
+    value: 10
+    unit: followers
+    notes: "2026-04-24 DECISION (locked during CSM Batch 1 amendment): value 10 LOCKED. npc-spawner.md 10→20 patch REJECTED — CSM is state authority; NPC Spawner F2 must recalibrate against start=10 in Batch 2 propagation. Preserves first-chest gating (T1_TOLL=10 strict `count > toll` requires 1 absorb before first T1 chest, preserves Pillar 1 absorb dopamine onboarding beat). CCR §E spawn-separation math (2 × radius_from_count(10) = 8.48 studs) unchanged."
+    added: 2026-04-21
+    revised: 2026-04-24
+
+  - name: TRANSFER_RATE
+    status: deprecated
+    source: design/gdd/crowd-state-manager.md
+    referenced_by:
+      - design/gdd/crowd-state-manager.md
+    value: 30
+    unit: followers_per_second
+    notes: "DEPRECATED 2026-04-22 — replaced by dynamic TRANSFER_RATE_effective formula (see Crowd State Manager §F3). Split into TRANSFER_RATE_BASE/SCALE/MAX constants."
+    added: 2026-04-21
+    revised: 2026-04-22
+
+  - name: TRANSFER_RATE_BASE
+    status: active
+    source: design/gdd/crowd-state-manager.md
+    referenced_by:
+      - design/gdd/crowd-state-manager.md
+      - design/gdd/crowd-collision-resolution.md
+      - design/gdd/follower-entity.md
+      - design/gdd/round-lifecycle.md
+    value: 15
+    unit: followers_per_second
+    notes: "Base collision drain rate at zero count differential. Floor of TRANSFER_RATE_effective formula."
+    added: 2026-04-22
+    revised: 2026-04-22
+
+  - name: TRANSFER_RATE_SCALE
+    status: active
+    source: design/gdd/crowd-state-manager.md
+    referenced_by:
+      - design/gdd/crowd-state-manager.md
+      - design/gdd/crowd-collision-resolution.md
+      - design/gdd/follower-entity.md
+      - design/gdd/round-lifecycle.md
+    value: 0.15
+    unit: followers_per_second_per_follower_advantage
+    notes: "Additional drain rate per follower of count advantage. Feeds TRANSFER_RATE_effective formula."
+    added: 2026-04-22
+    revised: 2026-04-22
+
+  - name: TRANSFER_RATE_MAX
+    status: active
+    source: design/gdd/crowd-state-manager.md
+    referenced_by:
+      - design/gdd/crowd-state-manager.md
+      - design/gdd/crowd-collision-resolution.md
+      - design/gdd/follower-entity.md
+      - design/gdd/round-lifecycle.md
+    value: 60
+    unit: followers_per_second
+    notes: "Hard ceiling on TRANSFER_RATE_effective — prevents instant-kill at extreme count gaps. Locked."
+    added: 2026-04-22
+    revised: 2026-04-22
+
+  - name: GRACE_WINDOW_SEC
+    status: active
+    source: design/gdd/crowd-state-manager.md
+    referenced_by:
+      - design/gdd/crowd-state-manager.md
+      - design/gdd/match-state-machine.md
+      - design/gdd/crowd-collision-resolution.md
+      - design/gdd/round-lifecycle.md
+    value: 3.0
+    unit: seconds
+    added: 2026-04-21
+    revised: 2026-04-22
+
+  - name: MAX_RELIC_SLOTS
+    status: active
+    source: design/gdd/crowd-state-manager.md
+    referenced_by:
+      - design/gdd/crowd-state-manager.md
+      - design/gdd/relic-system.md
+      - design/gdd/chest-system.md
+      - design/gdd/hud.md
+    value: 4
+    unit: slots
+    added: 2026-04-21
+    revised: 2026-04-23
+
+  - name: T1_TOLL
+    status: active
+    source: design/gdd/crowd-state-manager.md
+    referenced_by:
+      - design/gdd/crowd-state-manager.md
+      - design/gdd/relic-system.md
+      - design/gdd/chest-system.md
+    value: 10
+    unit: followers
+    notes: "FLOOR only (2026-04-24 Batch 5 DSN-B-2 amendment). Chest §F1 `base_toll_scaled = max(T_FLAT, ceil(count × T_PCT))`. T1_TOLL is the floor branch of max(); effective toll floats above floor once count > T1_TOLL / T1_TOLL_PCT = 125. Ties to CROWD_START_COUNT=10 for first-T1-at-minute-1 target preserved (strict > guard means 1 absorb needed). Relic TollBreaker (0.70) applies AFTER F1 scaling → T1 @ count=300 with TollBreaker: floor(24 × 0.70) = 16."
+    added: 2026-04-21
+    revised: 2026-04-24
+
+  - name: T1_TOLL_PCT
+    status: active
+    source: design/gdd/chest-system.md
+    referenced_by:
+      - design/gdd/chest-system.md
+    value: 0.08
+    unit: multiplier
+    notes: "2026-04-24 Batch 5 DSN-B-2 resolution. Percentage-of-count lever for T1 toll scaling. `base_toll_scaled = max(T1_TOLL, ceil(count × T1_TOLL_PCT))`. Transition count = 125 (floor point). At count=300: T1 toll = 24 (vs flat 10). Safe range [0.05, 0.15]."
+    added: 2026-04-24
+    revised: ""
+
+  - name: T2_TOLL
+    status: active
+    source: design/gdd/crowd-state-manager.md
+    referenced_by:
+      - design/gdd/crowd-state-manager.md
+      - design/gdd/relic-system.md
+      - design/gdd/chest-system.md
+    value: 40
+    unit: followers
+    notes: "FLOOR only (2026-04-24 Batch 5 DSN-B-2 amendment). Chest §F1 uses max() against T2_TOLL_PCT × count. Transition count = T2_TOLL / T2_TOLL_PCT = 200. Relic TollBreaker at T2 @ count=300: floor(60 × 0.70) = 42."
+    added: 2026-04-21
+    revised: 2026-04-24
+
+  - name: T2_TOLL_PCT
+    status: active
+    source: design/gdd/chest-system.md
+    referenced_by:
+      - design/gdd/chest-system.md
+    value: 0.20
+    unit: multiplier
+    notes: "2026-04-24 Batch 5 DSN-B-2 resolution. T2 scaling lever. Transition count = 200. At count=300: T2 toll = 60. Safe range [0.15, 0.30]."
+    added: 2026-04-24
+    revised: ""
+
+  - name: T3_TOLL
+    status: active
+    source: design/gdd/crowd-state-manager.md
+    referenced_by:
+      - design/gdd/crowd-state-manager.md
+      - design/gdd/relic-system.md
+      - design/gdd/chest-system.md
+    value: 120
+    unit: followers
+    notes: "FLAT (T3_TOLL_PCT = 0 per 2026-04-24 Batch 5 DSN-B-2). Already 40% of MAX_CROWD_COUNT at peak — scaling not needed. Deferred MVP, framework-ready. TollBreaker excluded from T3 pool per Relic §C."
+    added: 2026-04-21
+    revised: 2026-04-24
+
+  - name: T3_TOLL_PCT
+    status: active
+    source: design/gdd/chest-system.md
+    referenced_by:
+      - design/gdd/chest-system.md
+    value: 0.0
+    unit: multiplier
+    notes: "2026-04-24 Batch 5 DSN-B-2. T3 stays flat; PCT=0 means max() always returns T3_TOLL floor. Placeholder for future tuning if T3 opens MVP."
+    added: 2026-04-24
+    revised: ""
+
+  - name: HUE_PALETTE_SIZE
+    status: active
+    source: design/art/art-bible.md
+    referenced_by:
+      - design/art/art-bible.md
+      - design/gdd/crowd-state-manager.md
+      - design/gdd/player-nameplate.md
+    value: 12
+    unit: colors
+    notes: "Safe palette size (art bible §4). Locked constant — not a tuning knob. Nameplate text tint draws from this palette via hue_index_assignment."
+    added: 2026-04-21
+    revised: 2026-04-23
+
+  - name: SERVER_TICK_HZ
+    status: active
+    source: docs/architecture/adr-0001-crowd-replication-strategy.md
+    referenced_by:
+      - docs/architecture/adr-0001-crowd-replication-strategy.md
+      - design/gdd/crowd-state-manager.md
+      - design/gdd/match-state-machine.md
+      - design/gdd/absorb-system.md
+      - design/gdd/crowd-collision-resolution.md
+      - design/gdd/follower-entity.md
+      - design/gdd/round-lifecycle.md
+      - design/gdd/chest-system.md
+      - design/gdd/crowd-replication-strategy.md
+    value: 15
+    unit: hz
+    notes: "Server hit-detection + broadcast rate. Locked by ADR-0001 — changing requires ADR amendment. Chest System uses for same-tick ordering lock (Chest runs last)."
+    added: 2026-04-21
+    revised: 2026-04-23
+
+  - name: MIN_PLAYERS_TO_START
+    status: active
+    source: design/gdd/match-state-machine.md
+    referenced_by:
+      - design/gdd/match-state-machine.md
+      - design/gdd/round-lifecycle.md
+      - design/gdd/hud.md
+    value: 2
+    unit: players
+    notes: "Lobby → Countdown:Ready threshold. HUD `LobbyWaitLabelWidget` renders 'Waiting for players (N/2)' where 2 = this value."
+    added: 2026-04-21
+    revised: 2026-04-23
+
+  - name: ROUND_DURATION_SEC
+    status: active
+    source: design/gdd/match-state-machine.md
+    referenced_by:
+      - design/gdd/match-state-machine.md
+      - design/gdd/game-concept.md
+      - design/gdd/round-lifecycle.md
+      - design/gdd/hud.md
+    value: 300
+    unit: seconds
+    notes: "Active state duration. Pillar 3 (5-Minute Clean Rounds) locks this. HUD §F2 timer reads from here via Match State F6 interp."
+    added: 2026-04-21
+    revised: 2026-04-23
+
+  - name: COUNTDOWN_READY_SEC
+    status: active
+    source: design/gdd/match-state-machine.md
+    referenced_by:
+      - design/gdd/match-state-machine.md
+      - design/gdd/hud.md
+    value: 7
+    unit: seconds
+    notes: "First sub-phase of Countdown. Shop + AFK button active. HUD timer counts 7→0 in this state."
+    added: 2026-04-21
+    revised: 2026-04-23
+
+  - name: COUNTDOWN_SNAP_SEC
+    status: active
+    source: design/gdd/match-state-machine.md
+    referenced_by:
+      - design/gdd/match-state-machine.md
+      - design/gdd/npc-spawner.md
+      - design/gdd/hud.md
+    value: 3
+    unit: seconds
+    notes: "Second sub-phase of Countdown. HUD 3-2-1 overlay shown ONLY here; 3 numerals × 1.0s = COUNTDOWN_SNAP_SEC hard-locked sum. Asymmetric AFK freeze begins here."
+    added: 2026-04-21
+    revised: 2026-04-23
+
+  - name: RESULT_DURATION_SEC
+    status: active
+    source: design/gdd/match-state-machine.md
+    referenced_by:
+      - design/gdd/match-state-machine.md
+      - design/gdd/round-lifecycle.md
+      - design/gdd/hud.md
+    value: 10
+    unit: seconds
+    notes: "Result state duration. Winner reveal + placement display + coin tick animation. Round Result Screen UI animation depends on this. HUD hides timer + mini-leaderboard during this state; Round Result Screen (VS GDD) takes over."
+    added: 2026-04-21
+    revised: 2026-04-23
+
+  - name: INTERMISSION_DURATION_SEC
+    status: active
+    source: design/gdd/match-state-machine.md
+    referenced_by:
+      - design/gdd/match-state-machine.md
+    value: 10
+    unit: seconds
+    notes: "Intermission state duration. Covers destroyAll + grantMatchRewards + ProfileStore flush before next Lobby. Currency System flush budget."
+    added: 2026-04-21
+    revised: ""
+
+  - name: SOLO_WAIT_SEC
+    status: active
+    source: design/gdd/match-state-machine.md
+    referenced_by:
+      - design/gdd/match-state-machine.md
+    value: 10
+    unit: seconds
+    notes: "Wait after all rivals DC before auto-win. Rejoin during wait cancels it (F7). HUD solo-wait UI cross-ref."
+    added: 2026-04-21
+    revised: ""
+
+  - name: SERVER_CLOSING_GRACE_SEC
+    status: active
+    source: design/gdd/match-state-machine.md
+    referenced_by:
+      - design/gdd/match-state-machine.md
+    value: 30
+    unit: seconds
+    notes: "Roblox platform constraint — `game:BindToClose` window. Locked by Roblox, not tunable."
+    added: 2026-04-21
+    revised: ""
+
+  - name: NPC_POOL_SIZE
+    status: active
+    source: design/gdd/npc-spawner.md
+    referenced_by:
+      - design/gdd/npc-spawner.md
+    value: 300
+    unit: instances
+    notes: "Total neutral NPC Part instances managed per round. Primary density lever. Locked at 300 (was 200 before 2026-04-23 — registry stale vs npc-spawner.md source; fixed via /consistency-check). Changing this shifts ρ_design and the Absorb F4 Pillar 5 table."
+    added: 2026-04-22
+    revised: 2026-04-23
+
+  - name: NPC_WALK_SPEED
+    status: active
+    source: design/gdd/npc-spawner.md
+    referenced_by:
+      - design/gdd/npc-spawner.md
+      - design/gdd/absorb-system.md
+    value: 16
+    unit: studs_per_second
+    notes: "NPC random walk speed. Locked at 16 studs/s — Absorb F4 Pillar 5 comeback table calibrated at this value. Change ±25% shifts all R_absorb values proportionally; must re-verify Pillar 5 table."
+    added: 2026-04-22
+    revised: ""
+
+  - name: NPC_RESPAWN_DELAY_MIN
+    status: active
+    source: design/gdd/npc-spawner.md
+    referenced_by:
+      - design/gdd/npc-spawner.md
+    value: 5
+    unit: seconds
+    notes: "Floor on NPC respawn cooldown after absorption. F3: T_respawn = Uniform[MIN, MAX]. F4 equilibrium uses T_respawn_avg = (MIN+MAX)/2."
+    added: 2026-04-22
+    revised: ""
+
+  - name: NPC_RESPAWN_DELAY_MAX
+    status: active
+    source: design/gdd/npc-spawner.md
+    referenced_by:
+      - design/gdd/npc-spawner.md
+    value: 10
+    unit: seconds
+    notes: "Ceiling on NPC respawn cooldown. T_respawn_avg = 7.5s at defaults. Increasing spreads respawn; decreasing increases mass-respawn pulse risk."
+    added: 2026-04-22
+    revised: ""
+
+  - name: MAX_PARTICIPANTS_PER_ROUND
+    status: active
+    source: design/gdd/round-lifecycle.md
+    referenced_by:
+      - design/gdd/round-lifecycle.md
+      - design/gdd/crowd-replication-strategy.md
+    value: 12
+    unit: players
+    notes: "Assertion bound on createAll input. Matches Roblox server player cap + UnreliableRemoteEvent ~900-byte payload ceiling (ADR-0001)."
+    added: 2026-04-22
+    revised: ""
+
+  - name: DRAFT_CANDIDATE_COUNT
+    status: active
+    source: design/gdd/relic-system.md
+    referenced_by:
+      - design/gdd/relic-system.md
+      - design/gdd/chest-system.md
+    value: 3
+    unit: candidates
+    notes: "Pick-1-of-N relic draft size on chest open. Chest System owns draft UI + roll logic; Relic System defines 'distinct from held' constraint."
+    added: 2026-04-23
+    revised: 2026-04-23
+
+  - name: DRAFT_REROLL_ATTEMPTS_PER_SLOT
+    status: active
+    source: design/gdd/relic-system.md
+    referenced_by:
+      - design/gdd/relic-system.md
+      - design/gdd/chest-system.md
+    value: 3
+    unit: attempts
+    notes: "Chest System re-roll cap when roll duplicates a held relic. Falls back to next lower rarity tier on exhaustion. Chest §C Rule 7 owns fallback ladder."
+    added: 2026-04-23
+    revised: 2026-04-23
+
+  - name: TOLL_FLOOR
+    status: active
+    source: design/gdd/relic-system.md
+    referenced_by:
+      - design/gdd/relic-system.md
+      - design/gdd/chest-system.md
+    value: 1
+    unit: followers
+    notes: "F1 effective_toll_chain floor clamp. Prevents zero-toll exploits at future multi-relic stacking. Chest System queryChestToll consumer."
+    added: 2026-04-23
+    revised: 2026-04-23
+
+  - name: RADIUS_MULTIPLIER_MIN
+    status: active
+    source: design/gdd/relic-system.md
+    referenced_by:
+      - design/gdd/relic-system.md
+    value: 0.5
+    unit: multiplier
+    notes: "F2 μ lower bound. Reserved for future shrink relic. Safe range floor."
+    added: 2026-04-23
+    revised: ""
+
+  - name: RADIUS_MULTIPLIER_MAX
+    status: active
+    source: design/gdd/relic-system.md
+    referenced_by:
+      - design/gdd/relic-system.md
+    value: 1.5
+    unit: multiplier
+    notes: "F2 μ upper bound. Beyond 1.5 sit-still radius strategy becomes viable (Wingspan red flag). Hard ceiling for all radius relics."
+    added: 2026-04-23
+    revised: ""
+
+  - name: TOLL_DISCOUNT_MULTIPLIER
+    status: active
+    source: design/gdd/relic-system.md
+    referenced_by:
+      - design/gdd/relic-system.md
+    value: 0.70
+    unit: multiplier
+    notes: "TollBreaker relic magnitude. Applied multiplicatively to baseToll via onChestOpen hook. Safe range [0.50, 0.90]."
+    added: 2026-04-23
+    revised: ""
+
+  - name: SURGE_COUNT_GRANT
+    status: active
+    source: design/gdd/relic-system.md
+    referenced_by:
+      - design/gdd/relic-system.md
+    value: 40
+    unit: followers
+    notes: "Surge relic one-shot count delta via onAcquire. Routes through CrowdStateServer.updateCount; subject to CSM 300-cap and 1-floor clamps. Safe range [20, 60]."
+    added: 2026-04-23
+    revised: ""
+
+  - name: WINGSPAN_RADIUS_MULTIPLIER
+    status: active
+    source: design/gdd/relic-system.md
+    referenced_by:
+      - design/gdd/relic-system.md
+      - design/gdd/chest-system.md
+    value: 1.35
+    unit: multiplier
+    notes: "Wingspan relic magnitude. Applied via crowd.radiusMultiplier field on CSM record. Affects absorb + collision radius (shared field). Safe range [1.20, 1.50]. Chest §G uses this to derive CHEST_PROMPT_DISTANCE safety margin."
+    added: 2026-04-23
+    revised: 2026-04-23
+
+  - name: ARENA_WALKABLE_AREA_SQ
+    status: active
+    source: design/gdd/npc-spawner.md
+    referenced_by:
+      - design/gdd/npc-spawner.md
+    value: 4000
+    unit: studs_sq
+    notes: "Provisional — owned by Level Design GDD when authored. npc-spawner.md F1 uses this as density denominator: ρ_design = NPC_POOL_SIZE / ARENA_WALKABLE_AREA_SQ. With NPC_POOL_SIZE=300, must satisfy ρ_design ≤ 0.1 (init-time assert) → ARENA_WALKABLE_AREA_SQ ≥ 3000. Default 4000 gives ρ_design=0.075. Flagged for registration by npc-spawner.md L109 before arena ships."
+    added: 2026-04-23
+    revised: ""
+
+  - name: CHEST_RESPAWN_SEC_T1
+    status: active
+    source: design/gdd/chest-system.md
+    referenced_by:
+      - design/gdd/chest-system.md
+    value: 90
+    unit: seconds
+    notes: "T1 chest cooldown after Opened → Respawning. Allows 2 respawns per 300s round. Prevents single-location camping. Safe range [60, 150]."
+    added: 2026-04-23
+    revised: ""
+
+  - name: CHEST_RESPAWN_SEC_T2
+    status: active
+    source: design/gdd/chest-system.md
+    referenced_by:
+      - design/gdd/chest-system.md
+    value: 120
+    unit: seconds
+    notes: "T2 chest cooldown. 1 respawn per round at 3 locations × 2 opens = 6 T2 opens/round. Safe range [90, 180]."
+    added: 2026-04-23
+    revised: ""
+
+  - name: CHEST_RESPAWN_SEC_T3
+    status: active
+    source: design/gdd/chest-system.md
+    referenced_by:
+      - design/gdd/chest-system.md
+    value: 150
+    unit: seconds
+    notes: "T3 chest cooldown (deferred to Alpha — framework complete). Effectively one-shot per location: respawn 330s exceeds round end 300s. Safe range [120, 240]."
+    added: 2026-04-23
+    revised: ""
+
+  - name: CHEST_PROMPT_DISTANCE
+    status: active
+    source: design/gdd/chest-system.md
+    referenced_by:
+      - design/gdd/chest-system.md
+    value: 20
+    unit: studs
+    notes: "ProximityPrompt.MaxActivationDistance per chest. Clears worst-case crowd radius at count=300 with Wingspan ×1.35 = 16.24 studs + 2-stud margin. Safe range [15, 30]. Beyond μ=1.5 radius relic, requires re-derivation."
+    added: 2026-04-23
+    revised: ""
+
+  - name: CHEST_PROMPT_HOLD_SEC
+    status: active
+    source: design/gdd/chest-system.md
+    referenced_by:
+      - design/gdd/chest-system.md
+    value: 0.8
+    unit: seconds
+    notes: "ProximityPrompt.HoldDuration. Prevents accidental trigger + preserves exposure-cost feel. Safe range [0.3, 1.5]."
+    added: 2026-04-23
+    revised: ""
+
+  - name: DRAFT_TIMEOUT_SEC
+    status: active
+    source: design/gdd/chest-system.md
+    referenced_by:
+      - design/gdd/chest-system.md
+      - design/gdd/relic-system.md
+    value: 8
+    unit: seconds
+    notes: "Chest draft UI auto-pick timer. On timeout, highest-rarity candidate auto-picks (first on array-index tie). Owned by Chest System; Relic Card UI consumes. Safe range [5, 15]."
+    added: 2026-04-23
+    revised: ""
+
+  - name: T1_CHEST_COUNT
+    status: active
+    source: design/gdd/chest-system.md
+    referenced_by:
+      - design/gdd/chest-system.md
+    value: 6
+    unit: locations
+    notes: "Provisional — owned by Level Design GDD when authored. T1 chest spawn points per city map. Target ~50-70 stud nearest-T1 distance. Safe range [4, 10]."
+    added: 2026-04-23
+    revised: ""
+
+  - name: T2_CHEST_COUNT
+    status: active
+    source: design/gdd/chest-system.md
+    referenced_by:
+      - design/gdd/chest-system.md
+    value: 3
+    unit: locations
+    notes: "Provisional — Level Design owns final. T2 car spawn points. Half-T1 density for contested-raid feel. Safe range [2, 5]."
+    added: 2026-04-23
+    revised: ""
+
+  - name: T3_CHEST_COUNT
+    status: active
+    source: design/gdd/chest-system.md
+    referenced_by:
+      - design/gdd/chest-system.md
+    value: 2
+    unit: locations
+    notes: "Provisional (deferred Alpha). T3 building spawn points. One-shot per round per location. Safe range [1, 4]."
+    added: 2026-04-23
+    revised: ""
+
+  - name: COUNT_POP_SCALE_DURATION
+    status: active
+    source: design/gdd/hud.md
+    referenced_by:
+      - design/gdd/hud.md
+      - design/art/art-bible.md
+    value: 0.15
+    unit: seconds
+    notes: "HUD count pop tween duration (art bible §7 locked). Safe range [0.1, 0.3]."
+    added: 2026-04-23
+    revised: ""
+
+  - name: COUNT_POP_SCALE_MAX
+    status: active
+    source: design/gdd/hud.md
+    referenced_by:
+      - design/gdd/hud.md
+      - design/art/art-bible.md
+    value: 1.3
+    unit: multiplier
+    notes: "HUD count pop peak scale (art bible §7). Safe range [1.1, 1.5]."
+    added: 2026-04-23
+    revised: ""
+
+  - name: MAX_CROWD_FLASH_DURATION
+    status: active
+    source: design/gdd/hud.md
+    referenced_by:
+      - design/gdd/hud.md
+    value: 1.0
+    unit: seconds
+    notes: "MAX CROWD label visible duration on CSM count clamp at 300. 0.1s fade-in + 0.6s hold + 0.3s fade-out. Safe range [0.5, 2.0]."
+    added: 2026-04-23
+    revised: ""
+
+  - name: TIMER_URGENT_THRESHOLD_SEC
+    status: active
+    source: design/gdd/hud.md
+    referenced_by:
+      - design/gdd/hud.md
+    value: 10
+    unit: seconds
+    notes: "Last N seconds of Active state turn timer red + scale 1.1×. Audio Manager sync hook for heartbeat audio. Safe range [5, 30]."
+    added: 2026-04-23
+    revised: ""
+
+  - name: LEADERBOARD_ROW_COUNT
+    status: active
+    source: design/gdd/hud.md
+    referenced_by:
+      - design/gdd/hud.md
+    value: 3
+    unit: rows
+    notes: "Mini-leaderboard top-N displayed; self appended as row 4 when rank > 3. Safe range [2, 5]."
+    added: 2026-04-23
+    revised: ""
+
+  - name: ELIM_LINGER_SEC
+    status: active
+    source: design/gdd/hud.md
+    referenced_by:
+      - design/gdd/hud.md
+    value: 5.0
+    unit: seconds
+    notes: "Mini-leaderboard strikethrough duration for eliminated crowds before removal from list. Safe range [2, 10]."
+    added: 2026-04-23
+    revised: ""
+
+  - name: HUD_FRAME_BUDGET_MS
+    status: active
+    source: design/gdd/hud.md
+    referenced_by:
+      - design/gdd/hud.md
+    value: 1.5
+    unit: milliseconds
+    notes: "Per-frame processing cap at peak (12 rivals + shelf full + count pop). Advisory target verified via MicroProfiler on min-spec mobile. Safe range [0.5, 3.0]."
+    added: 2026-04-23
+    revised: ""
+
+  - name: STALE_THRESHOLD_SEC
+    status: active
+    source: design/gdd/crowd-state-manager.md
+    referenced_by:
+      - design/gdd/crowd-state-manager.md
+      - design/gdd/hud.md
+      - design/gdd/player-nameplate.md
+      - design/gdd/vfx-manager.md
+      - design/gdd/crowd-replication-strategy.md
+    value: 0.5
+    unit: seconds
+    notes: "Client-cache freeze threshold on broadcast loss. CSM §G locked. HUD + Player Nameplate consume for widget freeze-last-known behavior (no interpolation to 0, no 'missing' text). Safe range [0.2, 2.0]."
+    added: 2026-04-23
+    revised: 2026-04-23
+
+  - name: NAMEPLATE_BASE_OFFSET_STUDS
+    status: active
+    source: design/gdd/player-nameplate.md
+    referenced_by:
+      - design/gdd/player-nameplate.md
+    value: 4.0
+    unit: studs
+    notes: "Nameplate F1 base offset above character HumanoidRootPart. Multiplied by count-tier: 1× (1-50) / 1.5× (51-150) / 2.5× (151-300) → {4.0, 6.0, 10.0} studs. Safe range [2.0, 8.0]."
+    added: 2026-04-23
+    revised: ""
+
+  - name: NAMEPLATE_MAX_DISTANCE
+    status: active
+    source: design/gdd/player-nameplate.md
+    referenced_by:
+      - design/gdd/player-nameplate.md
+    value: 120
+    unit: studs
+    notes: "BillboardGui.MaxDistance cull for nameplate. Arena diagonal worst-case ~90 studs (sqrt(ARENA_WALKABLE_AREA_SQ=4000)); 30-stud margin. Safe range [80, 200]."
+    added: 2026-04-23
+    revised: ""
+
+  - name: NAMEPLATE_ELIM_FADE_SEC
+    status: active
+    source: design/gdd/player-nameplate.md
+    referenced_by:
+      - design/gdd/player-nameplate.md
+    value: 1.5
+    unit: seconds
+    notes: "Nameplate fade-out tween duration on CrowdEliminated. Must complete before Match State Result→Intermission transition (RESULT_DURATION_SEC=10 provides margin). Safe range [0.5, 3.0]."
+    added: 2026-04-23
+    revised: ""
+
+  - name: NAMEPLATE_TEXT_SIZE
+    status: active
+    source: design/gdd/player-nameplate.md
+    referenced_by:
+      - design/gdd/player-nameplate.md
+      - design/art/art-bible.md
+    value: 28
+    unit: points
+    notes: "Nameplate TextLabel base font size. Art bible §7 locks ≥28pt round-state. Same across all tiers — legibility via offset + font-weight step, not size thrashing. Safe range [20, 48]."
+    added: 2026-04-23
+    revised: ""
+
+  - name: NAMEPLATE_TIER_HYSTERESIS
+    status: active
+    source: design/gdd/player-nameplate.md
+    referenced_by:
+      - design/gdd/player-nameplate.md
+    value: 3
+    unit: count
+    notes: "Count-buffer preventing tier flicker at 50/51 and 150/151 boundaries. Once crossed upward, must drop 3 below threshold (to 47 / 147) before reverting tier. Safe range [1, 10]."
+    added: 2026-04-23
+    revised: ""
 
 # Example:
 #

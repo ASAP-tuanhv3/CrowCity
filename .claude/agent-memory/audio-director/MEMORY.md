@@ -1,0 +1,1 @@
+- [Crowdsmith Project Audio Context](project_crowdsmith_context.md) — Game pillars, stated audio needs, Audio Manager status, Follower Entity audio spec issues flagged 2026-04-22

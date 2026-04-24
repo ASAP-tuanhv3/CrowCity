@@ -9,6 +9,8 @@
 
 Roblox Default Stylized — chunky low-poly, cel-shaded, bold silhouette-first. No gradients, no realism. Each player's crowd = one vivid signature hue.
 
+> **Cel-shading mechanism clarification (added 2026-04-24 per AD concern 2 of production/gate-checks/2026-04-24-systems-design-to-technical-setup.md).** In Crowdsmith, "cel-shaded" means the aesthetic is achieved through **2-unit outline Part geometry + flat BrickColor (SmoothPlastic or Neon) on follower/chest/NPC rigs** — NOT through a post-process shader pass. Roblox does not expose GLSL/HLSL custom shaders; cel-shading in this project is a *geometry + material* pattern, not a render-pipeline pattern. ADRs referencing "cel-shaded" must not assume custom-shader availability. See §4 Color System + §8.4 Material rules for the full pattern.
+
 ---
 
 ## 1. Visual Identity Statement
@@ -197,7 +199,7 @@ All three tiers share universal language — solves crowd-occlusion problem from
 Tier-specific:
 
 - **T1 chest**: 2×2×2 stud box. Gold glow/beam/icon. Early-game cluster target.
-- **T2 car**: standard car prop. Silver-blue glow/beam, car icon. ~15-follower toll.
+- **T2 car**: standard car prop. Silver-blue glow/beam, car icon. Follower toll (specific value owned by Crowd State Manager GDD / Chest System GDD).
 - **T3 building**: entire building face pulses violet at intervals. Violet beam widest. Building silhouette icon. Late-game only.
 
 *Design test*: screenshot of T1 chest surrounded by 50 followers. Beam + icon must be visible above crowd silhouette.
