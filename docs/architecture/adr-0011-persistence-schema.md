@@ -2,11 +2,12 @@
 
 ## Status
 
-**Accepted 2026-04-27** (closes ~5 gap TRs from `/architecture-review` 2026-04-26; no remaining amendment dependencies; game-concept Pillar 3+4 + ADR-0001/0004/0005/0006 all aligned with this ADR's schema lock).
+**Accepted 2026-04-27 — Amended 2026-04-27** (Amendment 1: MVP key count 6 → 7; adds `Inventory` as `cosmetic` category to reconcile with shipped template's Market system. See §Amendment Log at end of document.)
 
 Status history:
 - 2026-04-26 — Proposed (initial)
 - **2026-04-27 — ACCEPTED** (must-have ADR set complete: 0001/0002/0003/0004/0005/0006/0008/0010/0011; stories may now reference this ADR per `/story-readiness`)
+- **2026-04-27 — AMENDED (Amendment 1)** — `Inventory` added to MVP schema as 7th key (cosmetic category) to reconcile against shipped template's Market.luau + ShopListSelector.luau which actively consume `PlayerDataKey.Inventory`. Original ADR audit step assumed `OwnedSkins`/`SelectedSkin` were template-shipped; actual template ships `Inventory` instead. Pillar 4 anti-P2W invariant preserved by constraining Inventory contents to cosmetic items only. See §Amendment Log.
 
 ## Date
 
@@ -56,14 +57,14 @@ Crowdsmith uses ProfileStore (vendored) for all player-data persistence; the tem
 - **Pillar 3 (5-Min Clean Rounds)** — no per-round state persists; round-scoped state lives entirely in CSM / RoundLifecycle / MSM / Chest / Relic / NPCSpawner in-memory tables, cleared at T9.
 - **Pillar 4 (Cosmetic Expression + anti-pay-to-win)** — only cosmetic + lifetime-statistic keys may persist. Anything that gates gameplay outcome (count, radius, draw-power, draft-rarity-weights, etc.) is forbidden as a persisted key.
 - **Network wrapper required** — `PlayerDataUpdated` reliable RemoteEvent fires on server mutation; client reads via `PlayerDataClient.getValue`. Direct `DataStoreService` on client impossible by Roblox semantics; ADR-0006 forbids on server.
-- **MVP scope is narrow** — Coins (soft currency) + OwnedSkins + SelectedSkin + LifetimeAbsorbs + LifetimeWins + FtueStage. Six keys.
+- **MVP scope is narrow** — Coins (soft currency) + OwnedSkins + SelectedSkin + LifetimeAbsorbs + LifetimeWins + FtueStage + Inventory. Seven keys (Inventory added per Amendment 1 — Pillar 4 anti-P2W boundary preserved by restricting Inventory to cosmetic items only; see §Amendment Log).
 - **VS+ adds** — DailyQuestState + LastDailyResetTime (when Daily Quest System lands).
 - **Alpha+ adds** — analytics opt-in flags + accessibility settings (when those systems land).
 - **Schema versioning** — `_schemaVersion` field at top of every profile; migrations under `src/ServerStorage/Source/PlayerDataServer/migrations/`; ProfileStore `OnProfileVersionUpgrade` callback dispatches.
 
 ### Requirements
 
-- Lock **MVP PlayerDataKey schema** — exactly 6 keys for MVP launch
+- Lock **MVP PlayerDataKey schema** — exactly 7 keys for MVP launch (was 6; Amendment 1 added `Inventory`)
 - Lock **VS+ keys + Alpha+ keys** — extension scope per phase
 - Lock **Pillar 3 Forbidden Keys** — explicit catalog of what may NOT persist
 - Lock **Pillar 4 anti-P2W persistence boundary** — persisted keys must not affect gameplay outcome
@@ -79,19 +80,20 @@ Crowdsmith uses ProfileStore (vendored) for all player-data persistence; the tem
 
 ## Decision
 
-**`PlayerDataServer` (server-only at `ServerStorage/Source/PlayerDataServer.luau`, template-provided) wrapping vendored `ProfileStore` is the sole persistence authority. All persistent writes flow `client → remote → server validate → PlayerDataServer.updateValue → ProfileStore → PlayerDataUpdated reliable → client cache refresh`. The MVP schema has exactly 6 keys (`Coins`, `OwnedSkins`, `SelectedSkin`, `LifetimeAbsorbs`, `LifetimeWins`, `FtueStage`) plus `_schemaVersion`. VS+ adds 2 keys; Alpha+ adds 2-4 keys; the schema is otherwise frozen. Pillar 3 Forbidden Keys are an explicit catalog — round-scope state never persists, not even as a "QoL convenience". Pillar 4 boundary: every persisted key is either cosmetic, lifetime-statistic, or FTUE-progress; no key may affect gameplay outcome. Schema migrations go through ProfileStore `OnProfileVersionUpgrade` with handlers under `PlayerDataServer/migrations/`; bumps are versioned and reviewed.**
+**`PlayerDataServer` (server-only at `ServerStorage/Source/PlayerDataServer.luau`, template-provided) wrapping vendored `ProfileStore` is the sole persistence authority. All persistent writes flow `client → remote → server validate → PlayerDataServer.updateValue → ProfileStore → PlayerDataUpdated reliable → client cache refresh`. The MVP schema has exactly 7 keys (`Coins`, `OwnedSkins`, `SelectedSkin`, `LifetimeAbsorbs`, `LifetimeWins`, `FtueStage`, `Inventory`) plus `_schemaVersion`. VS+ adds 2 keys; Alpha+ adds 2-4 keys; the schema is otherwise frozen. Pillar 3 Forbidden Keys are an explicit catalog — round-scope state never persists, not even as a "QoL convenience". Pillar 4 boundary: every persisted key is either cosmetic, lifetime-statistic, or FTUE-progress; no key may affect gameplay outcome — Inventory contents are constrained to cosmetic items only (enforced by `ContainerByCategory` registration scope; non-cosmetic categories rejected at code review). Schema migrations go through ProfileStore `OnProfileVersionUpgrade` with handlers under `PlayerDataServer/migrations/`; bumps are versioned and reviewed.**
 
-### MVP PlayerDataKey Schema (LOCKED — 6 keys + 1 meta)
+### MVP PlayerDataKey Schema (LOCKED — 7 keys + 1 meta) — Amended 2026-04-27
 
 | Key | Type | Default | Pillar | Mutator | Purpose |
 |---|---|---|---|---|---|
 | `_schemaVersion` | number | 1 | meta | `PlayerDataServer/migrations/` | Schema version for migration dispatch |
-| `Coins` | number | 0 | 4 (cosmetic-economy) | `PlayerDataServer.updateValue` ← `Currency.grantMatchRewards(placements)` (MSM Result entry); `Market` purchase deduction | Soft currency; spent on cosmetic skins |
+| `Coins` | number | 0 | 4 (cosmetic-economy) | `PlayerDataServer.updateValue` ← `Currency.grantMatchRewards(placements)` (MSM Result entry); `Market` purchase deduction | Soft currency; spent on cosmetic skins + cosmetic inventory items |
 | `OwnedSkins` | `{ [skinId: string]: true }` | `{}` | 4 (cosmetic) | `Market` purchase callback; `ReceiptProcessor` Robux callback | Set of owned skin IDs |
 | `SelectedSkin` | string? | `"Default"` | 4 (cosmetic) | client request → server validate ownership → `PlayerDataServer.updateValue` | Currently equipped skin |
 | `LifetimeAbsorbs` | number | 0 | analytics (lifetime stat) | server increments per absorb (rate-limited; aggregated per round at T6/T7/T8) | Cumulative absorb count for retention dashboards |
 | `LifetimeWins` | number | 0 | analytics (lifetime stat) | server increments at T6/T7/T8 if `_winnerId == player.crowdId` | Cumulative round wins |
 | `FtueStage` | string | `"Stage1"` | onboarding | `FtueManagerServer/StageHandlers/` per stage advance | First-time-user-experience progress (template-provided) |
+| `Inventory` | `{ [category: string]: { [itemId: string]: number } }` | `{}` | 4 (cosmetic — Amendment 1) | `Market.purchaseItem` callback; `ReceiptProcessor` Robux callback for cosmetic-bundle purchases | Generic cosmetic-item bag indexed by category → item → count. Constrained by `ContainerByCategory` registration to cosmetic categories only — Pillar 4 enforcement at code-review (any non-cosmetic ItemCategory addition is a reject). `OwnedSkins` superset semantically (skins use set-style; non-skin cosmetics use count-style); both coexist for MVP. |
 
 **Defaults source**: `src/ServerStorage/Source/DefaultPlayerData.luau` (template-provided; this ADR locks the contents). Reconciliation auto-fills missing keys on profile load.
 
@@ -257,7 +259,7 @@ PlayerDataClient cache update
 - **Description**: Each persistent key has its own `_keyVersions` map; migrations target individual keys.
 - **Pros**: Smaller migrations; key-scoped versioning reduces "all-at-once" upgrade risk.
 - **Cons**: ProfileStore's `OnProfileVersionUpgrade` is profile-level; mismatching with per-key versioning duplicates ProfileStore's mechanism. Per-key versioning makes "what schema is this profile?" ambiguous — debugging is harder. Industry standard is profile-level versioning.
-- **Rejection Reason**: ProfileStore already provides profile-level versioning; matching the underlying tool's model is simpler. Migrations at MVP scope (6 keys) are small enough that profile-level bumps don't bottleneck.
+- **Rejection Reason**: ProfileStore already provides profile-level versioning; matching the underlying tool's model is simpler. Migrations at MVP scope (7 keys per Amendment 1) are small enough that profile-level bumps don't bottleneck.
 
 ### Alternative 4: No Pillar 3 Forbidden Keys catalog — rely on Pillar 3 verbal rule
 
@@ -330,10 +332,10 @@ PlayerDataClient cache update
 
 ## Migration Plan
 
-Project is at pre-production stage; template ships with `Coins` + `OwnedSkins` + `SelectedSkin` + `FtueStage` already in `DefaultPlayerData.luau`. This ADR locks the schema as MVP-final + adds 2 lifetime-stat keys.
+Project is at pre-production stage; template ships with `Coins` + `FtueStage` + `Inventory` already in `DefaultPlayerData.luau` (note: original ADR audit step assumed `OwnedSkins` + `SelectedSkin` were template-shipped; actual template ships `Inventory` instead — see §Amendment Log). This ADR locks the schema as MVP-final + adds 4 keys (`OwnedSkins`, `SelectedSkin`, `LifetimeAbsorbs`, `LifetimeWins`).
 
-1. **Audit existing template** — `DefaultPlayerData.luau` should already have 4 of 6 MVP keys (Coins, OwnedSkins, SelectedSkin, FtueStage). Add `LifetimeAbsorbs = 0` + `LifetimeWins = 0` + `_schemaVersion = 1`.
-2. **PlayerDataKey enum sync** — verify `SharedConstants/PlayerDataKey.luau` lists all 6 keys + `_schemaVersion`.
+1. **Audit existing template** — `DefaultPlayerData.luau` ships with 3 of 7 MVP keys (Coins, FtueStage, Inventory). Add `OwnedSkins = {}` + `SelectedSkin = "Default"` + `LifetimeAbsorbs = 0` + `LifetimeWins = 0` + `_schemaVersion = 1`.
+2. **PlayerDataKey enum sync** — verify `SharedConstants/PlayerDataKey.luau` lists all 7 keys + `_schemaVersion`.
 3. **Migration handlers dir** — create `src/ServerStorage/Source/PlayerDataServer/migrations/` (empty for v1 baseline).
 4. **Pillar 3 audit** — `grep -r "PlayerDataServer.updateValue" src/` confirms no key in §Forbidden Keys catalog is being written.
 5. **Currency grant integration** — Currency System (when authored) calls `Currency.grantMatchRewards(placements)` at MSM Result entry per ADR-0005; under the hood, `PlayerDataServer.updateValue(player, PlayerDataKey.Coins, fn)` per placement.
@@ -344,7 +346,7 @@ Project is at pre-production stage; template ships with `Coins` + `OwnedSkins` +
 
 - [ ] `grep -rE "DataStoreService" src/` returns matches only inside `src/ReplicatedStorage/Dependencies/ProfileStore.luau` (vendored) — confirms ADR-0006 ban + this ADR's ProfileStore-only rule
 - [ ] `grep -rE "PlayerDataServer\\.updateValue" src/` — every match writes to a key listed in §MVP Schema or §VS+ Schema; zero matches write to a §Pillar 3 Forbidden Key
-- [ ] `DefaultPlayerData.luau` contents match §MVP Schema 6 keys + `_schemaVersion = 1` exactly; no extra keys
+- [ ] `DefaultPlayerData.luau` contents match §MVP Schema 7 keys + `_schemaVersion = 1` exactly; no extra keys (Amendment 1: 7 keys including Inventory)
 - [ ] `SharedConstants/PlayerDataKey.luau` lists exactly the keys in §MVP Schema (+ VS+/Alpha+ keys gated behind their respective phases when those land)
 - [ ] No inline defaults: `grep -rE "function\\(current\\) return current or" src/` returns zero matches (or only justified cases with code-review approval comment)
 - [ ] Migration test: fixture profile at `_schemaVersion = 0` (legacy) loads and upgrades to v1 cleanly via `OnProfileVersionUpgrade` handler
@@ -374,3 +376,43 @@ Skipped — Roblox has no dedicated engine specialist in this project (per `.cla
 ## Technical Director Strategic Review
 
 Skipped — Lean review mode (TD-ADR not a required phase gate in lean per `.claude/docs/director-gates.md`).
+
+## Amendment Log
+
+### Amendment 1 — 2026-04-27: `Inventory` added as 7th MVP key (cosmetic category)
+
+**Trigger**: Discovered during `/dev-story` of `production/epics/player-data-schema/story-001-mvp-schema-lock.md`. Story-readiness inspection of shipped template revealed:
+
+- `src/ReplicatedStorage/Source/SharedConstants/PlayerDataKey.luau` ships with `Coins` + `FtueStage` + `Inventory` (3 keys), NOT `Coins` + `OwnedSkins` + `SelectedSkin` + `FtueStage` (4 keys) as the original ADR §Migration Plan §Step 1 assumed.
+- `Inventory` is actively consumed by:
+  - `src/ServerStorage/Source/Market.luau:91` — `PlayerDataServer.updateValue(player, PlayerDataKey.Inventory, fn)` for purchase fulfilment
+  - `src/ReplicatedStorage/Source/Utility/PlayerData/countInventoryItemsInCategory.luau` — client read
+  - `src/ReplicatedStorage/Source/Utility/PlayerData/getItemAmountInInventory.luau` — client read
+  - `src/ReplicatedStorage/Source/UI/UIComponents/ShopListSelector.luau:62` — shop UI exclusion list
+- Strict 6-key compliance would require deleting `Inventory` + cascading 4-file Market system retirement.
+
+**Decision**: Amend ADR-0011 to admit `Inventory` as the 7th MVP key, categorized as `cosmetic` per Pillar 4. Rationale:
+
+1. **Pillar 4 invariant preserved**: `Inventory` is a generic `{[category]: {[itemId]: number}}` map. Pillar 4 anti-P2W applies at the *contents* level — what gets registered as a category in `ContainerByCategory.luau`. Constraint added: only cosmetic ItemCategories may be registered. Code review enforces this; `/architecture-review` cross-checks new categories.
+2. **Market plumbing preserved**: Template's `Market.purchaseItem` flow is correctly anti-P2W-shaped (currency-deduct → item-grant). Deleting it for spec purity is wasteful; amendment is cheaper.
+3. **Coexistence with `OwnedSkins`**: Both keys persist for MVP. `OwnedSkins` uses set-style `{[skinId] = true}` — efficient ownership lookup. `Inventory` uses count-style `{[cat]: {[id]: count}}` — supports stackable cosmetic items (banner-frames, emote-uses, etc.) when those land VS+. Skin System (VS+) reads `OwnedSkins` only; non-skin cosmetics read `Inventory`. Acceptable redundancy for MVP — consolidation can revisit at VS+ if needed.
+
+**Edits applied** (8 sites):
+1. §Status (header) — Amendment marker added
+2. §Status history — Amendment 1 row added
+3. §Constraints — "Six keys" → "Seven keys" + Inventory note
+4. §Requirements — "exactly 6 keys" → "exactly 7 keys"
+5. §Decision (narrative) — schema key list expanded; Pillar 4 enforcement clarified
+6. §MVP PlayerDataKey Schema — "6 keys + 1 meta" → "7 keys + 1 meta"; added Inventory row with type, default, mutator, purpose
+7. §Migration Plan — corrected template-audit step (template ships Coins + FtueStage + Inventory, not Coins + OwnedSkins + SelectedSkin + FtueStage)
+8. §Validation Criteria — "6 keys" → "7 keys"
+9. §Alternatives Considered — small key-count reference updated
+
+**Cross-doc impact**:
+- ✅ Control manifest (`docs/architecture/control-manifest.md`) — bump Manifest Version date if MVP key count is referenced; verified no count reference, no edit required.
+- ✅ Story `production/epics/player-data-schema/story-001-mvp-schema-lock.md` — story Manifest Version unchanged (2026-04-27); AC-1 reads "exactly these 6 keys" → revise to "exactly these 7 keys" + add `Inventory`; AC-4 add Inventory under cosmetic category. Story author edits captured in next `/dev-story` pass.
+- ✅ ADR-0001 / ADR-0004 / ADR-0005 / ADR-0006 / ADR-0010 — none reference key count; no edits required.
+- ✅ Pillar 3 Forbidden Keys catalog — Inventory is round-scope-clean (cosmetic, persists across rounds intentionally); not in conflict.
+- ✅ Pillar 4 Anti-P2W Persistence Boundary — Inventory categorized as cosmetic; constraint mechanism (cosmetic-only ItemCategory registration) added to §Decision narrative.
+
+**Authoriser**: User-approved amendment via `/dev-story` Path B selection 2026-04-27. Lean review mode — TD-ADR / CD-ADR strategic gates not invoked.
