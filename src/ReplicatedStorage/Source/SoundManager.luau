@@ -1,91 +1,109 @@
+--!strict
+
+-- SoundManager — template wire-up; full AudioManager epic (VS+) will replace this.
+-- Migrated from SharedConstants/Sounds.luau (story 003 retirement) to AssetId.Sound
+-- per ADR-0006 Module Placement Rules.
+--
+-- Per AssetId contract: registry holds string SoundId only. Per-cue Volume / Looped
+-- defaults live here as consumer-owned config until AudioManager epic lands.
+
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
+local AssetId = require(ReplicatedStorage.Source.SharedConstants.AssetId)
+
 local SoundController = {}
 
-local SoundList =
-	require(ReplicatedStorage.Source.SharedConstants.Sounds) :: { [string]: { SoundId: string, Volume: number, Looped: boolean } }
 local Sounds = workspace:WaitForChild("Sounds")
 
-local function setProp(instance: Instance, table: table)
-	if instance and table then
-		for propName, value in pairs(table) do
-			instance[propName] = value
-		end
-	else
-		error("There was no instance or table.")
+local DEFAULT_SFX_VOLUME = 0.7
+local DEFAULT_MUSIC_VOLUME = 0.5
+
+local function applySound(instance: Sound, name: string, volume: number, looped: boolean)
+	local soundId = AssetId.Sound[name]
+	if not soundId then
+		warn(`[SoundManager] Unknown sound name '{name}' — not in AssetId.Sound registry.`)
+		return false
+	end
+	instance.SoundId = soundId
+	instance.Volume = volume
+	instance.Looped = looped
+	return true
+end
+
+function SoundController:PlaySFX1(name: string)
+	local SFX1 = Sounds:WaitForChild("SFXGroup"):WaitForChild("SFX1") :: Sound
+	if applySound(SFX1, name, DEFAULT_SFX_VOLUME, false) then
+		SFX1:Play()
 	end
 end
 
-function SoundController:PlaySFX1(name: string) -- SFX1
-	local SFX1 = Sounds:WaitForChild("SFXGroup"):WaitForChild("SFX1")
-	local sound = SoundList[name]
-	setProp(SFX1, sound)
-
-	SFX1:Play()
-end
-
-function SoundController:PlayLocalSound(name: string, Instance: Instance) --Local Sound
-	for _, sound in pairs(Instance:GetChildren()) do
-		if sound:IsA("Sound") then
+function SoundController:PlayLocalSound(name: string, parent: Instance)
+	for _, child in pairs(parent:GetChildren()) do
+		if child:IsA("Sound") then
 			return
 		end
 	end
-	local localSound = Sounds:WaitForChild("SFXGroup"):WaitForChild("LocalSound"):Clone()
-	local sound = SoundList[name]
-	localSound.Parent = Instance
+	local localSound = Sounds:WaitForChild("SFXGroup"):WaitForChild("LocalSound"):Clone() :: Sound
+	localSound.Parent = parent
 
-	setProp(localSound, sound)
+	if not applySound(localSound, name, DEFAULT_SFX_VOLUME, false) then
+		localSound:Destroy()
+		return
+	end
 
 	localSound:Play()
-
 	localSound.Ended:Wait()
 	localSound:Destroy()
 end
 
-function SoundController:PlayMainSound(name: string) -- MainMusic/Sound
-	local MainSound = Sounds:WaitForChild("BackgroundGroup"):WaitForChild("MainSound")
-
-	setProp(MainSound, SoundList[name])
-
-	MainSound.TimePosition = 0
-	MainSound:Play()
+function SoundController:PlayMainSound(name: string)
+	local MainSound = Sounds:WaitForChild("BackgroundGroup"):WaitForChild("MainSound") :: Sound
+	if applySound(MainSound, name, DEFAULT_MUSIC_VOLUME, true) then
+		MainSound.TimePosition = 0
+		MainSound:Play()
+	end
 end
 
-function SoundController:CustomSound(soundname: string, customname: string, soundgroup: string) --Create and play a custom (nonlocal) sound that isn't predetermined
-	print("running")
-	local mainsound = nil
-	if SoundList[soundname] then
-		print("Sound Found in Library.")
-		if Sounds:FindFirstChild(soundgroup) then
-			if Sounds:WaitForChild(soundgroup):FindFirstChild(customname) then
-				mainsound = Sounds:WaitForChild(soundgroup):WaitForChild(customname)
-			else
-				mainsound = Instance.new("Sound")
-				mainsound.Name = tostring(customname)
-				mainsound.Parent = Sounds:WaitForChild(soundgroup)
-				mainsound.SoundGroup = mainsound.Parent
-			end
-		else
-			warn("SoundGroup not found.")
-		end
+function SoundController:CustomSound(soundname: string, customname: string, soundgroup: string)
+	if not AssetId.Sound[soundname] then
+		warn(`[SoundManager] Unknown sound name '{soundname}' — not in AssetId.Sound registry.`)
+		return
+	end
+	if not Sounds:FindFirstChild(soundgroup) then
+		warn(`[SoundManager] SoundGroup '{soundgroup}' not found.`)
+		return
+	end
 
-		setProp(mainsound, SoundList[soundname])
+	local groupInstance = Sounds:WaitForChild(soundgroup)
+	local mainsound: Sound
 
+	if groupInstance:FindFirstChild(customname) then
+		mainsound = groupInstance:WaitForChild(customname) :: Sound
+	else
+		mainsound = Instance.new("Sound")
+		mainsound.Name = customname
+		mainsound.Parent = groupInstance
+		mainsound.SoundGroup = groupInstance :: SoundGroup
+	end
+
+	if applySound(mainsound, soundname, DEFAULT_SFX_VOLUME, false) then
 		mainsound.TimePosition = 0
 		mainsound:Play()
 	end
 end
 
-function SoundController:CustomSoundGroup(properties: table) -- Create a custom sound group that isn't predetermined
-	if properties then
-		local newgroup = Instance.new("SoundGroup")
-		newgroup.Parent = Sounds
-		setProp(newgroup, properties)
-	else
-		warn("Properties were not provided.")
+function SoundController:CustomSoundGroup(properties: { [string]: any }?)
+	if not properties then
+		warn("[SoundManager] Properties were not provided.")
+		return
+	end
+	local newgroup = Instance.new("SoundGroup")
+	newgroup.Parent = Sounds
+	for propName, value in pairs(properties) do
+		(newgroup :: any)[propName] = value
 	end
 end
 
-function SoundController:RemoveCustom(name: string, parent: string) -- Remove a created (or predetermined) sound/group
+function SoundController:RemoveCustom(name: string, parent: string)
 	if parent == "Sounds" then
 		Sounds:WaitForChild(name):Destroy()
 	else
