@@ -10,6 +10,7 @@ local ReplicatedStorage = game:GetService("ReplicatedStorage")
 
 local RemoteEventName = require(ReplicatedStorage.Source.Network.RemoteName.RemoteEventName)
 local RemoteFunctionName = require(ReplicatedStorage.Source.Network.RemoteName.RemoteFunctionName)
+local UnreliableRemoteEventName = require(ReplicatedStorage.Source.Network.RemoteName.UnreliableRemoteEventName)
 local RemoteFolderName = require(ReplicatedStorage.Source.Network.RemoteFolderName)
 local createInstanceTree = require(ReplicatedStorage.Source.Utility.createInstanceTree)
 local getInstance = require(ReplicatedStorage.Source.Utility.getInstance)
@@ -32,6 +33,16 @@ local function createRemotes(remoteFolder: Folder)
 		remoteFunction.Name = functionName
 		remoteFunction.Parent = remoteFunctionsFolder
 	end
+
+	-- Implements: Story 001 (network-layer-ext epic) — UnreliableRemoteEvent boot path.
+	-- Post-cutoff Roblox API per docs/engine-reference/roblox/replication-best-practices.md.
+	local unreliableRemoteEventsFolder: Folder = getInstance(remoteFolder, RemoteFolderName.UnreliableRemoteEvents)
+
+	for eventName in pairs(UnreliableRemoteEventName) do
+		local unreliableRemoteEvent = Instance.new("UnreliableRemoteEvent")
+		unreliableRemoteEvent.Name = eventName
+		unreliableRemoteEvent.Parent = unreliableRemoteEventsFolder
+	end
 end
 
 local function createRemotesFolders(rootFolderName: string): Folder
@@ -51,6 +62,12 @@ local function createRemotesFolders(rootFolderName: string): Folder
 				className = "Folder",
 				properties = {
 					Name = RemoteFolderName.RemoteEvents,
+				} :: PropertiesTable,
+			},
+			{
+				className = "Folder",
+				properties = {
+					Name = RemoteFolderName.UnreliableRemoteEvents,
 				} :: PropertiesTable,
 			},
 		},

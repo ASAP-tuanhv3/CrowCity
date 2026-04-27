@@ -12,6 +12,7 @@ local RunService = game:GetService("RunService")
 
 local RemoteEventName = require(script.RemoteName.RemoteEventName)
 local RemoteFunctionName = require(script.RemoteName.RemoteFunctionName)
+local UnreliableRemoteEventName = require(script.RemoteName.UnreliableRemoteEventName)
 local createRemotesFolders = require(ReplicatedStorage.Source.Utility.Network.createRemotesFolders)
 local waitForAllRemotesAsync = require(ReplicatedStorage.Source.Utility.Network.waitForAllRemotesAsync)
 local getInstance = require(ReplicatedStorage.Source.Utility.getInstance)
@@ -27,6 +28,7 @@ local Network = {}
 Network.t = t
 Network.RemoteEvents = RemoteEventName
 Network.RemoteFunctions = RemoteFunctionName
+Network.UnreliableRemoteEvents = UnreliableRemoteEventName
 Network._started = false
 Network._remoteFolder = nil :: Folder?
 
@@ -159,6 +161,52 @@ function Network._getRemoteFunction(functionName: RemoteFunctionName.EnumType)
 	local remoteFunction: RemoteFunction = getInstance(Network._remoteFolder, "RemoteFunctions", functionName)
 
 	return remoteFunction
+end
+
+-- Implements: Story 001 (network-layer-ext epic) — UnreliableRemoteEvent wrapper API.
+-- Best-effort, no-ordering, no-retransmit per
+-- docs/engine-reference/roblox/replication-best-practices.md.
+-- Use ONLY for high-frequency non-critical state (CrowdStateBroadcast, NpcStateBroadcast).
+
+function Network._getUnreliableRemoteEvent(eventName: UnreliableRemoteEventName.EnumType)
+	assert(Network._remoteFolder, "Network setup not complete")
+	assert(
+		(UnreliableRemoteEventName :: any)[eventName] ~= nil,
+		string.format("Unknown UnreliableRemoteEventName: %q", tostring(eventName))
+	)
+
+	local unreliableRemoteEvent: UnreliableRemoteEvent =
+		getInstance(Network._remoteFolder, "UnreliableRemoteEvents", eventName)
+
+	return unreliableRemoteEvent
+end
+
+function Network.connectUnreliableEvent(
+	eventName: UnreliableRemoteEventName.EnumType,
+	callback: (...any) -> nil,
+	typeValidator: TypeValidator
+)
+	local unreliableRemoteEvent = Network._getUnreliableRemoteEvent(eventName)
+
+	if RunService:IsServer() then
+		return unreliableRemoteEvent.OnServerEvent:Connect(t.wrap(callback, typeValidator))
+	else
+		return unreliableRemoteEvent.OnClientEvent:Connect(t.wrap(callback, typeValidator))
+	end
+end
+
+function Network.fireAllClientsUnreliable(eventName: UnreliableRemoteEventName.EnumType, ...: any)
+	assert(RunService:IsServer(), "Network.fireAllClientsUnreliable can only be called on the server")
+
+	local unreliableRemoteEvent = Network._getUnreliableRemoteEvent(eventName)
+	unreliableRemoteEvent:FireAllClients(...)
+end
+
+function Network.fireClientUnreliable(player: Player, eventName: UnreliableRemoteEventName.EnumType, ...: any)
+	assert(RunService:IsServer(), "Network.fireClientUnreliable can only be called on the server")
+
+	local unreliableRemoteEvent = Network._getUnreliableRemoteEvent(eventName)
+	unreliableRemoteEvent:FireClient(player, ...)
 end
 
 return Network

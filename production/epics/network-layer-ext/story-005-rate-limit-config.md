@@ -1,11 +1,12 @@
 # Story 005: RateLimitConfig SharedConstants table
 
 > **Epic**: network-layer-ext
-> **Status**: Ready
+> **Status**: Complete
 > **Layer**: Foundation
 > **Type**: Config/Data
 > **Manifest Version**: 2026-04-27
 > **Estimate**: 1–2 hours
+> **Completed**: 2026-04-27
 
 ## Context
 
@@ -114,3 +115,29 @@ return RateLimitConfig
 
 - Depends on: None (parallel-safe with story 004; can be developed first if 004 needs the stub)
 - Unlocks: Story 004 `RemoteValidator.checkRate` implementation; consumer-system stories that bind a client→server remote
+
+---
+
+## Completion Notes
+
+**Completed**: 2026-04-27
+**Criteria**: 7/7 passing
+
+**Deviations**:
+- ADVISORY (model conversion): ADR-0010 §Per-Player Rate Limit Policy lines 172-174 specifies entries in windowed shape `{max, windowSec}`. Story 005 spec mandates token-bucket shape `{rate, burst}` (line 32 AC-2 + line 56 reference shape). The two stories (004 + 005) consistently use token-bucket which is strictly stronger (smooths sustained rate while still admitting bursts). Conversion: `{max=4, windowSec=1.0}` → `{rate=4, burst=4}`; `{max=1, windowSec=1.0}` → `{rate=1, burst=1}`; `{max=2, windowSec=5.0}` → `{rate=0.4, burst=2}`. Conversion preserves practical caller intent. Documented inline in RateLimitConfig.luau header block + caller-facing intent paragraph per Implementation Notes guidance.
+- ADVISORY: `GetParticipation` (RemoteFunction) and `RelicDraftPick` (RemoteEvent) omitted from explicit entries. ADR-0010 lines 172-174 enumerate only ChestInteract / ChestDraftPick / AFKToggle. Default fallback `{rate=1, burst=2}` covers any unlisted remote per AC-6 safe-by-default contract. Decision documented inline in RateLimitConfig.luau §Out-of-scope comment block.
+
+**Test Evidence**: Config/Data story — typically requires smoke check at production/qa/evidence/, but the story spec instead specified a unit test (line 108: `tests/unit/remote-validator/rate-limit-config_test.luau`) — implemented as TestEZ unit test (more reliable for static config validation than smoke evidence). 9 test functions across 4 describe blocks covering all 7 ACs.
+
+**Code Review**: Skipped — Lean mode
+**Gates**: QL-TEST-COVERAGE + LP-CODE-REVIEW skipped — Lean mode
+
+**Files**:
+- `src/ReplicatedStorage/Source/SharedConstants/RateLimitConfig.luau` (NEW, 47 L) — 4 entries (3 explicit + 1 default fallback); type export `RateLimitEntry`
+- `tests/unit/remote-validator/rate-limit-config_test.luau` (NEW, 80 L, 9 test fns)
+
+**Manifest Version**: 2026-04-27 (current ✓ no staleness).
+
+**Audit gates**: tools/audit-asset-ids.sh exit 0 / tools/audit-persistence.sh exit 0.
+
+**Unblocks**: Story 004 `RemoteValidator.checkRate` consumes this config; consumer-system stories binding client→server remotes get safe-by-default rate limiting via fallback.

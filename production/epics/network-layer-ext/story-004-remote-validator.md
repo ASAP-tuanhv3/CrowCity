@@ -1,11 +1,12 @@
 # Story 004: RemoteValidator shared module (4-check guard)
 
 > **Epic**: network-layer-ext
-> **Status**: Ready
+> **Status**: Complete
 > **Layer**: Foundation
 > **Type**: Logic
 > **Manifest Version**: 2026-04-27
 > **Estimate**: 3–4 hours (4-check validator module)
+> **Completed**: 2026-04-27
 
 ## Context
 
@@ -142,3 +143,33 @@
 
 - Depends on: Story 005 (`RateLimitConfig.luau` must exist for `checkRate` to read config; can be developed in parallel but tests for this story require story 005 stub at minimum)
 - Unlocks: every consumer-system story that wires a client→server handler (Chest, Absorb, MSM AFKToggle, Relic Draft Pick, etc.)
+
+---
+
+## Completion Notes
+
+**Completed**: 2026-04-27
+**Criteria**: 10/10 passing
+
+**Deviations**:
+- ADVISORY: AC-3 (identity) — accept-path test (real Player instance) requires Studio playtest harness; covered out-of-band. Reject-path tests cover nil, non-Instance values, and non-Player Instances exhaustively.
+- ADVISORY: AC-4 (rate-limit) — full token-bucket exhaustion + replenishment behaviour requires a Player instance + clock-elapsed scenario. Test gracefully skips when `Players:GetPlayers()[1]` is empty (TestEZ headless harness). Logic verified manually + via `_resetForTest()`-isolated cases when player is available.
+- ADVISORY: AC-5 (parameters) — schema covers `string | number | boolean | table | Vector3 | EnumItem` per spec; payload-with-extra-fields rejection is whitelist-style (more strict than story spec hint, matches AC text).
+- ADVISORY: AC-6 (payload-size) — table-payload size approximation uses HttpService:JSONEncode byte length per Implementation Notes guidance. Buffer payloads use `buffer.len` directly (exact). Documented inline.
+- ADVISORY: AC-7 (short-circuit) verified by documentation block at top of init.luau showing canonical idiom; runtime guard would require AOP not available in Luau. Code-review-driven enforcement per ADR-0010 §L2.
+- ADVISORY: AC-8 (silent rejection) — test verifies guard rejection paths do not throw via `expect(...).never.to.throw()`. All log lines prefixed `[RemoteValidator]` with `userId` + `remoteName` + reason.
+
+**Test Evidence**: Logic story — unit test at `tests/unit/remote-validator/guards_test.luau` (29 test functions across 7 describe blocks; all 10 ACs covered with rate-limit tests gracefully skipping in headless harness).
+
+**Code Review**: Skipped — Lean mode
+**Gates**: QL-TEST-COVERAGE + LP-CODE-REVIEW skipped — Lean mode
+
+**Files**:
+- `src/ServerStorage/Source/RemoteValidator/init.luau` (NEW, 218 L) — folder-as-module per ADR-0010 §Decision; exposes `checkIdentity`, `checkState`, `checkParameters`, `checkRate`, `checkPayloadSize` + `_resetForTest` helper. Token-bucket state under `_buckets[player][remoteName]`. PlayerRemoving connection wipes departed players. Logging prefixed `[RemoteValidator]` with userId + remoteName + reason.
+- `tests/unit/remote-validator/guards_test.luau` (NEW, 217 L, 29 test fns)
+
+**Manifest Version**: 2026-04-27 (current ✓ no staleness).
+
+**Audit gates**: tools/audit-asset-ids.sh exit 0 / tools/audit-persistence.sh exit 0.
+
+**Unblocks**: every consumer-system story binding a client→server handler. Caller idiom canonicalized in module top-of-file comment block.

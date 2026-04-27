@@ -12,15 +12,18 @@ local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local Freeze = require(ReplicatedStorage.Dependencies.Freeze)
 local RemoteEventName = require(ReplicatedStorage.Source.Network.RemoteName.RemoteEventName)
 local RemoteFunctionName = require(ReplicatedStorage.Source.Network.RemoteName.RemoteFunctionName)
+local UnreliableRemoteEventName = require(ReplicatedStorage.Source.Network.RemoteName.UnreliableRemoteEventName)
 local RemoteFolderName = require(ReplicatedStorage.Source.Network.RemoteFolderName)
 
 local function waitForAllRemotesAsync(remoteFolder: Instance, timeoutSeconds: number)
 	-- Using FindFirstChild to satisfy the type checker
 	local remoteEventsFolder = remoteFolder:FindFirstChild(RemoteFolderName.RemoteEvents) :: Folder
 	local remoteFunctionsFolder = remoteFolder:FindFirstChild(RemoteFolderName.RemoteFunctions) :: Folder
+	local unreliableRemoteEventsFolder = remoteFolder:FindFirstChild(RemoteFolderName.UnreliableRemoteEvents) :: Folder
 
 	local remoteEvents: { string } = Freeze.Dictionary.values(RemoteEventName)
 	local remoteFunctions: { string } = Freeze.Dictionary.values(RemoteFunctionName)
+	local unreliableRemoteEvents: { string } = Freeze.Dictionary.values(UnreliableRemoteEventName)
 
 	-- Validate that the remotes defined under RemoteNames exist in remote folders
 	local success = true
@@ -36,6 +39,7 @@ local function waitForAllRemotesAsync(remoteFolder: Instance, timeoutSeconds: nu
 
 	search(remoteEvents, remoteEventsFolder)
 	search(remoteFunctions, remoteFunctionsFolder)
+	search(unreliableRemoteEvents, unreliableRemoteEventsFolder)
 
 	assert(success, "Network could not find all remotes. Did the client Network module initialize before the server?")
 end
