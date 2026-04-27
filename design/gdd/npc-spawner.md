@@ -1,8 +1,8 @@
 # NPC Spawner
 
-> **Status**: In Revision (2026-04-22 review — 16 blockers resolved; 2026-04-24 consistency-check sync pass — CROWD_START_COUNT 10→20 patch REJECTED (CSM locked 10); ρ_neutral → ρ_design rename LANDED in Absorb Batch 2; NPC pool text "200" → 300 fix; radius range [3.05, 12.03] → composed [1.53, 18.04]; F2 table recalibrated for CROWD_START=10; stale "blocks approval" flags cleared.)
+> **Status**: In Revision (2026-04-22 review — 16 blockers resolved; 2026-04-24 consistency-check sync pass — CROWD_START_COUNT 10→20 patch REJECTED (CSM locked 10); ρ_neutral → ρ_design rename LANDED in Absorb Batch 2; NPC pool text "200" → 300 fix; radius range [3.05, 12.03] → composed [1.53, 18.04]; F2 table recalibrated for CROWD_START=10; stale "blocks approval" flags cleared. **2026-04-26 ADR-0008 sync** — 5 edits: R5 + §Interactions L70 + §Dependencies L243 + AC-05 + §DI requirements `Accumulator` → `RunServiceShim`. ADR-0008 (Proposed 2026-04-26) locks NPCSpawner own `RunService.Heartbeat:Connect` per ADR-0002 §Related Decisions non-gameplay-tick exemption; "shared ServerTickAccumulator" placeholder eliminated. See `docs/architecture/change-impact-2026-04-26-npc-cadence.md`.)
 > **Author**: user + game-designer + systems-designer + gameplay-programmer + creative-director + qa-lead + network-programmer + performance-analyst + level-designer
-> **Last Updated**: 2026-04-24
+> **Last Updated**: 2026-04-26 (ADR-0008 cadence sync)
 > **Implements Pillar**: 1 (Snowball Dopamine) — raw material for every absorb; 5 (Comeback Always Possible) — respawn pacing controls recovery rate
 
 ## Overview
@@ -24,7 +24,7 @@ Players never see "the spawner" — they see a city that already feels alive wit
 
 **NPC movement**
 4. Each `Active` NPC runs a random walk: pick a random direction (uniform angle, XZ plane) and walk duration `T_walk ∈ [NPC_WALK_MIN_SEC, NPC_WALK_MAX_SEC]`. Move at `NPC_WALK_SPEED` studs/s via direct `CFrame` assignment (Parts are anchored — R1) for that duration, then pick a new direction.
-5. Movement updates on a shared 15 Hz `Heartbeat` accumulator owned by `ServerStorage/Source/ServerTickAccumulator.luau` (new module — Crowd Replication epic prerequisite). Accumulator registers exactly one `RunService.Heartbeat` connection for the whole server; each consumer (Absorb System, NPC Spawner, Crowd State Manager) subscribes a callback via `Accumulator:subscribe(fn)`. NPC Spawner registers one callback; that callback drives movement + respawn-timer evaluation. NPC Spawner itself registers ZERO direct `RunService` or `task.wait` listeners.
+5. Movement updates on a 15 Hz internal accumulator driven by NPC Spawner's **own** dedicated `RunService.Heartbeat:Connect` connection (per ADR-0008 §Cadence Exemption + ADR-0002 §Related Decisions L289 non-gameplay-tick exemption — NPC movement is NOT gameplay-tick work, so the "single Heartbeat" rule for TickOrchestrator does not apply). NPC Spawner registers exactly **one** `RunService.Heartbeat:Connect` after `createAll`, disconnects it on `destroyAll`, and registers ZERO `task.wait` / `task.spawn` sleep loops. CrowdStateServer + AbsorbSystem + ChestSystem + RelicSystem + CollisionResolver run on TickOrchestrator's accumulator (Phase 1-9); NPCSpawner is intentionally outside that 9-phase atomic sequence. Stale terminology note: prior text referenced a "shared `ServerTickAccumulator`" — superseded by ADR-0002 (TickOrchestrator) + ADR-0008 sync 2026-04-26.
 6. If a next-step position would exceed `ARENA_BOUNDARY`, reflect direction off the boundary normal or re-roll angle. NPC never leaves the walkable area. Obstacle collision (buildings, props) is OUT OF SCOPE for MVP — NPCs phase through non-boundary geometry; arena assumed convex + single-level for MVP. Non-convex/multi-level city layouts deferred to post-MVP level-design session (see Open Questions).
 
 **Reclaim**
@@ -68,7 +68,7 @@ No `Paused` state — NPCs continue walking during `COUNTDOWN_SNAP_SEC`. Absorb 
 | Absorb System | Called by | `getAllActiveNPCs()` (read, 15 Hz); `reclaim(npcId)` (write, per absorb) | Reclaim synchronous. Snapshot = frozen copy of internal table (R7/R8). |
 | Round Lifecycle | Control | `createAll(participants)` → Ticking; `destroyAll()` → Dormant + pool cleanup + janitor destroy | Register listener during module init. |
 | Crowd State Manager | Read (respawn only) | `CrowdStateManager:getAllCrowdPositions() → {[crowdId]: Vector3}` — used in R10a for crowd-distant spawn selection | Injected DI. One query per NPC respawn, not per tick. New method on CSM — cross-ref patch required. |
-| ServerTickAccumulator (new shared module) | Subscribe | `Accumulator:subscribe(fn)` — registers NPC Spawner's tick callback (R5) | Shared with Absorb, CSM. One `RunService.Heartbeat` connection for the whole server. |
+| RunService.Heartbeat (Roblox) | Direct connect | NPC Spawner owns ONE `RunService.Heartbeat:Connect` — drives 15 Hz internal accumulator (movement + broadcast). Per ADR-0008 §Cadence Exemption. | Connection registered at `createAll`; disconnected at `destroyAll`. NOT a TickOrchestrator phase callback (per ADR-0002 §Related Decisions L289). |
 | Network Layer | Broadcast | Fires `UnreliableRemoteEventName.NpcStateBroadcast` at 15 Hz with position + transparency deltas | Prereq: `Network.connectUnreliableEvent` wrapper (shared with CSM). |
 | TweenService (Roblox) | Call | `TweenService:Create(Part, TweenInfo.new(0.3), {Transparency = 0})` for R10c fade-in | Tracked in `_tweenJanitor`. |
 
@@ -240,7 +240,8 @@ where `T_respawn_avg = (NPC_RESPAWN_DELAY_MIN + NPC_RESPAWN_DELAY_MAX) / 2` and 
 | Crowd State Manager | Batch 1 Applied 2026-04-24 | `CROWD_START_COUNT` LOCKED at 10 (2026-04-24 decision — 10→20 patch REJECTED). F2 table recalibrated at count=10 (row added). Registry source-of-truth. | ✓ RESOLVED — no longer blocks this GDD. |
 | Network Layer | Approved (template) + gap | `UnreliableRemoteEventName.NpcStateBroadcast` + `NpcPoolBootstrap` (reliable) + `Network.connectUnreliableEvent()` wrapper | HARD — wrapper prereq shared with CSM; belongs in Crowd Replication epic. |
 | ADR-0001 Crowd Replication | Proposed | `UnreliableRemoteEvent` broadcast cadence (15 Hz); client-side interpolation pattern | HARD — architectural foundation. NPC replication consistency with ADR required. |
-| ServerTickAccumulator (new shared module) | Not yet designed | `Accumulator:subscribe(fn)` pattern | HARD — new module. Belongs in Crowd Replication epic. |
+| ADR-0008 NPC Spawner Authority | Accepted 2026-04-26 | §Cadence Exemption — own `RunService.Heartbeat:Connect`; §Replication Contract — `NpcStateBroadcast` UREvent + `NpcPoolBootstrap` reliable; §Caller Authority Matrix — RoundLifecycle/AbsorbSystem-only callers | HARD — architectural lock. Replaces prior "ServerTickAccumulator (new shared module)" placeholder; no shared accumulator exists. |
+| ADR-0002 TickOrchestrator | Accepted 2026-04-26 | §Related Decisions L289 explicitly excludes NPCSpawner from Phase 1-9 callbacks; non-gameplay-tick exemption | HARD — codifies that NPC Spawner is OUTSIDE TickOrchestrator's 9-phase sequence. |
 | Level design | Not started | `SPAWN_POINT_LIST` (list of Vector3); `ARENA_WALKABLE_AREA_SQ` (float, measured); obstacle collision model; multi-level/ledge policy; authoring format | HARD — 5 unresolved level-design deps. See Open Questions. |
 | TweenService (Roblox) | Always available | `TweenService:Create()` for R10c fade-in | HARD — built-in. |
 | Packages.janitor (Wally) | Listed in `wally.toml` | `Janitor.new`, `:Add(token, "Cancel")`, `:Destroy()` | HARD — lifecycle cleanup per CLAUDE.md. |
@@ -317,8 +318,8 @@ GIVEN injected `partFactory` mock with allocation spy, WHEN 100 reclaim/respawn 
 **AC-04 — Walk timer in bounds (deterministic)** | Logic
 GIVEN 1000 direction-change events with seeded RNG mock using a known fixed seed, WHEN `T_walk` samples collected, THEN every sample `d` satisfies `NPC_WALK_MIN_SEC ≤ d ≤ NPC_WALK_MAX_SEC` and `abs(sample_mean - expected_mean) < 0.1s`. Deterministic — no statistical tolerance required under fixed seed.
 
-**AC-05 — Shared accumulator usage (no independent tick)** | Logic
-GIVEN NPC Spawner initialized with injected mock `Accumulator` implementing `:subscribe(fn)`, WHEN mock accumulator is NOT fired for 3 simulated seconds, THEN no NPC CFrame changes. WHEN mock fires once, THEN all active NPC CFrames advance by exactly one tick-step. Verify: NPC Spawner registers exactly 1 subscription on the injected accumulator and 0 direct `RunService.Heartbeat` / `task.wait` / `task.spawn` sleep loops (inspect module source / assert via DI contract — accumulator is the only clock input).
+**AC-05 — Own Heartbeat connection (no competing accumulator) — REVISED 2026-04-26 per ADR-0008** | Logic
+GIVEN NPC Spawner initialized with injected mock `RunServiceShim` exposing `Heartbeat:Connect(fn) → connection`, WHEN mock Heartbeat is NOT fired for 3 simulated seconds, THEN no NPC CFrame changes. WHEN mock fires with `dt = 1/15` once, THEN all active NPC CFrames advance by exactly one tick-step (one accumulator drain). Verify: (a) NPC Spawner registers EXACTLY 1 `Heartbeat:Connect` after `createAll` (via mock spy); (b) connection's `:Disconnect()` is invoked exactly once at `destroyAll`; (c) NPC Spawner registers 0 `task.wait` / `task.spawn` sleep loops (inspect module source); (d) NPC Spawner does NOT subscribe to TickOrchestrator (per ADR-0008 §Cadence Exemption — NPC movement is non-gameplay-tick).
 
 **AC-06 — Boundary reflection** | Logic
 GIVEN NPC next-step position exits `ARENA_BOUNDARY`, WHEN movement step computed, THEN velocity component normal to boundary is negated; NPC remains inside boundary after step.
@@ -372,7 +373,7 @@ GIVEN server with 300 NPCs active, WHEN 15 Hz broadcast runs for 60 seconds, THE
 **DI requirements**: NpcSpawner must accept injected dependencies:
 - `CrowdStateManager` with method `getAllCrowdPositions() → {[crowdId]: Vector3}`
 - `RoundLifecycle` (listener target)
-- `Accumulator` with method `subscribe(fn) → disconnect`
+- `RunServiceShim` exposing `Heartbeat:Connect(fn: (dt: number) -> ()) -> { Disconnect: () -> () }` (defaults to real `RunService` in production; mock-fired in tests). REVISED 2026-04-26 per ADR-0008 — replaces prior "Accumulator with method subscribe(fn) → disconnect" DI contract.
 - `scheduleCallback(delay: number, fn: () → ()) → cancelToken` (cancel-capable timer; defaults `task.delay` wrapper in production)
 - `clock: () → number` (defaults `os.clock` in production)
 - `rng: (min: number, max: number) → number` (defaults `math.random` in production)

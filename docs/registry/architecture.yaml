@@ -52,8 +52,11 @@ state_ownership:
     write_access: crowd-state-server-only
     referenced_by:
       - docs/architecture/adr-0001-crowd-replication-strategy.md
+      - docs/architecture/adr-0002-tick-orchestrator.md  # Phase 5 stateEvaluate + Phase 8 broadcastAll
+      - docs/architecture/adr-0004-csm-authority.md       # per-API caller matrix + Pillar 4 anti-P2W invariant
+      - docs/architecture/adr-0006-module-placement-rules.md  # ServerStorage placement firewall codification
     added: 2026-04-20
-    revised: ""
+    revised: 2026-04-26
 
 # Example:
 #
@@ -89,10 +92,190 @@ interfaces:
     consumers:
       - crowd-render-client (consumes per-crowd state to drive local rendering)
     adr: docs/architecture/adr-0001-crowd-replication-strategy.md
-    signal_signature: "UnreliableRemoteEvent 'CrowdStateBroadcast' fires at 15 Hz. Payload: { [crowdId: string] -> { pos: Vector3, radius: number, count: number, hue: number } }"
+    signal_signature: "UnreliableRemoteEvent 'CrowdStateBroadcast' fires at 15 Hz. Payload: buffer-encoded (30 B/crowd) — crowdId u64 | tick u16 | pos Vec3 f32[3] | radius f32 | count u16 | hue u8 | state u8"
     referenced_by:
       - docs/architecture/adr-0001-crowd-replication-strategy.md
+      - docs/architecture/adr-0002-tick-orchestrator.md  # Phase 8 dispatcher
+      - docs/architecture/adr-0003-performance-budget.md  # 5.4 KB/s bandwidth allocation
     added: 2026-04-20
+    revised: 2026-04-25
+
+  - contract: tick_orchestration
+    status: active
+    pattern: direct_call
+    producer: tick-orchestrator
+    consumers:
+      - collision-resolver   # Phase 1
+      - relic-system         # Phase 2
+      - absorb-system        # Phase 3
+      - chest-system         # Phase 4
+      - crowd-state-server   # Phase 5 stateEvaluate + Phase 8 broadcastAll
+      - match-state-server   # Phase 6 timerCheck + Phase 7 eliminationConsumer
+      - peel-dispatcher      # Phase 9 flush
+    adr: docs/architecture/adr-0002-tick-orchestrator.md
+    signal_signature: "callback(tickCount: number, ctx: TickContext) -> (). Static 9-phase table registered once at boot via TickOrchestrator._registerPhases; synchronous dispatch per 15 Hz tick."
+    referenced_by:
+      - docs/architecture/adr-0002-tick-orchestrator.md
+      - docs/architecture/adr-0003-performance-budget.md  # per-phase CPU allocation owner
+      - docs/architecture/adr-0004-csm-authority.md       # TickOrchestrator sole caller of stateEvaluate/broadcastAll
+    added: 2026-04-24
+    revised: 2026-04-25
+
+  - contract: csm_write_api
+    status: active
+    pattern: direct_call
+    producer: crowd-state-server
+    authorised_callers_per_method:
+      create: [round-lifecycle]
+      destroy: [round-lifecycle]
+      updateCount: [absorb-system, collision-resolver, chest-system, relic-effect-handler]
+      recomputeRadius: [relic-effect-handler]
+      setStillOverlapping: [collision-resolver]
+      stateEvaluate: [tick-orchestrator]   # Phase 5
+      broadcastAll: [tick-orchestrator]    # Phase 8
+    adr: docs/architecture/adr-0004-csm-authority.md
+    signal_signature: "Per-API caller restrictions per ADR-0004 §Write-Access Matrix. updateCount(crowdId: string, delta: number, source: DeltaSource) where DeltaSource ∈ {Absorb, Collision, Chest, Relic}. Read APIs (get, getAllActive, getAllCrowdPositions) unrestricted server-side; callers MUST NOT mutate returned references."
+    enforcement: "L1 module placement (ServerStorage) + L2 code review + L3 control manifest + L4 architecture review + L5 story readiness — defense-in-depth, no runtime guard."
+    referenced_by:
+      - docs/architecture/adr-0004-csm-authority.md
+      - docs/architecture/adr-0008-npc-spawner-authority.md  # NPCSpawner is read-only consumer of getAllCrowdPositions; FORBIDDEN from all CSM mutators per Pillar 4
+    added: 2026-04-25
+    revised: 2026-04-26
+
+  - contract: npc_state_broadcast
+    status: active
+    pattern: rpc
+    producer: npc-spawner
+    consumers:
+      - npc-spawner-client (mirror pool 300 Parts; receives delta + bootstrap to drive local rendering)
+    adr: docs/architecture/adr-0008-npc-spawner-authority.md
+    signal_signature: "UnreliableRemoteEvent 'NpcStateBroadcast' fires at 15 Hz with per-client relevance filter (crowd.radius + 25 studs). Payload: buffer-encoded (8 B/changed-NPC) — npcId u8 | posX i16 | posZ i16 | flags u8 (active + tx-changing) | transparency u8 | reserved u8. Plus reliable RemoteEvent 'NpcPoolBootstrap' fires once per client on PlayerAdded with full 300-NPC initial state (~2.4 KB single-shot)."
+    enforcement: "NPCSpawner sole producer; NpcSpawnerClient sole consumer. Native Roblox Part replication FORBIDDEN per forbidden_pattern: native_part_replication_for_npcs. Workspace.StreamingEnabled = false on arena map (per NPC Spawner GDD §Edge Cases R226)."
+    referenced_by:
+      - docs/architecture/adr-0008-npc-spawner-authority.md
+      - docs/architecture/adr-0003-performance-budget.md  # 3.0 KB/s bandwidth allocation
+    added: 2026-04-26
+    revised: ""
+
+  - contract: npc_pool_authority
+    status: active
+    pattern: direct_call
+    producer: npc-spawner
+    authorised_callers_per_method:
+      createAll: [round-lifecycle]
+      destroyAll: [round-lifecycle, players-player-removing]
+      getAllActiveNPCs: [absorb-system]                # Phase 3 only; read-only frozen snapshot
+      reclaim: [absorb-system]                          # Phase 3 only; SYNCHRONOUS; double-reclaim asserts
+    adr: docs/architecture/adr-0008-npc-spawner-authority.md
+    signal_signature: "createAll(participants: { Player }): () | destroyAll(): () | getAllActiveNPCs(): { NpcRecord } | reclaim(npcId: number): ()"
+    enforcement: "L1 module placement (ServerStorage/Source/NPCSpawner) + L2 code review + L3 control manifest + L4 architecture review + L5 story readiness."
+    referenced_by:
+      - docs/architecture/adr-0008-npc-spawner-authority.md
+    added: 2026-04-26
+    revised: ""
+
+  - contract: round_lifecycle_authority
+    status: active
+    pattern: direct_call
+    producer: round-lifecycle
+    authorised_callers_per_method:
+      createAll: [match-state-server]            # T4 transition only
+      setWinner: [match-state-server]            # Active exit only
+      getPlacements: [match-state-server]        # Result entry only — must follow setWinner
+      getPeakTimestamp: [match-state-server]     # F4 tiebreak during Active only
+      destroyAll: [match-state-server]           # T9 transition only
+    adr: docs/architecture/adr-0005-msm-roundlifecycle-split.md
+    signal_signature: "createAll(participants: { Player }): () | setWinner(crowdId: string?): () | getPlacements(): { Placement } | getPeakTimestamp(crowdId: string): number? | destroyAll(): ()"
+    enforcement: "L1 module placement (ServerStorage/Source/RoundLifecycle) + L2 code review + L3 control manifest + L4 architecture review + L5 story readiness — MSM is sole caller of all 5 RL methods. T9 ordering invariant (destroyAll → clearAll → broadcast) + Result-entry ordering (grant → broadcast) locked at architectural level."
+    referenced_by:
+      - docs/architecture/adr-0005-msm-roundlifecycle-split.md
+      - docs/architecture/adr-0001-crowd-replication-strategy.md  # CrowdEliminated reliable + CountChanged BindableEvent subscribed by RL
+      - docs/architecture/adr-0004-csm-authority.md  # CountChanged subscriber matrix
+    added: 2026-04-26
+    revised: ""
+
+  - contract: match_state_authority
+    status: active
+    pattern: direct_call
+    producer: match-state-server
+    authorised_callers_per_method:
+      get: [any-server-system, client-via-RemoteFunction]      # read-only
+      getParticipation: [any-server-system, client-via-RemoteFunction]
+      getStateEndsAt: [any-server-system]
+      timerCheck: [tick-orchestrator]                           # Phase 6 only
+      eliminationConsumer: [tick-orchestrator]                  # Phase 7 only
+      _transitionTo: [match-state-server-internal]              # MSM-private; never external
+    adr: docs/architecture/adr-0005-msm-roundlifecycle-split.md
+    signal_signature: "get(): MatchState | getParticipation(player: Player): boolean | getStateEndsAt(): number? | timerCheck(): () [Phase 6] | eliminationConsumer(): () [Phase 7] | MatchStateChanged reliable RemoteEvent fires on every transition with {state, serverTimestamp, stateEndsAt, meta}"
+    enforcement: "L1 module placement (ServerStorage/Source/MatchStateServer) + L2 code review + L3 control manifest. _transitionTo is MSM-internal; no external caller. Phase 6/7 dispatched only by TickOrchestrator per ADR-0002."
+    referenced_by:
+      - docs/architecture/adr-0005-msm-roundlifecycle-split.md
+      - docs/architecture/adr-0002-tick-orchestrator.md  # Phase 6/7 dispatcher
+    added: 2026-04-26
+    revised: ""
+
+  - contract: remote_validator
+    status: active
+    pattern: direct_call
+    producer: remote-validator
+    authorised_callers_per_method:
+      checkPlayerActive: [any-server-handler]
+      checkMatchActive: [any-server-handler]
+      checkParticipating: [any-server-handler]
+      checkType: [any-server-handler]
+      checkStringLength: [any-server-handler]
+      checkPayloadSize: [any-server-handler]
+      checkRate: [any-server-handler]
+      resetForRound: [round-lifecycle]                         # T9 destroyAll chain
+    adr: docs/architecture/adr-0010-server-authoritative-validation-policy.md
+    signal_signature: "All checks return ValidationResult (boolean). Mandatory 4-check guard pattern (identity / state / parameters / rate) on every client→server handler. Silent rejection on failure (no client-visible error)."
+    enforcement: "L1 Roblox engine sets player argument trustworthily; L2 code review verifies all 4 categories called per handler; L3 Selene rule (planned, Production); L4 control manifest extraction; L5 architecture review; L6 story readiness; L7 PenTest at MVP-Integration-3. Per-player rate-limit state cleared at RoundLifecycle T9 (ADR-0005 ordering invariant)."
+    referenced_by:
+      - docs/architecture/adr-0010-server-authoritative-validation-policy.md
+      - docs/architecture/adr-0005-msm-roundlifecycle-split.md  # T9 ordering chain includes resetForRound
+    added: 2026-04-26
+    revised: ""
+
+  - contract: persistence_schema
+    status: active
+    pattern: direct_call
+    producer: player-data-server
+    authorised_callers_per_method:
+      updateValue: [any-server-system, currency-system, market, receipt-processor, ftue-manager-server]
+      getValue: [any-server-system, player-data-client-via-PlayerDataUpdated]
+      loadProfileAsync: [server-bootstrap, players-player-added]
+      onPlayerRemovingAsync: [players-player-removing]
+    adr: docs/architecture/adr-0011-persistence-schema.md
+    signal_signature: "PlayerDataServer.updateValue(player, PlayerDataKey, mutator: (current) -> new) | PlayerDataServer.getValue(player, PlayerDataKey) | PlayerDataUpdated reliable RemoteEvent fires on server mutation with delta payload."
+    enforcement: "L1 module placement (ServerStorage/Source/PlayerDataServer + ReplicatedStorage/Dependencies/ProfileStore); L2 code review against §MVP Schema + §Pillar 3 Forbidden Keys + §Pillar 4 Boundary; L3 control manifest extraction; L4 architecture review; L5 story readiness; L6 pre-production gate-check. Direct DataStoreService calls forbidden (ADR-0006 + ADR-0011); ProfileStore is sole wrapper. _schemaVersion drives migration via OnProfileVersionUpgrade callbacks under PlayerDataServer/migrations/."
+    schema_v1_keys:
+      - _schemaVersion          # number = 1; migration meta
+      - Coins                   # number = 0; soft currency (Pillar 4 cosmetic-economy)
+      - OwnedSkins              # { [skinId]: true } = {}; cosmetic
+      - SelectedSkin            # string? = "Default"; cosmetic
+      - LifetimeAbsorbs         # number = 0; analytics lifetime stat
+      - LifetimeWins            # number = 0; analytics lifetime stat
+      - FtueStage               # string = "Stage1"; onboarding (template)
+    pillar_3_forbidden_classes:
+      - per-round-crowd-state          # CurrentCount, CurrentRadius, CurrentHue, etc.
+      - per-round-relic-inventory      # OwnedRelics, ActiveRelics, RelicHistory
+      - per-round-chest-state          # OpenedChestIds, ChestCooldowns, LastChestOpenTime
+      - per-round-elimination-state    # EliminationCount, IsEliminated
+      - per-round-peak-placement       # PeakCount, BestPlacement (use LifetimeAbsorbs/Wins instead)
+      - in-flight-vfx-state            # LastVfxId, ActiveParticleCount
+      - npc-pool-state                 # OwnedNpcs, NpcKills
+      - msm-state-mirror               # LastMatchState, ParticipationFlag
+      - pillar-4-violating-modifiers   # OwnedAbsorbBonusMultiplier, BoughtRadiusBoost
+      - cross-player-social-state      # Friends, Mailbox (out of scope MVP)
+      - round-state-replay-buffers     # LastRoundReplay, MatchHistoryDetails
+    referenced_by:
+      - docs/architecture/adr-0011-persistence-schema.md
+      - docs/architecture/adr-0001-crowd-replication-strategy.md  # Pillar 3 no-per-follower-persistence
+      - docs/architecture/adr-0004-csm-authority.md                # Pillar 4 cosmetic data flow
+      - docs/architecture/adr-0005-msm-roundlifecycle-split.md     # Coin grant at Result entry; clean-wipe T9
+      - docs/architecture/adr-0006-module-placement-rules.md       # DataStoreService ban + Source Tree Map
+      - docs/architecture/adr-0010-server-authoritative-validation-policy.md  # 4-check guard on PlayerData mutation requests
+    added: 2026-04-27
     revised: ""
 
 # Example:
@@ -122,7 +305,262 @@ interfaces:
 # Register a budget when an ADR explicitly claims a frame time allocation.
 # The registry lets /architecture-review verify the total doesn't exceed the target.
 
-performance_budgets: []
+performance_budgets:
+  # ─── Platform FPS targets ─────────────────────────────────────────────────
+  - target_fps: 60
+    platform: desktop-pc
+    total_frame_budget_ms: 16.67
+    floor_fps: 55
+    binding: false
+    adr: docs/architecture/adr-0003-performance-budget.md
+    validation_status: "PASS — prototype confirmed 60.0 FPS sustained, 8 crowds × 300 followers, 5-min desktop Studio soak (prototypes/crowd-sync/REPORT.md)"
+    added: 2026-04-24
+    revised: ""
+
+  - target_fps: 45
+    platform: mobile-iphone-se
+    total_frame_budget_ms: 22.2
+    floor_fps: 40
+    binding: true  # drives all worst-case instance + CPU caps
+    adr: docs/architecture/adr-0003-performance-budget.md
+    validation_status: "DEFERRED — MVP-Integration-2 sprint (ADR-0001 Risk 1)"
+    added: 2026-04-24
+    revised: ""
+
+  - target_fps: 60
+    platform: console-xbox
+    total_frame_budget_ms: 16.67
+    floor_fps: 55
+    binding: false
+    adr: docs/architecture/adr-0003-performance-budget.md
+    validation_status: "DEFERRED — post-MVP Xbox test kit not yet acquired"
+    added: 2026-04-24
+    revised: ""
+
+  # ─── Server per-tick CPU (3 ms total across 9 phases) ────────────────────
+  - system: tick-orchestrator
+    status: active
+    budget_ms: 3.0
+    scope: server-per-tick-15hz
+    reserve_ms: 0.9
+    adr: docs/architecture/adr-0002-tick-orchestrator.md  # structure owner
+    allocation_adr: docs/architecture/adr-0003-performance-budget.md  # budget owner
+    phase_allocations_ms:
+      phase_1_collision_resolver: 0.6
+      phase_2_relic_system: 0.2
+      phase_3_absorb_system: 0.4
+      phase_4_chest_system: 0.1
+      phase_5_csm_state_evaluate: 0.2
+      phase_6_msm_timer_check: 0.05
+      phase_7_msm_elim_consumer: 0.05
+      phase_8_csm_broadcast_all: 0.4
+      phase_9_peel_dispatcher: 0.1
+    notes: "Reserve must remain positive. New phase or phase expansion requires ADR-0003 amendment; silent consumption of Reserve is forbidden."
+    referenced_by:
+      - docs/architecture/adr-0003-performance-budget.md
+    added: 2026-04-24
+    revised: ""
+
+  # ─── Client per-frame CPU (mobile-binding shown; desktop in ADR-0003) ────
+  - system: follower-entity-client-sim
+    status: active
+    budget_ms_desktop: 1.5
+    budget_ms_mobile: 2.5
+    scope: client-per-frame
+    adr: docs/architecture/adr-0003-performance-budget.md
+    notes: "Boids flocking + CFrame writes @ RenderStepped; scales linearly with rendered follower count (≤150 Parts worst case)"
+    added: 2026-04-24
+    revised: ""
+
+  - system: follower-lod-manager
+    status: active
+    budget_ms_desktop: 0.1
+    budget_ms_mobile: 0.2
+    scope: client-per-frame
+    adr: docs/architecture/adr-0003-performance-budget.md
+    notes: "10 Hz subdivided — cost amortised across 6 frames at 60 FPS"
+    added: 2026-04-24
+    revised: ""
+
+  - system: crowd-state-client-ingest
+    status: active
+    budget_ms_desktop: 0.3
+    budget_ms_mobile: 0.5
+    scope: client-per-frame
+    adr: docs/architecture/adr-0003-performance-budget.md
+    notes: "buffer decode (30 B × 12 crowds) × 15 Hz; only 25 % of 60 FPS frames carry a broadcast"
+    added: 2026-04-24
+    revised: ""
+
+  - system: vfx-manager
+    status: active
+    budget_ms_desktop: 0.5
+    budget_ms_mobile: 0.8
+    scope: client-per-frame
+    adr: docs/architecture/adr-0003-performance-budget.md
+    notes: "Pool grants + emitter writes; bounded by 2000-particle suppression"
+    added: 2026-04-24
+    revised: ""
+
+  - system: hud
+    status: active
+    budget_ms_desktop: 0.5
+    budget_ms_mobile: 1.0
+    scope: client-per-frame
+    adr: docs/architecture/adr-0003-performance-budget.md
+    notes: "11 widgets × 7 states; TextLabel + UIStroke updates per broadcast"
+    added: 2026-04-24
+    revised: ""
+
+  - system: player-nameplate-plus-chest-billboard
+    status: active
+    budget_ms_desktop: 0.3
+    budget_ms_mobile: 0.5
+    scope: client-per-frame
+    adr: docs/architecture/adr-0003-performance-budget.md
+    notes: "Up to 12 Nameplates + 9 Chest billboards; BillboardGui scale risk MEDIUM"
+    added: 2026-04-24
+    revised: ""
+
+  # ─── Network bandwidth (per-client steady-state, 10 KB/s cap) ────────────
+  - system: crowd-state-broadcast-wire
+    status: active
+    budget_kbps: 5.4
+    scope: network-per-client-steady-state
+    adr: docs/architecture/adr-0001-crowd-replication-strategy.md  # source
+    allocation_adr: docs/architecture/adr-0003-performance-budget.md
+    notes: "30 B/crowd × 12 crowds × 15 Hz = 5,400 B/s via UnreliableRemoteEvent buffer-encoded"
+    added: 2026-04-24
+    revised: ""
+
+  - system: reliable-gameplay-events-wire
+    status: active
+    budget_kbps: 0.5
+    scope: network-per-client-steady-state
+    adr: docs/architecture/adr-0003-performance-budget.md
+    notes: "CrowdCreated/Destroyed/Eliminated/RelicChanged/CountClamped + MatchStateChanged; bursty; 7 B/s avg over 300 s round"
+    added: 2026-04-24
+    revised: ""
+
+  - system: vfx-remotes-wire
+    status: active
+    budget_kbps: 1.0
+    scope: network-per-client-steady-state
+    adr: docs/architecture/adr-0003-performance-budget.md
+    notes: "9 VFX reliable events; 60 absorbs/min + 10 collisions + 6 chest opens per round × ~150 B avg"
+    added: 2026-04-24
+    revised: ""
+
+  - system: client-to-server-input-wire
+    status: active
+    budget_kbps: 0.1
+    scope: network-per-client-steady-state
+    adr: docs/architecture/adr-0003-performance-budget.md
+    notes: "ChestInteract + ChestDraftPick + AFKToggle — discrete events, rare per client"
+    added: 2026-04-24
+    revised: ""
+
+  - system: player-data-updated-wire
+    status: active
+    budget_kbps: 0.2
+    scope: network-per-client-steady-state
+    adr: docs/architecture/adr-0003-performance-budget.md
+    notes: "Currency grant at Result only; ~200 B per round"
+    added: 2026-04-24
+    revised: ""
+
+  - system: npc-state-broadcast
+    status: active
+    budget_kbps: 3.0
+    scope: network-per-client-steady-state
+    adr: docs/architecture/adr-0008-npc-spawner-authority.md
+    notes: "UnreliableRemoteEvent; 8 B/NPC buffer-encoded delta × ~25 NPCs/tick × 15 Hz; per-client relevance filter (crowd.radius + 25 studs cushion); mid-round-join NpcPoolBootstrap reliable burst absorbed by burst_allowance"
+    added: 2026-04-26
+    revised: ""
+
+  - system: network-total-per-client
+    status: active
+    budget_kbps: 10.0
+    reserve_kbps: 0.0
+    scope: network-per-client-steady-state
+    burst_allowance_kbps: 20.0   # ≤500 ms windows (round-start fan-out, chest-open stack, mid-round-join NpcPoolBootstrap)
+    adr: docs/architecture/adr-0003-performance-budget.md
+    notes: "REVISED 2026-04-26 per ADR-0008: Reserve consumed by NpcStateBroadcast (3.0 KB/s). Sum nominal 10.25 KB/s — slight overrun absorbed by burst_allowance window. Mobile-binding revalidation at MVP-Integration-3; if overrun, NPC cadence drops 15 → 10 Hz (allocation 3.0 → 2.0 KB/s)."
+    added: 2026-04-24
+    revised: 2026-04-26
+
+  # ─── Server memory (Crowdsmith-systems only, excluding Roblox baseline) ──
+  - system: crowdsmith-server-memory-total
+    status: active
+    budget_kb: 36
+    scope: server-memory
+    adr: docs/architecture/adr-0003-performance-budget.md
+    breakdown_kb:
+      csm_crowds: 2
+      round_lifecycle_aux: 2
+      msm_state_and_flags: 1
+      chest_system: 4
+      relic_system: 2
+      npc_spawner: 10
+      tick_orchestrator_scratch: 2
+      network_remote_registry: 1
+      profile_store_active: 12
+    leak_guard: "Growth <100 MB over 10-min soak (validation criterion)"
+    added: 2026-04-24
+    revised: ""
+
+  # ─── Worst-case instance caps (mobile-binding) ───────────────────────────
+  - cap: rendered_follower_parts_per_client
+    value: 150
+    owner_system: follower-lod-manager
+    adr: docs/architecture/adr-0003-performance-budget.md
+    basis: "ADR-0001 §Decision — own-close 80 + rival-close 30 + any 20-40m 15 + billboards"
+    added: 2026-04-24
+
+  - cap: billboard_impostors_per_client
+    value: 12
+    owner_system: follower-lod-manager
+    adr: docs/architecture/adr-0003-performance-budget.md
+    basis: "One per crowd beyond 40 m"
+    added: 2026-04-24
+
+  - cap: particle_emitter_pool_size
+    value: 24
+    owner_system: vfx-manager
+    adr: docs/architecture/adr-0003-performance-budget.md
+    basis: "VFX Manager GDD pool worst-case"
+    added: 2026-04-24
+
+  - cap: active_particles_total
+    value_soft: 2000
+    value_hard: 1950
+    owner_system: vfx-manager
+    adr: docs/architecture/adr-0003-performance-budget.md
+    basis: "VFX F2 suppression tiers — 1800 soft-drop, 1950 hard-drop, 200-particle hysteresis to 1600 recover"
+    added: 2026-04-24
+
+  - cap: npc_visible_parts
+    value: 60
+    owner_system: npc-spawner
+    adr: docs/architecture/adr-0003-performance-budget.md
+    basis: "NPC Spawner 300-NPCs-managed cap × active-visible fraction"
+    added: 2026-04-24
+
+  - cap: proximity_prompts
+    value: 9
+    owner_system: chest-system
+    adr: docs/architecture/adr-0003-performance-budget.md
+    basis: "6 T1 + 3 T2 MVP; T3 deferred"
+    added: 2026-04-24
+
+  - cap: billboard_gui_total
+    value: 21
+    owner_systems:
+      - player-nameplate
+      - chest-billboard
+    adr: docs/architecture/adr-0003-performance-budget.md
+    basis: "12 Nameplates + 9 Chest billboards at MVP worst case"
+    added: 2026-04-24
 
 # Example:
 #
@@ -162,7 +600,43 @@ api_decisions:
     reason: "UnreliableRemoteEvent matches cadence (15 Hz continuous) and tolerates packet loss. Client interpolates between received positions. Avoids reliability overhead of normal RemoteEvent."
     referenced_by:
       - docs/architecture/adr-0001-crowd-replication-strategy.md
+      - docs/architecture/adr-0002-tick-orchestrator.md  # Phase 8 broadcast dispatch
+      - docs/architecture/adr-0003-performance-budget.md  # bandwidth allocation
     added: 2026-04-20
+    revised: 2026-04-25
+
+  - purpose: server_gameplay_cadence
+    status: active
+    api: RunService.Heartbeat + accumulator pattern (single connection in TickOrchestrator)
+    not: RunService.Stepped (pre-physics — CSM position-lag reads wrong character pos); per-system task.wait loops (drift, jitter, no determinism); multiple independent Heartbeat:Connect (race conditions on shared state)
+    adr: docs/architecture/adr-0002-tick-orchestrator.md
+    reason: "Single Heartbeat accumulator drains 1/15 s ticks atomically via while-loop; deterministic 9-phase dispatch within single Luau coroutine resume; post-physics hook lets CSM F2 read settled character positions; accumulator tolerates platform pause without tick loss or double-tick."
+    referenced_by:
+      - docs/architecture/adr-0002-tick-orchestrator.md
+      - docs/architecture/adr-0003-performance-budget.md  # 3 ms/tick CPU allocation
+    added: 2026-04-24
+    revised: 2026-04-25
+
+  - purpose: source_tree_mapping
+    status: active
+    api: Rojo (UpliftGames fork w/ syncback support, version-pinned in aftman.toml)
+    not: Direct .rbxl editing (loses git history); custom build scripts (loses Rojo's syncback support); Roblox Studio's built-in package manager (incompatible with Wally)
+    adr: docs/architecture/adr-0006-module-placement-rules.md
+    reason: "Rojo maps src/ folder structure to Roblox service tree per default.project.json. Source of truth lives in git; Studio is a render of the source. Locked source-tree map (ADR-0006 §Source Tree Map) prevents drift. Wally generates Packages/ which Rojo includes via Wally's own integration."
+    referenced_by:
+      - docs/architecture/adr-0006-module-placement-rules.md
+    added: 2026-04-26
+    revised: ""
+
+  - purpose: persistent_data_layer
+    status: active
+    api: ProfileStore (vendored at src/ReplicatedStorage/Dependencies/ProfileStore.luau) wrapped by PlayerDataServer
+    not: DataStoreService directly (no session-lock, no auto-retry, no BindToClose integration); MessagingService (cross-server — Pillar 3 forbids); HttpService (no external HTTP for save data)
+    adr: docs/architecture/adr-0006-module-placement-rules.md
+    reason: "ProfileStore handles session-locking (prevents duplicate-load corruption), auto-retry on transient DataStore failures, BindToClose save-on-shutdown, and template-reconciliation for missing keys. Vendored (not Wally) — manual update procedure documented in ADR-0006 §Vendored vs Wally Policy."
+    referenced_by:
+      - docs/architecture/adr-0006-module-placement-rules.md
+    added: 2026-04-26
     revised: ""
 
 # Example:
@@ -199,17 +673,267 @@ forbidden_patterns:
 
   - pattern: humanoid_on_followers
     status: active
-    description: "Follower entities must not have a Humanoid instance. Use a custom 4-6-part CFrame-driven rig (root + torso + head + 2 arms + 2 legs)."
+    description: "Follower entities must not have a Humanoid instance. Use a custom CFrame-driven non-Humanoid rig. Rig topology owned by design/gdd/follower-entity.md §C.1 — currently 2-Part (Body MeshPart + Hat MeshPart with WeldConstraint); reduced from earlier 4-6-part spec on 2026-04-22 for pool memory budget."
     why: "Humanoid carries per-character pathfinding, physics, health state, and animation overhead. At 800+ followers per server this overhead is prohibitive. The follower role does not need any Humanoid subsystems — movement is procedural, there is no AI pathfinding, no health, no damage."
     adr: docs/architecture/adr-0001-crowd-replication-strategy.md
     added: 2026-04-20
+    revised: 2026-04-26
 
   - pattern: client_authoritative_crowd_state
     status: active
     description: "Clients must not write to crowd_state. Only crowd-state-server mutates { position, hitboxRadius, followerCount, hue, activeRelics }. Client can read via CrowdStateBroadcast replication only."
     why: "Server authority is core to Roblox security. Client-authoritative crowd state enables trivially-cheatable follower count inflation. All mutations flow through validated server-side events (Absorb, Collision, Relic toll deduction)."
     adr: docs/architecture/adr-0001-crowd-replication-strategy.md
+    referenced_by:
+      - docs/architecture/adr-0004-csm-authority.md  # reinforced by Pillar 4 anti-P2W layer + module placement firewall
+      - docs/architecture/adr-0006-module-placement-rules.md  # ServerStorage placement is the structural enforcement
     added: 2026-04-20
+    revised: 2026-04-26
+
+  - pattern: competing_heartbeat_accumulators
+    status: active
+    description: "No server module may create its own RunService.Heartbeat:Connect for gameplay-tick purposes. TickOrchestrator is the sole accumulator. Per-system cadence needs (e.g. NPCSpawner spawn rate, FollowerLODManager 10 Hz swap check) run on their own non-tick timers; they are NOT gameplay-tick work."
+    why: "Independent accumulators produce non-deterministic phase order and race conditions on CSM count mutations. T6/T7 simultaneity unresolvable without single orchestrator. Breaks Pillar 5 deterministic-replay requirement."
+    adr: docs/architecture/adr-0002-tick-orchestrator.md
+    added: 2026-04-24
+
+  - pattern: yielding_inside_tick_phase
+    status: active
+    description: "TickOrchestrator phase callbacks (Phase 1-9) must not call task.wait, task.defer, await any Promise, or yield via coroutine.yield. All phase work completes synchronously in the same Heartbeat callback."
+    why: "Yielding splits a tick across frames — Phase 1-4 count writes and Phase 8 broadcast fire on different frames, clients observe mid-mutation state, atomicity broken. If a phase needs async work, it must be deferred out-of-band (RunService.Stepped or task.spawn) and results folded in on the following tick."
+    adr: docs/architecture/adr-0002-tick-orchestrator.md
+    added: 2026-04-24
+
+  - pattern: runtime_phase_registration
+    status: active
+    description: "Phase table is registered exactly once at server boot via TickOrchestrator._registerPhases (9 entries, asserted). No runtime insertion, removal, or reorder of phases. No setPhase API exposed publicly."
+    why: "Dynamic phases break the deterministic-ordering invariant that T6/T7 simultaneity resolution relies on. Any phase-sequence change requires ADR amendment (ADR-0002) + affected GDD amendments (CCR §C, MSM §Core Rules) + /propagate-design-change pass. Intentional friction prevents accidental phase drift as systems are added."
+    adr: docs/architecture/adr-0002-tick-orchestrator.md
+    added: 2026-04-24
+
+  - pattern: cosmetic_system_writes_csm
+    status: active
+    description: "Cosmetic systems (Skin System, future Avatar / Banner / Trail / visual-identity systems) MUST NOT call any CSM write API: create, destroy, updateCount, recomputeRadius, setStillOverlapping. They MUST NOT subscribe to CountChanged BindableEvent to gate any visual decision affecting gameplay. Identity broadcast flows through PlayerData → SkinChanged event → client visual swap (BrickColor/decal) — never through any CrowdStateServer mutation."
+    why: "Pillar 4 (Cosmetic Expression) + Pillar 3 (5-Min Clean Rounds) + explicit anti-pillar 'NOT pay-to-win' (game-concept.md:179). Architectural-level invariant — any feature legitimately needing cosmetic-affects-gameplay requires superseding ADR-0004 with creative-director-signed Pillar 4 amendment. High friction is the feature, not the bug."
+    adr: docs/architecture/adr-0004-csm-authority.md
+    added: 2026-04-25
+
+  - pattern: unauthorised_csm_caller
+    status: active
+    description: "Any module not explicitly listed in ADR-0004 §Write-Access Matrix's caller set for a given CSM API must not invoke that API. updateCount has exactly 4 authorised callers (Absorb / Collision / Chest / Relic via RelicEffectHandler). recomputeRadius has 1 (RelicEffectHandler). setStillOverlapping has 1 (CollisionResolver). create/destroy have 1 (RoundLifecycle). stateEvaluate/broadcastAll have 1 (TickOrchestrator). HUD, Nameplate, FollowerEntity, FollowerLODManager, VFXManager, NPCSpawner are READ-only consumers — they call only get / getAllActive / getAllCrowdPositions, never any mutator."
+    why: "Single source of truth for state mutation. Multiple writers create cross-tick ordering ambiguity at Phase 5 (state eval) and Phase 8 (broadcast). Caller restriction enforced at L2 code review + L3 control manifest + L4 architecture review + L5 story readiness — defense-in-depth, no runtime guard cost."
+    adr: docs/architecture/adr-0004-csm-authority.md
+    added: 2026-04-25
+
+  - pattern: runtime_caller_validation_via_traceback
+    status: active
+    description: "Do not implement runtime caller checks via debug.traceback inspection inside CSM (or any other authority-protected) write APIs. Caller restrictions are enforced at design + code-review + architecture-review time, not runtime. The DeltaSource enum on updateCount is the only runtime caller fingerprint — code review verifies the source value matches the calling module's identity."
+    why: "debug.traceback is ~100 µs per call (consumes Phase 1-4 budget allocated by ADR-0003). Brittle — traceback string format unstable across Roblox versions. Defense-in-depth at design time + Roblox module placement (L1 server-only) is sufficient. Test-only escape hatches gated by RunService:IsStudio() are acceptable for TestEZ fixtures only."
+    adr: docs/architecture/adr-0004-csm-authority.md
+    added: 2026-04-25
+
+  - pattern: client_requires_server_storage
+    status: active
+    description: "Any module under src/ReplicatedStorage/ or src/ReplicatedFirst/ MUST NOT require any module under src/ServerStorage/. Roblox engine semantics enforce this — client-side require of ServerStorage paths returns nil/errors at runtime."
+    why: "Primary security firewall (L1 enforcement). Server-only modules contain authority logic, persistence handles, and unvalidated state. Any client require would bypass server validation. Validated via grep audit at MVP integration."
+    adr: docs/architecture/adr-0006-module-placement-rules.md
+    added: 2026-04-26
+
+  - pattern: direct_remote_event_path_access
+    status: active
+    description: "Never reference a RemoteEvent / UnreliableRemoteEvent / RemoteFunction by string path or instance lookup. All remote traffic flows through Network module wrapper: Network.fireServer / fireAllClients / fireClient / connectEvent / connectUnreliableEvent. New remotes added to RemoteEventName / UnreliableRemoteEventName enum modules."
+    why: "Bypasses Network wrapper's enum safety, rate-limit hooks, and centralised lifecycle. Magic-string remote names break refactor safety. Path-based access (e.g. game.ReplicatedStorage.RemoteEvents.X) is fragile and untyped."
+    adr: docs/architecture/adr-0006-module-placement-rules.md
+    added: 2026-04-26
+
+  - pattern: direct_datastoreservice_call
+    status: active
+    description: "Never call DataStoreService:GetDataStore() or any DataStore method directly. All persistent data flows through PlayerDataServer → ProfileStore (vendored at src/ReplicatedStorage/Dependencies/ProfileStore.luau)."
+    why: "Raw DataStoreService has no session-locking — duplicate-load corrupts profiles. No automatic retry on transient failures. No BindToClose integration. ProfileStore handles all four; bypassing it loses every guarantee."
+    adr: docs/architecture/adr-0006-module-placement-rules.md
+    added: 2026-04-26
+
+  - pattern: direct_humanoid_walkspeed_write
+    status: active
+    description: "Never write Humanoid.WalkSpeed / .JumpHeight / .JumpPower / .HipHeight directly. Composed numeric stats route through ValueManager (template-provided at src/ReplicatedStorage/Source/ValueManager.luau): LocalWalkJumpManager.getSpeedValueManager():setMultiplier(key, value)."
+    why: "Multiple systems modify movement stats simultaneously (relics, surface effects, status effects). Direct writes silently overwrite. ValueManager composes named multipliers + offsets so contributions stack predictably."
+    adr: docs/architecture/adr-0006-module-placement-rules.md
+    added: 2026-04-26
+
+  - pattern: magic_strings_cross_module
+    status: active
+    description: "Every cross-module identifier flows through an enum module under src/ReplicatedStorage/Source/SharedConstants/. Forbidden: hardcoded strings for attribute names, CollectionService tags, RemoteEvent names, PlayerData keys, ItemCategory, UILayerId, ZoneId, AssetId, MatchState, DeltaSource, VFXEffectId."
+    why: "Magic strings break refactor safety and type checking. Search-unfriendly. Enum module provides single source of truth + IDE autocomplete + type narrowing in --!strict."
+    adr: docs/architecture/adr-0006-module-placement-rules.md
+    added: 2026-04-26
+
+  - pattern: scripts_beyond_two_entry_points
+    status: active
+    description: "Project must contain EXACTLY two .server.luau Scripts with explicit RunContext: src/ReplicatedFirst/Source/start.server.luau (RunContext: Client) + src/ServerScriptService/start.server.luau (RunContext: Server). No additional Scripts. No LocalScripts. No StarterCharacterScripts. No StarterPlayerScripts custom code. All other logic in ModuleScripts required from these two."
+    why: "Two-entry-point model gives deterministic init order, single ownership of bootstrap, easier loading-lifecycle reasoning. Script proliferation introduces ambiguous load order + scattered bootstrap logic."
+    adr: docs/architecture/adr-0006-module-placement-rules.md
+    added: 2026-04-26
+
+  - pattern: wally_package_modified
+    status: active
+    description: "Never edit files under Packages/ directly. Wally regenerates them on `wally install` — edits are lost. To upgrade a Wally package, update wally.toml pin and run `wally install`."
+    why: "Wally is the dependency manager; Packages/ is its output. Direct edits break pin reproducibility across machines and break CI. If a Wally package needs a project-specific patch, vendor it (move out of Packages/, document as 'forked from version X')."
+    adr: docs/architecture/adr-0006-module-placement-rules.md
+    added: 2026-04-26
+
+  - pattern: nonstrict_in_project_src
+    status: active
+    description: "Every .luau file under src/ MUST start with --!strict. --!nonstrict and --!nocheck are forbidden in project source. Vendored libraries under src/ReplicatedStorage/Dependencies/ may use --!nocheck (no edit policy)."
+    why: "Project type-safety baseline; new Luau type solver (post-cutoff Nov 2025) catches drift via flow-sensitive narrowing. Looser modes silently mask type errors and undermine the whole type system investment."
+    adr: docs/architecture/adr-0006-module-placement-rules.md
+    added: 2026-04-26
+
+  - pattern: upward_layer_import
+    status: active
+    description: "Module placement is layered (Foundation → Core → Feature → Presentation). Each layer may require modules in same layer or lower, never higher. Foundation never requires Core/Feature/Presentation. Core never requires Feature/Presentation. Feature never requires Presentation. Presentation may require any lower layer + CrowdStateClient cache (sole Presentation→Presentation exception, justified because it owns no behaviour)."
+    why: "Upward imports create circular dependencies in build order, tight coupling that breaks layer guarantees, and make systems impossible to test in isolation. Layer hierarchy enforces clean dependency direction."
+    adr: docs/architecture/adr-0006-module-placement-rules.md
+    added: 2026-04-26
+
+  - pattern: native_part_replication_for_npcs
+    status: active
+    description: "NPC Parts MUST NOT use Roblox native Part replication. NPCSpawner replicates state via UnreliableRemoteEvent NpcStateBroadcast (15 Hz delta, per-relevance filter, 8 B/NPC buffer encoding) + reliable NpcPoolBootstrap on PlayerAdded for mid-round-join init. Server-side Parts must be Anchored=true with Workspace.StreamingEnabled=false on arena map; clients hold a 300-Part mirror pool spawned on bootstrap receipt."
+    why: "Native Part replication produces unbounded bandwidth Roblox doesn't expose to budgeting, breaks ADR-0001 server-authoritative-with-soft-broadcast pattern, and adds 100-200ms Roblox interp lag that breaks fade-in timing for absorb VFX. Custom UREvent path keeps bandwidth countable + tied to relevance filter."
+    adr: docs/architecture/adr-0008-npc-spawner-authority.md
+    added: 2026-04-26
+
+  - pattern: npc_spawner_writes_csm
+    status: active
+    description: "NPCSpawner MUST NOT call any CrowdStateServer mutator: updateCount, recomputeRadius, setStillOverlapping, create, destroy, stateEvaluate, broadcastAll. NPCSpawner is a READ-only CSM consumer — only getAllCrowdPositions() (during respawn position selection, R10a) is permitted."
+    why: "ADR-0004 §Pillar 4 anti-P2W invariant + §Write-Access Matrix lock CSM mutators to specific caller sets (Absorb / Collision / Chest / Relic for updateCount; RoundLifecycle for create/destroy; etc.). NPCSpawner is not in any caller set. Allowing NPCSpawner to mutate CSM would create a backdoor for absorb mechanics to manifest as NPC-driven count changes, breaking authority + replication invariants."
+    adr: docs/architecture/adr-0008-npc-spawner-authority.md
+    added: 2026-04-26
+
+  - pattern: npc_instance_new_mid_round
+    status: active
+    description: "NPCSpawner MUST NOT call Instance.new('Part') or any equivalent allocator after createAll() completes. Pool of 300 Parts pre-allocated chunked 25/batch via task.defer at createAll. Reclaimed Parts parked at Transparency=1 in dormant position; respawned Parts re-position + tween Transparency 1→0 over 0.3s. No allocation, no destroy, mid-round."
+    why: "Mid-round Part allocation introduces GC pressure + replication churn at exactly the moment the gameplay tick is most loaded (peak absorb during late-round mass-collision). Pre-allocating + parking is bounded-cost; mid-round Instance.new is unbounded."
+    adr: docs/architecture/adr-0008-npc-spawner-authority.md
+    added: 2026-04-26
+
+  - pattern: non_msm_caller_of_round_lifecycle
+    status: active
+    description: "MatchStateServer is the sole caller of all 5 RoundLifecycle public methods (createAll, setWinner, getPlacements, getPeakTimestamp, destroyAll). HUD, FollowerEntity, VFXManager, AbsorbSystem, ChestSystem, RelicSystem, CollisionResolver, NPCSpawner, Currency System, Leaderboard, and any other server module MUST NOT call RoundLifecycle methods directly."
+    why: "RoundLifecycle is the per-round auxiliary state coordinator; its lifecycle is owned exclusively by Match State machine transitions (T4 createAll, Active exit setWinner, Result entry getPlacements + getPeakTimestamp, T9 destroyAll). Allowing other systems to call RL methods bypasses the state machine and creates inconsistent round-end state. Currency / Leaderboard / Result-screen receive placements via MSM broadcast meta or via grantMatchRewards parameter — never via direct RL call."
+    adr: docs/architecture/adr-0005-msm-roundlifecycle-split.md
+    added: 2026-04-26
+
+  - pattern: get_placements_before_set_winner
+    status: active
+    description: "RoundLifecycle.getPlacements() MUST be called only after RoundLifecycle.setWinner(crowdId) has been called for the current round (when _participants is non-empty). Calling getPlacements before setWinner returns either an invalid placement array (no Rank 1) or fires a hard assertion (RL GDD §F3 pre-condition). The empty-participants T5 path is the only legal path where getPlacements is called without setWinner."
+    why: "Placement F3 algorithm pre-condition: Rank 1 = _winnerId; if winner is unresolved, the entire ranking is invalid. Match State T6/T7/T8 transitions resolve _winnerId via F4 tiebreak BEFORE calling getPlacements; story authors must obey that order."
+    adr: docs/architecture/adr-0005-msm-roundlifecycle-split.md
+    added: 2026-04-26
+
+  - pattern: internal_placement_leak_to_client
+    status: active
+    description: "RoundLifecycle.getPlacements() returns Placement (5-field broadcast schema). RoundLifecycle internally tracks InternalPlacement (Placement + peakCount + isWinner + wasEliminated) for Currency / Leaderboard server-side use. The MSM broadcast adapter MUST strip peakCount / isWinner / wasEliminated before MatchStateChanged:FireAllClients(meta). InternalPlacement values MUST NOT appear in any RemoteEvent payload."
+    why: "Internal fields expose game-state details (peak achievements, winner-status flag) that clients should derive from observable broadcast schema. Leaking peakCount enables anti-cheat bypass (knowing-others'-peaks during round); leaking isWinner pre-broadcast enables timing exploits. Strip rule is anti-cheat + anti-spoil."
+    adr: docs/architecture/adr-0005-msm-roundlifecycle-split.md
+    added: 2026-04-26
+
+  - pattern: cosmetic_subscribes_count_changed_for_gameplay
+    status: active
+    description: "Cosmetic systems (Skin / Avatar / Banner / Trail / any future visual-identity system) MUST NOT subscribe to CrowdStateServer.CountChanged BindableEvent for gating gameplay decisions. Count display via CrowdStateClient (15 Hz UnreliableRemoteEvent broadcast) is presentation-only and acceptable; subscribing to CountChanged on the server to drive any gameplay-affecting decision (radius / rate / draw-power / etc.) is forbidden."
+    why: "Pillar 4 anti-P2W invariant. Allowing cosmetic systems to react to count-state on the server creates a backdoor for skin-tier-by-peak or banner-bonus-when-eliminated mechanics that disguise pay-to-win as cosmetic. ADR-0004 established the principle for CSM mutators; ADR-0005 extends it to CSM signal subscriptions for gameplay gating. Production CountChanged subscribers are limited to: RoundLifecycle (peakCount tracking — MVP) + analytics stubs (Alpha+) + future in-session scoring."
+    adr: docs/architecture/adr-0005-msm-roundlifecycle-split.md
+    added: 2026-04-26
+
+  - pattern: msm_or_rl_calls_csm_mutator
+    status: active
+    description: "MatchStateServer and RoundLifecycle MUST NOT call any CrowdStateServer mutator: updateCount, recomputeRadius, setStillOverlapping, stateEvaluate, broadcastAll. RL is permitted to call CSM.create (T4) and CSM.destroy (T9) — those are lifecycle methods, not state mutators. MSM never calls any CSM method beyond read accessors (get / getAllActive)."
+    why: "ADR-0004 §Write-Access Matrix locks CSM mutators to specific caller sets; MSM and RL are not in any mutator caller set. CSM count/state/radius transitions are owned by Phase 1-5 callers (Absorb / Collision / Chest / Relic / TickOrchestrator). MSM/RL participation in CSM mutation would break the count-authority single-source-of-truth invariant. ADR-0005 extends ADR-0004's write-access matrix by codifying MSM/RL as read-only consumers + lifecycle-only callers (create/destroy)."
+    adr: docs/architecture/adr-0005-msm-roundlifecycle-split.md
+    added: 2026-04-26
+
+  - pattern: trust_payload_user_id
+    status: active
+    description: "Server-side handlers MUST NOT read userId / playerId / accountId fields from client-sent payloads for any decision (ownership check, identity, rate-limit keying, ProfileStore lookup, anything). The engine-set `player: Player` argument from RemoteEvent.OnServerEvent is the sole trusted identity source. tostring(player.UserId) derived server-side is acceptable; payload.userId is forbidden."
+    why: "Payload fields are forgeable — a malicious client can claim any userId. Engine-set player argument is wire-level authenticated by Roblox. Trusting payload-userId enables identity spoofing attacks (impersonate another player to claim chests, cause currency grants in their name, etc.). ADR-0010 §Identity Trust Model locks this at architectural level."
+    adr: docs/architecture/adr-0010-server-authoritative-validation-policy.md
+    added: 2026-04-26
+
+  - pattern: skip_4_check_guard
+    status: active
+    description: "Every server-side handler that consumes a client-sent payload (Network.connectEvent on a client→server RemoteEvent) MUST execute all 4 guard categories per ADR-0010 §4-Check Guard Pattern: (1) Identity (rely on engine-set player only), (2) State (server-authoritative match/participation/crowd-state read), (3) Parameters (typeof + range checks on every payload field), (4) Rate (RemoteValidator.checkRate per RateLimitConfig). Skipping any category is a code-review reject."
+    why: "Each category catches a distinct attack vector. Identity prevents impersonation. State prevents action-during-wrong-phase. Parameters prevents type-confusion + buffer overflow. Rate prevents flood + resource exhaustion. Skipping any one leaves a hole. ADR-0010 §Defense-in-Depth establishes the 4-check pattern as the minimum bar, not a recommendation."
+    adr: docs/architecture/adr-0010-server-authoritative-validation-policy.md
+    added: 2026-04-26
+
+  - pattern: remote_function_for_fire_and_forget
+    status: active
+    description: "RemoteFunction MUST NOT be used for fire-and-forget client→server actions (chest open, AFK toggle, draft pick). Use RemoteEvent reliable instead. RemoteFunction is reserved for genuine query-response semantics where the client genuinely needs a synchronous return value (currently only GetParticipation in MVP)."
+    why: "RemoteFunction yields the calling client until server returns; introduces UI freeze on slow servers + on-purpose-slow malicious-client scenarios; offers no benefit over RemoteEvent for actions that complete server-side asynchronously. ADR-0010 §Reliable-vs-Unreliable Selection Rule + replication-best-practices.md §Crowdsmith chest open establish the rule."
+    adr: docs/architecture/adr-0010-server-authoritative-validation-policy.md
+    added: 2026-04-26
+
+  - pattern: trust_client_asserted_time
+    status: active
+    description: "Server handlers MUST NOT honour client-asserted timestamps (payload.timestamp, payload.serverTime, payload.holdDuration, payload.tick) for any gameplay decision. Server-side os.clock() / tick() is the sole authority on timing. ProximityPrompt hold-duration is engine-enforced server-side. Client-asserted timestamps are advisory only — usable for client-side prediction, never for server-side state mutation."
+    why: "Clients can lie about timestamps trivially (send 'I held for 0.8s' after holding for 0s). Trusting client time enables: instant chest open, instant draft pick, instant AFK toggle bypass, etc. ADR-0010 §Server-Time Authority locks server-side clock as sole source of truth for gameplay decisions."
+    adr: docs/architecture/adr-0010-server-authoritative-validation-policy.md
+    added: 2026-04-26
+
+  - pattern: oversized_remote_payload
+    status: active
+    description: "Client→server gameplay remote payloads MUST target <4 KB; hard cap 16 KB; chunk via Luau buffer encoding for >16 KB. Server validators reject oversized payloads silently. Roblox platform 1 MB cap is absolute hard limit but never approached in design. Mid-round-join bootstrap (NpcPoolBootstrap) targets <8 KB; round-start fan-out absorbed by ADR-0003 §Burst allowance (20 KB/s for ≤500ms windows)."
+    why: "Oversized payloads are a denial-of-service vector (parser CPU + memory) and a bandwidth-budget breach (ADR-0003 §Network table 10 KB/s/client cap). 4 KB target gives 25× headroom under steady-state cap; 16 KB hard cap gives 6× headroom. Chunked buffer encoding for legitimate large data preserves bandwidth control."
+    adr: docs/architecture/adr-0010-server-authoritative-validation-policy.md
+    added: 2026-04-26
+
+  - pattern: per_server_rate_limit_for_client_remotes
+    status: active
+    description: "Rate limits on client→server remotes MUST be per-player, never per-server. Use RateLimitConfig keyed on (player, remoteName). RemoteValidator.checkRate uses per-player token bucket. Per-server rate limits are forbidden because a malicious player can scale unbounded under per-server caps (their flood goes through if other players are quiet)."
+    why: "Per-server caps reward attackers — when other players are quiet, the attacker's flood succeeds. Per-player caps bound each player to their own quota. Memory cost is bounded (12 players × 5 remotes × 50 B = 3 KB). ADR-0010 §Per-Player Rate Limit Policy locks the design at architectural level."
+    adr: docs/architecture/adr-0010-server-authoritative-validation-policy.md
+    added: 2026-04-26
+
+  - pattern: persist_per_round_state
+    status: active
+    description: "ProfileStore (via PlayerDataServer) MUST NOT persist any per-round state. Forbidden classes catalogued in ADR-0011 §Pillar 3 Forbidden Keys: per-round crowd state (CurrentCount, CurrentRadius, CurrentHue, ActiveCrowdId), per-round relic inventory (OwnedRelics, ActiveRelics, RelicHistory), per-round chest state (OpenedChestIds, ChestCooldowns), per-round elimination state, per-round peak/placement (use LifetimeAbsorbs/LifetimeWins lifetime-stat keys instead), in-flight VFX state, NPC pool state, MSM state mirror, round-state replay buffers. Round-scoped state lives in CSM/RoundLifecycle/MSM/Chest/Relic/NPCSpawner in-memory tables; cleared at MSM T9 destroyAll. Adding any forbidden-class key to PlayerDataKey.luau or DefaultPlayerData.luau is a code-review reject."
+    why: "Pillar 3 (5-Min Clean Rounds) is project identity. Persisting round state defeats round-purity, opens turtling-by-DC exploits (DC mid-round → reload with retained progress), and creates cross-server consistency problems. Cosmetic + lifetime-stat + onboarding are the only allowed persistence categories per ADR-0011 §Pillar 4 Persistence Boundary."
+    adr: docs/architecture/adr-0011-persistence-schema.md
+    added: 2026-04-27
+
+  - pattern: persist_pillar_4_gameplay_modifier
+    status: active
+    description: "ProfileStore MUST NOT persist any key that affects gameplay outcome. Examples of forbidden persisted keys: OwnedAbsorbBonusMultiplier, BoughtRadiusBoost, RareDraftRollChance, PrestigePoints unlocking relic-rarity tiers, persistent count-multiplier, faster-decay buffs, free-relic-draft consumables. Persisted keys must fit one of three allowed categories: (1) cosmetic (Skins/Banners/Trails/Avatars — visual identity, no gameplay effect); (2) lifetime statistic (LifetimeAbsorbs/LifetimeWins — aggregated cumulative count not affecting current-round outcome); (3) onboarding/meta (FtueStage, _schemaVersion, AnalyticsOptIn)."
+    why: "Pillar 4 anti-pillar in game-concept.md:179 — 'NOT pay-to-win'. Persisted gameplay modifiers create the pay-to-win path either via Robux purchase OR via grind progression that gates gameplay power. Both violate the anti-pillar. Future feature legitimately needing this requires superseding ADR-0011 + creative-director sign-off + Pillar 4 amendment review."
+    adr: docs/architecture/adr-0011-persistence-schema.md
+    added: 2026-04-27
+
+  - pattern: inline_default_in_mutator
+    status: active
+    description: "PlayerDataServer.updateValue mutators MUST NOT supply inline defaults via patterns like `function(current) return current or 0 end`. The sole source of defaults is src/ServerStorage/Source/DefaultPlayerData.luau. ProfileStore reconciliation auto-fills missing keys on profile load — relying on inline defaults masks reconciliation bugs (legacy profiles silently get inline-default value forever, never getting upgraded via migration handler)."
+    why: "Inline defaults bypass the single-source-of-truth for default values. They mask schema-evolution issues — a key missing from DefaultPlayerData but coerced to 0 inline appears to work but won't migrate cleanly. They also create per-system drift (different inline defaults across mutators). Forces all default authoring through DefaultPlayerData, which is the documented + ADR-locked source."
+    adr: docs/architecture/adr-0011-persistence-schema.md
+    added: 2026-04-27
+
+  - pattern: schema_bump_without_migration_handler
+    status: active
+    description: "Incrementing _schemaVersion in SharedConstants/PlayerDataKey.luau MUST be accompanied by a migration handler at src/ServerStorage/Source/PlayerDataServer/migrations/v[N]_to_v[N+1].luau registered via ProfileStore:OnProfileVersionUpgrade(N, handler). Schema bump PR without migration handler + test fixture is a code-review reject. Migrations are additive only — handlers must NOT delete player-owned data (e.g. wiping OwnedSkins)."
+    why: "Schema bumps without migration crash on legacy profile load (player can't enter game, support ticket storm). Additive-only rule prevents migrations from destroying earned-cosmetic state. Test fixture (snapshot of older profile JSON + assert post-migration shape) is the single check that prevents production data loss."
+    adr: docs/architecture/adr-0011-persistence-schema.md
+    added: 2026-04-27
+
+  - pattern: bypass_receipt_processor_for_robux
+    status: active
+    description: "Robux dev product purchases MUST flow through the template-provided ReceiptProcessor module (handles MarketplaceService.ProcessReceipt callback). Custom or duplicate ProcessReceipt registrations are forbidden. Dev products are registered in src/ServerStorage/Source/Utility/registerDevProducts.luau; their fulfilment callbacks grant Coins or Skins via PlayerDataServer.updateValue."
+    why: "ReceiptProcessor handles duplicate-prevention (Roblox may fire ProcessReceipt multiple times for one purchase due to network retries) + save-before-confirm (player data must be persisted before Roblox is told the purchase is fulfilled, else player can lose Robux without receiving content). Bypassing this template module re-introduces both bugs. ANATOMY.md §10 documents the template behaviour; ADR-0011 §Currency Authority Robux row locks it at architectural level."
+    adr: docs/architecture/adr-0011-persistence-schema.md
+    added: 2026-04-27
+
+  - pattern: messaging_service_for_player_data
+    status: active
+    description: "Player data MUST NOT be transmitted via MessagingService for cross-server propagation. ProfileStore session lock is the sole cross-server mechanism for player-data identity. Cross-server features (e.g. global chat, friend-list updates, party-system match-making) may use MessagingService for their own non-PlayerData payloads but MUST NOT carry persistent player state."
+    why: "MessagingService is unreliable + not session-locked + not durable; it's a fan-out signal channel, not a data-replication channel. Using it for player data introduces split-brain scenarios where two servers have divergent views of a player's state. ProfileStore session lock is the durable + consistent source of truth — any cross-server move waits for lock release."
+    adr: docs/architecture/adr-0011-persistence-schema.md
+    added: 2026-04-27
 
 # Example:
 #

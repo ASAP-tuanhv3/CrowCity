@@ -24,33 +24,2041 @@
 #
 # STATUS VALUES: active | deprecated | superseded-by: TR-[system]-NNN
 
-version: 1
-last_updated: ""
+version: 2
+last_updated: "2026-04-26"
 
-requirements: []
+requirements:
 
-# --- EXAMPLE ENTRIES (remove when first real entries are added) ---
-#
-# - id: TR-combat-001
-#   system: combat
-#   gdd: design/gdd/combat-system.md
-#   requirement: "Player takes damage from enemies based on attack power minus defence"
-#   created: 2026-03-10
-#   revised: ""
-#   status: active
-#
-# - id: TR-combat-002
-#   system: combat
-#   gdd: design/gdd/combat-system.md
-#   requirement: "Combo window timing is 0.4 seconds between hits"
-#   created: 2026-03-10
-#   revised: "2026-04-01"
-#   status: active
-#
-# - id: TR-combat-003
-#   system: combat
-#   gdd: design/gdd/combat-system.md
-#   requirement: "Old damage formula using raw stats"
-#   created: 2026-03-10
-#   revised: ""
-#   status: superseded-by: TR-combat-001
+  # === game-concept (12 TRs) ===
+  - id: TR-game-concept-001
+    system: game-concept
+    gdd: design/gdd/game-concept.md
+    requirement: "Multiplayer 8-12 players per server, 5-min round duration"
+    created: 2026-04-26
+    revised: ""
+    status: active
+  - id: TR-game-concept-002
+    system: game-concept
+    gdd: design/gdd/game-concept.md
+    requirement: "Absorb mechanic with magnetic-snap proximity recruitment"
+    created: 2026-04-26
+    revised: ""
+    status: active
+  - id: TR-game-concept-003
+    system: game-concept
+    gdd: design/gdd/game-concept.md
+    requirement: "Crowd collision resolution — larger mob consumes smaller"
+    created: 2026-04-26
+    revised: ""
+    status: active
+  - id: TR-game-concept-004
+    system: game-concept
+    gdd: design/gdd/game-concept.md
+    requirement: "Tiered chest system T1/T2/T3 with follower toll costs"
+    created: 2026-04-26
+    revised: ""
+    status: active
+  - id: TR-game-concept-005
+    system: game-concept
+    gdd: design/gdd/game-concept.md
+    requirement: "Relic draft run-scoped modifiers, no cross-round persistence"
+    created: 2026-04-26
+    revised: ""
+    status: active
+  - id: TR-game-concept-006
+    system: game-concept
+    gdd: design/gdd/game-concept.md
+    requirement: "No power progression carry-over between rounds (anti-pillar NOT pay-to-win)"
+    created: 2026-04-26
+    revised: ""
+    status: active
+  - id: TR-game-concept-007
+    system: game-concept
+    gdd: design/gdd/game-concept.md
+    requirement: "Cosmetic-only shop; skins apply to player AND whole crowd"
+    created: 2026-04-26
+    revised: ""
+    status: active
+  - id: TR-game-concept-008
+    system: game-concept
+    gdd: design/gdd/game-concept.md
+    requirement: "Roblox client-server with ProfileStore persistence (meta only)"
+    created: 2026-04-26
+    revised: ""
+    status: active
+  - id: TR-game-concept-009
+    system: game-concept
+    gdd: design/gdd/game-concept.md
+    requirement: "Crowd netcode replication 100-300 followers per player × 8-12 clients"
+    created: 2026-04-26
+    revised: ""
+    status: active
+  - id: TR-game-concept-010
+    system: game-concept
+    gdd: design/gdd/game-concept.md
+    requirement: "Follower skin broadcast via crowdwide color projection"
+    created: 2026-04-26
+    revised: ""
+    status: active
+  - id: TR-game-concept-011
+    system: game-concept
+    gdd: design/gdd/game-concept.md
+    requirement: "Content scope at Full Vision: 3 cities, 25-30 relics, 10-15 skin sets"
+    created: 2026-04-26
+    revised: ""
+    status: active
+  - id: TR-game-concept-012
+    system: game-concept
+    gdd: design/gdd/game-concept.md
+    requirement: "Server-authoritative crowd state, client-side flocking visual"
+    created: 2026-04-26
+    revised: ""
+    status: active
+
+  # === systems-index (10 TRs) ===
+  - id: TR-systems-index-001
+    system: systems-index
+    gdd: design/gdd/systems-index.md
+    requirement: "31 systems enumerated, 13 MVP critical path"
+    created: 2026-04-26
+    revised: ""
+    status: active
+  - id: TR-systems-index-002
+    system: systems-index
+    gdd: design/gdd/systems-index.md
+    requirement: "Crowd Replication Strategy prototype validated before MVP lock"
+    created: 2026-04-26
+    revised: ""
+    status: active
+  - id: TR-systems-index-003
+    system: systems-index
+    gdd: design/gdd/systems-index.md
+    requirement: "Follower Entity uses non-Humanoid CFrame rig at 800+ instances"
+    created: 2026-04-26
+    revised: ""
+    status: active
+  - id: TR-systems-index-004
+    system: systems-index
+    gdd: design/gdd/systems-index.md
+    requirement: "Follower LOD Manager render caps 80/30/15/1 billboard per tier (post-Batch-3 amend)"
+    created: 2026-04-26
+    revised: ""
+    status: active
+  - id: TR-systems-index-005
+    system: systems-index
+    gdd: design/gdd/systems-index.md
+    requirement: "TickOrchestrator phase table enforces 15 Hz collision-first ordering"
+    created: 2026-04-26
+    revised: ""
+    status: active
+  - id: TR-systems-index-006
+    system: systems-index
+    gdd: design/gdd/systems-index.md
+    requirement: "Round Lifecycle owns peak-count tracking for tiebreak"
+    created: 2026-04-26
+    revised: ""
+    status: active
+  - id: TR-systems-index-007
+    system: systems-index
+    gdd: design/gdd/systems-index.md
+    requirement: "NPC Spawner inferred design (consistency-sync 2026-04-24)"
+    created: 2026-04-26
+    revised: ""
+    status: active
+  - id: TR-systems-index-008
+    system: systems-index
+    gdd: design/gdd/systems-index.md
+    requirement: "AssetId Registry maps string keys → rbxassetid:// values"
+    created: 2026-04-26
+    revised: ""
+    status: active
+  - id: TR-systems-index-009
+    system: systems-index
+    gdd: design/gdd/systems-index.md
+    requirement: "Server-only ProfileStore session lock per template"
+    created: 2026-04-26
+    revised: ""
+    status: active
+  - id: TR-systems-index-010
+    system: systems-index
+    gdd: design/gdd/systems-index.md
+    requirement: "Match State Machine 7 states + reliable broadcast per transition"
+    created: 2026-04-26
+    revised: ""
+    status: active
+
+  # === crowd-state-manager (24 TRs) ===
+  - id: TR-csm-001
+    system: csm
+    gdd: design/gdd/crowd-state-manager.md
+    requirement: "One crowd record per player keyed by tostring(player.UserId)"
+    created: 2026-04-26
+    revised: ""
+    status: active
+  - id: TR-csm-002
+    system: csm
+    gdd: design/gdd/crowd-state-manager.md
+    requirement: "Count floor=1, count ceiling=300, hard clamp applied"
+    created: 2026-04-26
+    revised: ""
+    status: active
+  - id: TR-csm-003
+    system: csm
+    gdd: design/gdd/crowd-state-manager.md
+    requirement: "Position lag-follow character at 0.15 lag factor smoothing"
+    created: 2026-04-26
+    revised: ""
+    status: active
+  - id: TR-csm-004
+    system: csm
+    gdd: design/gdd/crowd-state-manager.md
+    requirement: "Hue deterministic join-order mod 12, immutable post-create"
+    created: 2026-04-26
+    revised: ""
+    status: active
+  - id: TR-csm-005
+    system: csm
+    gdd: design/gdd/crowd-state-manager.md
+    requirement: "Max 4 concurrent activeRelics, no duplicates per crowd"
+    created: 2026-04-26
+    revised: ""
+    status: active
+  - id: TR-csm-006
+    system: csm
+    gdd: design/gdd/crowd-state-manager.md
+    requirement: "GraceWindow state on count=1 with overlap, 3s timer (F7)"
+    created: 2026-04-26
+    revised: ""
+    status: active
+  - id: TR-csm-007
+    system: csm
+    gdd: design/gdd/crowd-state-manager.md
+    requirement: "Collision drip base 15/sec, scale 0.15 per count-delta (F3)"
+    created: 2026-04-26
+    revised: ""
+    status: active
+  - id: TR-csm-008
+    system: csm
+    gdd: design/gdd/crowd-state-manager.md
+    requirement: "Triple-overlap additive drain stacking, no cap (F4)"
+    created: 2026-04-26
+    revised: ""
+    status: active
+  - id: TR-csm-009
+    system: csm
+    gdd: design/gdd/crowd-state-manager.md
+    requirement: "Chest toll guard rejects if count <= toll (strict)"
+    created: 2026-04-26
+    revised: ""
+    status: active
+  - id: TR-csm-010
+    system: csm
+    gdd: design/gdd/crowd-state-manager.md
+    requirement: "Radius F1: (2.5 + sqrt(count)*0.55) * radiusMultiplier; multiplier ∈ [0.5, 1.5]"
+    created: 2026-04-26
+    revised: ""
+    status: active
+  - id: TR-csm-011
+    system: csm
+    gdd: design/gdd/crowd-state-manager.md
+    requirement: "15 Hz unreliable CrowdStateBroadcast, buffer-encoded 30 bytes/crowd"
+    created: 2026-04-26
+    revised: ""
+    status: active
+  - id: TR-csm-012
+    system: csm
+    gdd: design/gdd/crowd-state-manager.md
+    requirement: "Reliable named events: CrowdCreated/Destroyed/Eliminated/RelicChanged/CountClamped"
+    created: 2026-04-26
+    revised: ""
+    status: active
+  - id: TR-csm-013
+    system: csm
+    gdd: design/gdd/crowd-state-manager.md
+    requirement: "Eliminated crowds broadcast with state=Eliminated until destroyAll"
+    created: 2026-04-26
+    revised: ""
+    status: active
+  - id: TR-csm-014
+    system: csm
+    gdd: design/gdd/crowd-state-manager.md
+    requirement: "Four-callers-only updateCount (Absorb/Collision/Chest/RelicEffectHandler)"
+    created: 2026-04-26
+    revised: ""
+    status: active
+  - id: TR-csm-015
+    system: csm
+    gdd: design/gdd/crowd-state-manager.md
+    requirement: "Participation snapshot frozen at Countdown:Snap, immutable through round"
+    created: 2026-04-26
+    revised: ""
+    status: active
+  - id: TR-csm-016
+    system: csm
+    gdd: design/gdd/crowd-state-manager.md
+    requirement: "Server-only module placement enforces write contract (ServerStorage/Source/CrowdStateServer)"
+    created: 2026-04-26
+    revised: ""
+    status: active
+  - id: TR-csm-017
+    system: csm
+    gdd: design/gdd/crowd-state-manager.md
+    requirement: "Cosmetic systems FORBIDDEN from mutating crowd fields (Pillar 4 anti-P2W)"
+    created: 2026-04-26
+    revised: ""
+    status: active
+  - id: TR-csm-018
+    system: csm
+    gdd: design/gdd/crowd-state-manager.md
+    requirement: "Position lag F2 asymptotic convergence ~91.3% in 1 second"
+    created: 2026-04-26
+    revised: ""
+    status: active
+  - id: TR-csm-019
+    system: csm
+    gdd: design/gdd/crowd-state-manager.md
+    requirement: "Equal-count clash: 1/tick mutual drain, no advantage"
+    created: 2026-04-26
+    revised: ""
+    status: active
+  - id: TR-csm-020
+    system: csm
+    gdd: design/gdd/crowd-state-manager.md
+    requirement: "Performance: <1ms per tick at 12 crowds (AC-17)"
+    created: 2026-04-26
+    revised: ""
+    status: active
+  - id: TR-csm-021
+    system: csm
+    gdd: design/gdd/crowd-state-manager.md
+    requirement: "Hue palette mod-12 determinism with fallback for 13+ players (F6)"
+    created: 2026-04-26
+    revised: ""
+    status: active
+  - id: TR-csm-022
+    system: csm
+    gdd: design/gdd/crowd-state-manager.md
+    requirement: "CountChanged BindableEvent server-only, NOT replicated"
+    created: 2026-04-26
+    revised: ""
+    status: active
+  - id: TR-csm-023
+    system: csm
+    gdd: design/gdd/crowd-state-manager.md
+    requirement: "Tiebreak resolved via peak_count_timestamp from RoundLifecycle"
+    created: 2026-04-26
+    revised: ""
+    status: active
+  - id: TR-csm-024
+    system: csm
+    gdd: design/gdd/crowd-state-manager.md
+    requirement: "radiusMultiplier composition baseline 1.0; clamped [0.5, 1.5]"
+    created: 2026-04-26
+    revised: ""
+    status: active
+
+  # === match-state-machine (20 TRs) ===
+  - id: TR-msm-001
+    system: msm
+    gdd: design/gdd/match-state-machine.md
+    requirement: "Single server-wide state shared by all players; transitions instant"
+    created: 2026-04-26
+    revised: ""
+    status: active
+  - id: TR-msm-002
+    system: msm
+    gdd: design/gdd/match-state-machine.md
+    requirement: "Per-player participation flags asymmetric, frozen on Countdown:Snap"
+    created: 2026-04-26
+    revised: ""
+    status: active
+  - id: TR-msm-003
+    system: msm
+    gdd: design/gdd/match-state-machine.md
+    requirement: "7 states: Lobby/Countdown:Ready/Countdown:Snap/Active/Result/Intermission/ServerClosing"
+    created: 2026-04-26
+    revised: ""
+    status: active
+  - id: TR-msm-004
+    system: msm
+    gdd: design/gdd/match-state-machine.md
+    requirement: "Win-condition event-driven via CSM CrowdEliminated signal"
+    created: 2026-04-26
+    revised: ""
+    status: active
+  - id: TR-msm-005
+    system: msm
+    gdd: design/gdd/match-state-machine.md
+    requirement: "Match timer 300s Active duration, checked at 15 Hz (F1)"
+    created: 2026-04-26
+    revised: ""
+    status: active
+  - id: TR-msm-006
+    system: msm
+    gdd: design/gdd/match-state-machine.md
+    requirement: "F4 tiebreak: peak_count > survived > finalCount > eliminationTime > UserId"
+    created: 2026-04-26
+    revised: ""
+    status: active
+  - id: TR-msm-007
+    system: msm
+    gdd: design/gdd/match-state-machine.md
+    requirement: "Same-tick T6/T7 simultaneity: timer phase BEFORE elim phase (Phase 6 < Phase 7)"
+    created: 2026-04-26
+    revised: ""
+    status: active
+  - id: TR-msm-008
+    system: msm
+    gdd: design/gdd/match-state-machine.md
+    requirement: "Participation locks frozen at Countdown:Snap exit, released on Intermission"
+    created: 2026-04-26
+    revised: ""
+    status: active
+  - id: TR-msm-009
+    system: msm
+    gdd: design/gdd/match-state-machine.md
+    requirement: "Reliable MatchStateChanged broadcast {state, serverTimestamp, stateEndsAt, meta}"
+    created: 2026-04-26
+    revised: ""
+    status: active
+  - id: TR-msm-010
+    system: msm
+    gdd: design/gdd/match-state-machine.md
+    requirement: "T9 sequence locked: destroyAll → grantMatchRewards → broadcast Intermission"
+    created: 2026-04-26
+    revised: ""
+    status: active
+  - id: TR-msm-011
+    system: msm
+    gdd: design/gdd/match-state-machine.md
+    requirement: "MIN_PLAYERS_TO_START = 2 soft threshold; revert to Countdown:Ready"
+    created: 2026-04-26
+    revised: ""
+    status: active
+  - id: TR-msm-012
+    system: msm
+    gdd: design/gdd/match-state-machine.md
+    requirement: "Client-side timer interpolation F6 with Ping-based RTT correction"
+    created: 2026-04-26
+    revised: ""
+    status: active
+  - id: TR-msm-013
+    system: msm
+    gdd: design/gdd/match-state-machine.md
+    requirement: "ParticipationChanged RemoteEvent per-player reliable"
+    created: 2026-04-26
+    revised: ""
+    status: active
+  - id: TR-msm-014
+    system: msm
+    gdd: design/gdd/match-state-machine.md
+    requirement: "BindToClose 30s grace ProfileStore flush; no partial currency grant"
+    created: 2026-04-26
+    revised: ""
+    status: active
+  - id: TR-msm-015
+    system: msm
+    gdd: design/gdd/match-state-machine.md
+    requirement: "Double-signal guard blocks second Eliminated → Result transition"
+    created: 2026-04-26
+    revised: ""
+    status: active
+  - id: TR-msm-016
+    system: msm
+    gdd: design/gdd/match-state-machine.md
+    requirement: "Spectator mode for AFK / mid-round joiners / Eliminated during Active"
+    created: 2026-04-26
+    revised: ""
+    status: active
+  - id: TR-msm-017
+    system: msm
+    gdd: design/gdd/match-state-machine.md
+    requirement: "Result entry fires grantMatchRewards BEFORE MatchStateChanged broadcast"
+    created: 2026-04-26
+    revised: ""
+    status: active
+  - id: TR-msm-018
+    system: msm
+    gdd: design/gdd/match-state-machine.md
+    requirement: "Performance: <0.1ms per tick MSM logic (AC-19)"
+    created: 2026-04-26
+    revised: ""
+    status: active
+  - id: TR-msm-019
+    system: msm
+    gdd: design/gdd/match-state-machine.md
+    requirement: "TickOrchestrator 9-phase orchestration resolves all simultaneities"
+    created: 2026-04-26
+    revised: ""
+    status: active
+  - id: TR-msm-020
+    system: msm
+    gdd: design/gdd/match-state-machine.md
+    requirement: "Clock consistency: os.clock() for both F1 (timer) + F6 (broadcast timestamp)"
+    created: 2026-04-26
+    revised: ""
+    status: active
+
+  # === round-lifecycle (16 TRs) ===
+  - id: TR-round-lifecycle-001
+    system: round-lifecycle
+    gdd: design/gdd/round-lifecycle.md
+    requirement: "Per-round auxiliary state: {_crowds, _participants, _winnerId}"
+    created: 2026-04-26
+    revised: ""
+    status: active
+  - id: TR-round-lifecycle-002
+    system: round-lifecycle
+    gdd: design/gdd/round-lifecycle.md
+    requirement: "createAll uses pcall per-player; failed players excluded as spectators"
+    created: 2026-04-26
+    revised: ""
+    status: active
+  - id: TR-round-lifecycle-003
+    system: round-lifecycle
+    gdd: design/gdd/round-lifecycle.md
+    requirement: "Peak count uses strict > equality rule (not >=)"
+    created: 2026-04-26
+    revised: ""
+    status: active
+  - id: TR-round-lifecycle-004
+    system: round-lifecycle
+    gdd: design/gdd/round-lifecycle.md
+    requirement: "Placement F3 single unified sort, 5-key composite (peakCount/survived/finalCount/elimTime/UserId)"
+    created: 2026-04-26
+    revised: ""
+    status: active
+  - id: TR-round-lifecycle-005
+    system: round-lifecycle
+    gdd: design/gdd/round-lifecycle.md
+    requirement: "Peak-dominance model: biggest snowball ranks highest (DSN-B-3 resolution)"
+    created: 2026-04-26
+    revised: ""
+    status: active
+  - id: TR-round-lifecycle-006
+    system: round-lifecycle
+    gdd: design/gdd/round-lifecycle.md
+    requirement: "Eliminated signal idempotent: first signal wins, no overwrite"
+    created: 2026-04-26
+    revised: ""
+    status: active
+  - id: TR-round-lifecycle-007
+    system: round-lifecycle
+    gdd: design/gdd/round-lifecycle.md
+    requirement: "Disconnected players appear in placements with frozen finalCount"
+    created: 2026-04-26
+    revised: ""
+    status: active
+  - id: TR-round-lifecycle-008
+    system: round-lifecycle
+    gdd: design/gdd/round-lifecycle.md
+    requirement: "Janitor lifecycle: disconnect all signals on destroyAll"
+    created: 2026-04-26
+    revised: ""
+    status: active
+  - id: TR-round-lifecycle-009
+    system: round-lifecycle
+    gdd: design/gdd/round-lifecycle.md
+    requirement: "getPlacements pure after setWinner (idempotent, no state mutation)"
+    created: 2026-04-26
+    revised: ""
+    status: active
+  - id: TR-round-lifecycle-010
+    system: round-lifecycle
+    gdd: design/gdd/round-lifecycle.md
+    requirement: "MAX_PARTICIPANTS_PER_ROUND = 12; assertion blocks 13+"
+    created: 2026-04-26
+    revised: ""
+    status: active
+  - id: TR-round-lifecycle-011
+    system: round-lifecycle
+    gdd: design/gdd/round-lifecycle.md
+    requirement: "CountChanged signal payload {crowdId, oldCount, newCount, deltaSource}"
+    created: 2026-04-26
+    revised: ""
+    status: active
+  - id: TR-round-lifecycle-012
+    system: round-lifecycle
+    gdd: design/gdd/round-lifecycle.md
+    requirement: "Survived boolean derived: eliminationTime == nil"
+    created: 2026-04-26
+    revised: ""
+    status: active
+  - id: TR-round-lifecycle-013
+    system: round-lifecycle
+    gdd: design/gdd/round-lifecycle.md
+    requirement: "InternalPlacement type omits peakCount/isWinner/wasEliminated from broadcast"
+    created: 2026-04-26
+    revised: ""
+    status: active
+  - id: TR-round-lifecycle-014
+    system: round-lifecycle
+    gdd: design/gdd/round-lifecycle.md
+    requirement: "F4 getPeakTimestamp nil → math.huge in MSM tiebreak comparator"
+    created: 2026-04-26
+    revised: ""
+    status: active
+  - id: TR-round-lifecycle-015
+    system: round-lifecycle
+    gdd: design/gdd/round-lifecycle.md
+    requirement: "Zero-participant T5 path returns {} placements"
+    created: 2026-04-26
+    revised: ""
+    status: active
+  - id: TR-round-lifecycle-016
+    system: round-lifecycle
+    gdd: design/gdd/round-lifecycle.md
+    requirement: "Performance: sorting 12 records < 10ms total (AC-16)"
+    created: 2026-04-26
+    revised: ""
+    status: active
+
+  # === crowd-replication-strategy (27 TRs) ===
+  - id: TR-crs-001
+    system: crs
+    gdd: design/gdd/crowd-replication-strategy.md
+    requirement: "15 Hz unreliable CrowdStateBroadcast cadence locked"
+    created: 2026-04-26
+    revised: ""
+    status: active
+  - id: TR-crs-002
+    system: crs
+    gdd: design/gdd/crowd-replication-strategy.md
+    requirement: "Reliable RemoteEvent for discrete events, unreliable for aggregate state"
+    created: 2026-04-26
+    revised: ""
+    status: active
+  - id: TR-crs-003
+    system: crs
+    gdd: design/gdd/crowd-replication-strategy.md
+    requirement: "Broadcast full snapshot, not delta; client overwrites on receipt"
+    created: 2026-04-26
+    revised: ""
+    status: active
+  - id: TR-crs-004
+    system: crs
+    gdd: design/gdd/crowd-replication-strategy.md
+    requirement: "No ordering guarantee across RemoteEvent types"
+    created: 2026-04-26
+    revised: ""
+    status: active
+  - id: TR-crs-005
+    system: crs
+    gdd: design/gdd/crowd-replication-strategy.md
+    requirement: "Single-packet drop is non-event; 0.5s stale-threshold freeze widgets (F2)"
+    created: 2026-04-26
+    revised: ""
+    status: active
+  - id: TR-crs-006
+    system: crs
+    gdd: design/gdd/crowd-replication-strategy.md
+    requirement: "Tick counter uint16 monotonic, wrap-aware out-of-order defense (F4)"
+    created: 2026-04-26
+    revised: ""
+    status: active
+  - id: TR-crs-007
+    system: crs
+    gdd: design/gdd/crowd-replication-strategy.md
+    requirement: "Cosmetic client-side follower position desync accepted"
+    created: 2026-04-26
+    revised: ""
+    status: active
+  - id: TR-crs-008
+    system: crs
+    gdd: design/gdd/crowd-replication-strategy.md
+    requirement: "Render-cap decoupled from gameplay count; gameplay reads crowd.count"
+    created: 2026-04-26
+    revised: ""
+    status: active
+  - id: TR-crs-009
+    system: crs
+    gdd: design/gdd/crowd-replication-strategy.md
+    requirement: "Broadcast payload 30 bytes buffer per crowd (crowdId/tick/pos/radius/count/hue/state)"
+    created: 2026-04-26
+    revised: ""
+    status: active
+  - id: TR-crs-010
+    system: crs
+    gdd: design/gdd/crowd-replication-strategy.md
+    requirement: "Buffer encoding mandatory MVP, not table serialization"
+    created: 2026-04-26
+    revised: ""
+    status: active
+  - id: TR-crs-011
+    system: crs
+    gdd: design/gdd/crowd-replication-strategy.md
+    requirement: "Server-only write authority; no client crowd state writes"
+    created: 2026-04-26
+    revised: ""
+    status: active
+  - id: TR-crs-012
+    system: crs
+    gdd: design/gdd/crowd-replication-strategy.md
+    requirement: "crowdId = tostring(player.UserId), stable per round"
+    created: 2026-04-26
+    revised: ""
+    status: active
+  - id: TR-crs-013
+    system: crs
+    gdd: design/gdd/crowd-replication-strategy.md
+    requirement: "Eliminated broadcast continues with state=Eliminated until destroyAll"
+    created: 2026-04-26
+    revised: ""
+    status: active
+  - id: TR-crs-014
+    system: crs
+    gdd: design/gdd/crowd-replication-strategy.md
+    requirement: "Bandwidth budget hard constraint <= 10 KB/s per client"
+    created: 2026-04-26
+    revised: ""
+    status: active
+  - id: TR-crs-015
+    system: crs
+    gdd: design/gdd/crowd-replication-strategy.md
+    requirement: "LOD tier decision client-only at 10 Hz; server unaware"
+    created: 2026-04-26
+    revised: ""
+    status: active
+  - id: TR-crs-016
+    system: crs
+    gdd: design/gdd/crowd-replication-strategy.md
+    requirement: "Render cap tiers 80 own-close / 30 rival-close / 15 mid / 1 billboard far"
+    created: 2026-04-26
+    revised: ""
+    status: active
+  - id: TR-crs-017
+    system: crs
+    gdd: design/gdd/crowd-replication-strategy.md
+    requirement: "F1 bandwidth estimator: (30 × N × 15) + reliable_overhead"
+    created: 2026-04-26
+    revised: ""
+    status: active
+  - id: TR-crs-018
+    system: crs
+    gdd: design/gdd/crowd-replication-strategy.md
+    requirement: "F2 stale-freeze: (os.clock - lastBroadcast) > 0.5s"
+    created: 2026-04-26
+    revised: ""
+    status: active
+  - id: TR-crs-019
+    system: crs
+    gdd: design/gdd/crowd-replication-strategy.md
+    requirement: "Stale recovery: freeze all widgets, no interpolate-to-zero"
+    created: 2026-04-26
+    revised: ""
+    status: active
+  - id: TR-crs-020
+    system: crs
+    gdd: design/gdd/crowd-replication-strategy.md
+    requirement: "Out-of-order packet dropped by F4 tick comparison"
+    created: 2026-04-26
+    revised: ""
+    status: active
+  - id: TR-crs-021
+    system: crs
+    gdd: design/gdd/crowd-replication-strategy.md
+    requirement: "Cross-channel: elimination reliable fires before unreliable broadcast (advisory)"
+    created: 2026-04-26
+    revised: ""
+    status: active
+  - id: TR-crs-022
+    system: crs
+    gdd: design/gdd/crowd-replication-strategy.md
+    requirement: "Dormant → Active transition on RoundLifecycle.createAll"
+    created: 2026-04-26
+    revised: ""
+    status: active
+  - id: TR-crs-023
+    system: crs
+    gdd: design/gdd/crowd-replication-strategy.md
+    requirement: "Active → Closing transition on RoundLifecycle.destroyAll; broadcast ceases"
+    created: 2026-04-26
+    revised: ""
+    status: active
+  - id: TR-crs-024
+    system: crs
+    gdd: design/gdd/crowd-replication-strategy.md
+    requirement: "Mid-round game late-join blocked MVP (Lobby-only); future feature"
+    created: 2026-04-26
+    revised: ""
+    status: active
+  - id: TR-crs-025
+    system: crs
+    gdd: design/gdd/crowd-replication-strategy.md
+    requirement: "Performance: 12-player 60s steady < 10 KB/s (AC-14, deferred to MVP integration)"
+    created: 2026-04-26
+    revised: ""
+    status: active
+  - id: TR-crs-026
+    system: crs
+    gdd: design/gdd/crowd-replication-strategy.md
+    requirement: "Performance: burst <= 15 KB/s per 1s window (AC-15)"
+    created: 2026-04-26
+    revised: ""
+    status: active
+  - id: TR-crs-027
+    system: crs
+    gdd: design/gdd/crowd-replication-strategy.md
+    requirement: "Server/client gameplay parity: count always matches authoritative (AC-23)"
+    created: 2026-04-26
+    revised: ""
+    status: active
+
+  # === follower-entity (20 TRs) ===
+  - id: TR-follower-entity-001
+    system: follower-entity
+    gdd: design/gdd/follower-entity.md
+    requirement: "No Humanoid instances; Parts anchored for CFrame authority"
+    created: 2026-04-26
+    revised: ""
+    status: active
+  - id: TR-follower-entity-002
+    system: follower-entity
+    gdd: design/gdd/follower-entity.md
+    requirement: "2-Part rig (Body MeshPart + Hat MeshPart) with WeldConstraint parented under Body"
+    created: 2026-04-26
+    revised: ""
+    status: active
+  - id: TR-follower-entity-003
+    system: follower-entity
+    gdd: design/gdd/follower-entity.md
+    requirement: "Pool prealloc: 460 LOD-0 Body + 460 Hat / 100 LOD-1 / 60 LOD-2 billboard slots"
+    created: 2026-04-26
+    revised: ""
+    status: active
+  - id: TR-follower-entity-004
+    system: follower-entity
+    gdd: design/gdd/follower-entity.md
+    requirement: "Max 4 follower spawns per client RenderStepped frame across all crowds"
+    created: 2026-04-26
+    revised: ""
+    status: active
+  - id: TR-follower-entity-005
+    system: follower-entity
+    gdd: design/gdd/follower-entity.md
+    requirement: "Walk bob F8: Y offset = sin(d × 2π × 1.5) × 0.15 studs"
+    created: 2026-04-26
+    revised: ""
+    status: active
+  - id: TR-follower-entity-006
+    system: follower-entity
+    gdd: design/gdd/follower-entity.md
+    requirement: "Distance d accumulates continuously; NOT reset on LOD tier swap"
+    created: 2026-04-26
+    revised: ""
+    status: active
+  - id: TR-follower-entity-007
+    system: follower-entity
+    gdd: design/gdd/follower-entity.md
+    requirement: "Hue-flip uses >= threshold crossing with boolean latch (no float equality)"
+    created: 2026-04-26
+    revised: ""
+    status: active
+  - id: TR-follower-entity-008
+    system: follower-entity
+    gdd: design/gdd/follower-entity.md
+    requirement: "Peeling immunity: Peeling entities excluded from pool cap shrink"
+    created: 2026-04-26
+    revised: ""
+    status: active
+  - id: TR-follower-entity-009
+    system: follower-entity
+    gdd: design/gdd/follower-entity.md
+    requirement: "Rig assembly: Body.Anchored=true, WeldConstraint.Part0=Body"
+    created: 2026-04-26
+    revised: ""
+    status: active
+  - id: TR-follower-entity-010
+    system: follower-entity
+    gdd: design/gdd/follower-entity.md
+    requirement: "Per-follower spawn phase offset d ∈ [0, 0.667), randomised at spawn"
+    created: 2026-04-26
+    revised: ""
+    status: active
+  - id: TR-follower-entity-011
+    system: follower-entity
+    gdd: design/gdd/follower-entity.md
+    requirement: "Hue: Color3 write (not BrickColor); dirty flag gates steady-state writes"
+    created: 2026-04-26
+    revised: ""
+    status: active
+  - id: TR-follower-entity-012
+    system: follower-entity
+    gdd: design/gdd/follower-entity.md
+    requirement: "White-state 1 frame on SlideIn spawns only (absorb path), not FadeIn"
+    created: 2026-04-26
+    revised: ""
+    status: active
+  - id: TR-follower-entity-013
+    system: follower-entity
+    gdd: design/gdd/follower-entity.md
+    requirement: "Peel selection F6: N closest followers to rival crowd center (contact face)"
+    created: 2026-04-26
+    revised: ""
+    status: active
+  - id: TR-follower-entity-014
+    system: follower-entity
+    gdd: design/gdd/follower-entity.md
+    requirement: "Peel transit duration capped at PEEL_MAX_DURATION = 3.0s"
+    created: 2026-04-26
+    revised: ""
+    status: active
+  - id: TR-follower-entity-015
+    system: follower-entity
+    gdd: design/gdd/follower-entity.md
+    requirement: "LOD 0/1/2 at distances <=20m / <=40m / <=100m with render caps 80/30, 15/15, 1/1"
+    created: 2026-04-26
+    revised: ""
+    status: active
+  - id: TR-follower-entity-016
+    system: follower-entity
+    gdd: design/gdd/follower-entity.md
+    requirement: "Teleport snap on crowd center > 30 stud displacement (TELEPORT_THRESHOLD)"
+    created: 2026-04-26
+    revised: ""
+    status: active
+  - id: TR-follower-entity-017
+    system: follower-entity
+    gdd: design/gdd/follower-entity.md
+    requirement: "Micro-sway (standstill): X offset = sin(t × 2π × 0.4 + phase) × 0.03 studs"
+    created: 2026-04-26
+    revised: ""
+    status: active
+  - id: TR-follower-entity-018
+    system: follower-entity
+    gdd: design/gdd/follower-entity.md
+    requirement: "Hat stays with follower through peeling; swaps on rival pool arrival"
+    created: 2026-04-26
+    revised: ""
+    status: active
+  - id: TR-follower-entity-019
+    system: follower-entity
+    gdd: design/gdd/follower-entity.md
+    requirement: "Absorb snapshot slide-in: CFrame lerp NPC → crowd center over 0.4s"
+    created: 2026-04-26
+    revised: ""
+    status: active
+  - id: TR-follower-entity-020
+    system: follower-entity
+    gdd: design/gdd/follower-entity.md
+    requirement: "Read-only client consumer; never writes to CrowdStateClient/Server"
+    created: 2026-04-26
+    revised: ""
+    status: active
+
+  # === follower-lod-manager (13 TRs) ===
+  - id: TR-lod-001
+    system: lod
+    gdd: design/gdd/follower-lod-manager.md
+    requirement: "10 Hz tick loop via setInterval (not RenderStepped/Heartbeat)"
+    created: 2026-04-26
+    revised: ""
+    status: active
+  - id: TR-lod-002
+    system: lod
+    gdd: design/gdd/follower-lod-manager.md
+    requirement: "Hysteresis dead zone: ±1 stud (demote at boundary-1, promote at boundary+1)"
+    created: 2026-04-26
+    revised: ""
+    status: active
+  - id: TR-lod-003
+    system: lod
+    gdd: design/gdd/follower-lod-manager.md
+    requirement: "First-tick raw bucket assignment (no hysteresis); hysteresis applies tick 2+"
+    created: 2026-04-26
+    revised: ""
+    status: active
+  - id: TR-lod-004
+    system: lod
+    gdd: design/gdd/follower-lod-manager.md
+    requirement: "Mobile cap override: MOBILE_CAP_MULTIPLIER=0.5 on tier 0 only (tier 1/2 unchanged)"
+    created: 2026-04-26
+    revised: ""
+    status: active
+  - id: TR-lod-005
+    system: lod
+    gdd: design/gdd/follower-lod-manager.md
+    requirement: "Cap-shrink gated: getPeelingCount before setPoolSize to avoid evicting mid-peel"
+    created: 2026-04-26
+    revised: ""
+    status: active
+  - id: TR-lod-006
+    system: lod
+    gdd: design/gdd/follower-lod-manager.md
+    requirement: "Tier 2 = 1 billboard impostor per crowd (NOT 4 rigs; CSM-composed radius)"
+    created: 2026-04-26
+    revised: ""
+    status: active
+  - id: TR-lod-007
+    system: lod
+    gdd: design/gdd/follower-lod-manager.md
+    requirement: "Follower Entity throughput contract: max 30 FadeOut tweens/Heartbeat on shrink"
+    created: 2026-04-26
+    revised: ""
+    status: active
+  - id: TR-lod-008
+    system: lod
+    gdd: design/gdd/follower-lod-manager.md
+    requirement: "Tier 0/1/2 boundaries: 20/40/100m distance thresholds (CULL=3 sentinel)"
+    created: 2026-04-26
+    revised: ""
+    status: active
+  - id: TR-lod-009
+    system: lod
+    gdd: design/gdd/follower-lod-manager.md
+    requirement: "Own-vs-rival cap distinction: own=80/15/1, rival=30/15/1 at tiers 0/1/2"
+    created: 2026-04-26
+    revised: ""
+    status: active
+  - id: TR-lod-010
+    system: lod
+    gdd: design/gdd/follower-lod-manager.md
+    requirement: "Dispatch setLOD BEFORE setPoolSize on same-tick tier+cap change"
+    created: 2026-04-26
+    revised: ""
+    status: active
+  - id: TR-lod-011
+    system: lod
+    gdd: design/gdd/follower-lod-manager.md
+    requirement: "Idempotent start()/stop() with warn-log on double-call"
+    created: 2026-04-26
+    revised: ""
+    status: active
+  - id: TR-lod-012
+    system: lod
+    gdd: design/gdd/follower-lod-manager.md
+    requirement: "CrowdEliminated listener: adds crowdId to _eliminatedIds, removed from _tracking"
+    created: 2026-04-26
+    revised: ""
+    status: active
+  - id: TR-lod-013
+    system: lod
+    gdd: design/gdd/follower-lod-manager.md
+    requirement: "First-tick cull re-entry (tier CULL → tier 2) with no intermediate state"
+    created: 2026-04-26
+    revised: ""
+    status: active
+
+  # === npc-spawner (16 TRs) ===
+  - id: TR-npc-spawner-001
+    system: npc-spawner
+    gdd: design/gdd/npc-spawner.md
+    requirement: "Pool size fixed at 300 Parts; pre-allocated chunked 25/batch via task.defer"
+    created: 2026-04-26
+    revised: ""
+    status: active
+  - id: TR-npc-spawner-002
+    system: npc-spawner
+    gdd: design/gdd/npc-spawner.md
+    requirement: "NPC respawn delay: Uniform[5s, 10s], sampled independently per NPC (F3)"
+    created: 2026-04-26
+    revised: ""
+    status: active
+  - id: TR-npc-spawner-003
+    system: npc-spawner
+    gdd: design/gdd/npc-spawner.md
+    requirement: "No Part allocation mid-round; reclaimed Parts parked at transparency=1"
+    created: 2026-04-26
+    revised: ""
+    status: active
+  - id: TR-npc-spawner-004
+    system: npc-spawner
+    gdd: design/gdd/npc-spawner.md
+    requirement: "Random walk: duration T_walk ∈ [2s, 5s], uniform angle per direction"
+    created: 2026-04-26
+    revised: ""
+    status: active
+  - id: TR-npc-spawner-005
+    system: npc-spawner
+    gdd: design/gdd/npc-spawner.md
+    requirement: "reclaim() synchronous; removes NPC from getAllActiveNPCs snapshot immediately"
+    created: 2026-04-26
+    revised: ""
+    status: active
+  - id: TR-npc-spawner-006
+    system: npc-spawner
+    gdd: design/gdd/npc-spawner.md
+    requirement: "getAllActiveNPCs returns frozen cached copy; cache invalidated on reclaim/respawn"
+    created: 2026-04-26
+    revised: ""
+    status: active
+  - id: TR-npc-spawner-007
+    system: npc-spawner
+    gdd: design/gdd/npc-spawner.md
+    requirement: "NPCs phase through obstacles (MVP convex single-level assumption)"
+    created: 2026-04-26
+    revised: ""
+    status: active
+  - id: TR-npc-spawner-008
+    system: npc-spawner
+    gdd: design/gdd/npc-spawner.md
+    requirement: "Respawn position avoids crowds: dist >= NPC_RESPAWN_MIN_CROWD_DIST = 30m"
+    created: 2026-04-26
+    revised: ""
+    status: active
+  - id: TR-npc-spawner-009
+    system: npc-spawner
+    gdd: design/gdd/npc-spawner.md
+    requirement: "Respawn fade-in: Transparency 1→0 over 0.3s via TweenService"
+    created: 2026-04-26
+    revised: ""
+    status: active
+  - id: TR-npc-spawner-010
+    system: npc-spawner
+    gdd: design/gdd/npc-spawner.md
+    requirement: "Double-reclaim must assert/error (defect detection)"
+    created: 2026-04-26
+    revised: ""
+    status: active
+  - id: TR-npc-spawner-011
+    system: npc-spawner
+    gdd: design/gdd/npc-spawner.md
+    requirement: "ARENA_WALKABLE_AREA_SQ required at module init (assert non-nil, > 0)"
+    created: 2026-04-26
+    revised: ""
+    status: active
+  - id: TR-npc-spawner-012
+    system: npc-spawner
+    gdd: design/gdd/npc-spawner.md
+    requirement: "ρ_design = NPC_POOL_SIZE / ARENA_WALKABLE_AREA_SQ (density metric, F1)"
+    created: 2026-04-26
+    revised: ""
+    status: active
+  - id: TR-npc-spawner-013
+    system: npc-spawner
+    gdd: design/gdd/npc-spawner.md
+    requirement: "Movement via 15 Hz ServerTickAccumulator callback (no independent Heartbeat)"
+    created: 2026-04-26
+    revised: ""
+    status: active
+  - id: TR-npc-spawner-014
+    system: npc-spawner
+    gdd: design/gdd/npc-spawner.md
+    requirement: "F4 guard: if R_absorb_total <= 1e-6 (EPSILON), return NPC_POOL_SIZE (stay full)"
+    created: 2026-04-26
+    revised: ""
+    status: active
+  - id: TR-npc-spawner-015
+    system: npc-spawner
+    gdd: design/gdd/npc-spawner.md
+    requirement: "NPC replication via UnreliableRemoteEvent NpcStateBroadcast (position + transparency deltas)"
+    created: 2026-04-26
+    revised: ""
+    status: active
+  - id: TR-npc-spawner-016
+    system: npc-spawner
+    gdd: design/gdd/npc-spawner.md
+    requirement: "Client mirror pool: 300 Parts locally replicated via UREvent (not native Part replication)"
+    created: 2026-04-26
+    revised: ""
+    status: active
+
+  # === absorb-system (12 TRs) ===
+  - id: TR-absorb-001
+    system: absorb
+    gdd: design/gdd/absorb-system.md
+    requirement: "Absorb runs 15 Hz server tick (piggyback, not separate loop)"
+    created: 2026-04-26
+    revised: ""
+    status: active
+  - id: TR-absorb-002
+    system: absorb
+    gdd: design/gdd/absorb-system.md
+    requirement: "2D overlap test: (dx² + dz²) <= radius² (Y ignored, F1)"
+    created: 2026-04-26
+    revised: ""
+    status: active
+  - id: TR-absorb-003
+    system: absorb
+    gdd: design/gdd/absorb-system.md
+    requirement: "NPC contention: assign to argmin distance crowd; tiebreak lexicographic crowdId"
+    created: 2026-04-26
+    revised: ""
+    status: active
+  - id: TR-absorb-004
+    system: absorb
+    gdd: design/gdd/absorb-system.md
+    requirement: "Per-overlap sequence: fire Absorbed signal → updateCount(+1, 'Absorb') → NPC reclaim"
+    created: 2026-04-26
+    revised: ""
+    status: active
+  - id: TR-absorb-005
+    system: absorb
+    gdd: design/gdd/absorb-system.md
+    requirement: "Count ceiling 300 enforced in CSM.updateCount clamp (not Absorb-side)"
+    created: 2026-04-26
+    revised: ""
+    status: active
+  - id: TR-absorb-006
+    system: absorb
+    gdd: design/gdd/absorb-system.md
+    requirement: "Skip Eliminated crowds; process Active + GraceWindow per state precondition"
+    created: 2026-04-26
+    revised: ""
+    status: active
+  - id: TR-absorb-007
+    system: absorb
+    gdd: design/gdd/absorb-system.md
+    requirement: "NPCSpawner.reclaim() must be synchronous within tick (double-absorb prevention)"
+    created: 2026-04-26
+    revised: ""
+    status: active
+  - id: TR-absorb-008
+    system: absorb
+    gdd: design/gdd/absorb-system.md
+    requirement: "Absorb trigger only on Active state; GraceWindow drip paused (AC-8)"
+    created: 2026-04-26
+    revised: ""
+    status: active
+  - id: TR-absorb-009
+    system: absorb
+    gdd: design/gdd/absorb-system.md
+    requirement: "F3 N_max = floor(π × radius² × ρ_design) bounds absorbs per tick"
+    created: 2026-04-26
+    revised: ""
+    status: active
+  - id: TR-absorb-010
+    system: absorb
+    gdd: design/gdd/absorb-system.md
+    requirement: "F4 R_absorb = (radius × 2 × NPC_WALK_SPEED) × ρ_design (continuous approximation)"
+    created: 2026-04-26
+    revised: ""
+    status: active
+  - id: TR-absorb-011
+    system: absorb
+    gdd: design/gdd/absorb-system.md
+    requirement: "Absorb signal fires reliably (RemoteEvent, not Unreliable)"
+    created: 2026-04-26
+    revised: ""
+    status: active
+  - id: TR-absorb-012
+    system: absorb
+    gdd: design/gdd/absorb-system.md
+    requirement: "Crowd at count=1 + GraceWindow: CSM owns transition (Absorb does not)"
+    created: 2026-04-26
+    revised: ""
+    status: active
+
+  # === crowd-collision-resolution (20 TRs) ===
+  - id: TR-ccr-001
+    system: ccr
+    gdd: design/gdd/crowd-collision-resolution.md
+    requirement: "15 Hz tick cadence via TickOrchestrator; Collision is Phase 1 (first per tick)"
+    created: 2026-04-26
+    revised: ""
+    status: active
+  - id: TR-ccr-002
+    system: ccr
+    gdd: design/gdd/crowd-collision-resolution.md
+    requirement: "Pair iteration: O(p²) lex-sorted unique pairs (i<j, no self-pairs, no duplicates)"
+    created: 2026-04-26
+    revised: ""
+    status: active
+  - id: TR-ccr-003
+    system: ccr
+    gdd: design/gdd/crowd-collision-resolution.md
+    requirement: "F1 pair overlap test: 2D squared distance (Y ignored)"
+    created: 2026-04-26
+    revised: ""
+    status: active
+  - id: TR-ccr-004
+    system: ccr
+    gdd: design/gdd/crowd-collision-resolution.md
+    requirement: "Per-pair drip: attacker gains, defender loses delta_per_tick followers"
+    created: 2026-04-26
+    revised: ""
+    status: active
+  - id: TR-ccr-005
+    system: ccr
+    gdd: design/gdd/crowd-collision-resolution.md
+    requirement: "Equal-count mutual drain: count_delta=0 → both lose 1/tick (symmetric)"
+    created: 2026-04-26
+    revised: ""
+    status: active
+  - id: TR-ccr-006
+    system: ccr
+    gdd: design/gdd/crowd-collision-resolution.md
+    requirement: "delta_per_tick = ceil(TRANSFER_RATE_effective / 15) clamped [1, 4]"
+    created: 2026-04-26
+    revised: ""
+    status: active
+  - id: TR-ccr-007
+    system: ccr
+    gdd: design/gdd/crowd-collision-resolution.md
+    requirement: "Skip pairs where either crowd nil/Eliminated; drip restricted to both Active"
+    created: 2026-04-26
+    revised: ""
+    status: active
+  - id: TR-ccr-008
+    system: ccr
+    gdd: design/gdd/crowd-collision-resolution.md
+    requirement: "Overlap-bit feed: setStillOverlapping(crowdId, bool) once per crowd post-drip"
+    created: 2026-04-26
+    revised: ""
+    status: active
+  - id: TR-ccr-009
+    system: ccr
+    gdd: design/gdd/crowd-collision-resolution.md
+    requirement: "PairEntered event fires once per pair on first-contact (reliable RemoteEvent)"
+    created: 2026-04-26
+    revised: ""
+    status: active
+  - id: TR-ccr-010
+    system: ccr
+    gdd: design/gdd/crowd-collision-resolution.md
+    requirement: "Equal-count two-way peel emission: emit two buffer entries (A→B + B→A)"
+    created: 2026-04-26
+    revised: ""
+    status: active
+  - id: TR-ccr-011
+    system: ccr
+    gdd: design/gdd/crowd-collision-resolution.md
+    requirement: "Peel dispatch batches all per-client entries into ONE FireClient call per tick"
+    created: 2026-04-26
+    revised: ""
+    status: active
+  - id: TR-ccr-012
+    system: ccr
+    gdd: design/gdd/crowd-collision-resolution.md
+    requirement: "Peel buffer relevance filter: send only pairs involving player's crowdId (F4)"
+    created: 2026-04-26
+    revised: ""
+    status: active
+  - id: TR-ccr-013
+    system: ccr
+    gdd: design/gdd/crowd-collision-resolution.md
+    requirement: "Client-side peel: startPeel(loserCrowdId, winnerCrowdId, n) on buffer entry"
+    created: 2026-04-26
+    revised: ""
+    status: active
+  - id: TR-ccr-014
+    system: ccr
+    gdd: design/gdd/crowd-collision-resolution.md
+    requirement: "Unreliable peel dispatch acceptable; cosmetic-only per ADR-0001 tolerance"
+    created: 2026-04-26
+    revised: ""
+    status: active
+  - id: TR-ccr-015
+    system: ccr
+    gdd: design/gdd/crowd-collision-resolution.md
+    requirement: "Tick ordering locked: Collision first, Absorb second, Broadcast third, Peel last"
+    created: 2026-04-26
+    revised: ""
+    status: active
+  - id: TR-ccr-016
+    system: ccr
+    gdd: design/gdd/crowd-collision-resolution.md
+    requirement: "Write-access: updateCount(±delta) [1, 4] per pair; setStillOverlapping per crowd"
+    created: 2026-04-26
+    revised: ""
+    status: active
+  - id: TR-ccr-017
+    system: ccr
+    gdd: design/gdd/crowd-collision-resolution.md
+    requirement: "F2 pair key: lex-ordered canonical 'lower|higher' for pairEntered diff"
+    created: 2026-04-26
+    revised: ""
+    status: active
+  - id: TR-ccr-018
+    system: ccr
+    gdd: design/gdd/crowd-collision-resolution.md
+    requirement: "Triple-overlap stacking: per-pair loop handles naturally (no special case)"
+    created: 2026-04-26
+    revised: ""
+    status: active
+  - id: TR-ccr-019
+    system: ccr
+    gdd: design/gdd/crowd-collision-resolution.md
+    requirement: "GraceWindow crowd overlap-bit still reported (may drive timer expiry next tick)"
+    created: 2026-04-26
+    revised: ""
+    status: active
+  - id: TR-ccr-020
+    system: ccr
+    gdd: design/gdd/crowd-collision-resolution.md
+    requirement: "p99 tick cost <= 0.15ms for CollisionResolver tick (66 pairs worst case, AC-20)"
+    created: 2026-04-26
+    revised: ""
+    status: active
+
+  # === chest-system (21 TRs) ===
+  - id: TR-chest-001
+    system: chest
+    gdd: design/gdd/chest-system.md
+    requirement: "Server deducts toll atomically with state transition; no partial toll"
+    created: 2026-04-26
+    revised: ""
+    status: active
+  - id: TR-chest-002
+    system: chest
+    gdd: design/gdd/chest-system.md
+    requirement: "Guard pipeline rejects silently on first failure; no side-effects"
+    created: 2026-04-26
+    revised: ""
+    status: active
+  - id: TR-chest-003
+    system: chest
+    gdd: design/gdd/chest-system.md
+    requirement: "Active crowdState only (reject GraceWindow + Eliminated) per CSM state table"
+    created: 2026-04-26
+    revised: ""
+    status: active
+  - id: TR-chest-004
+    system: chest
+    gdd: design/gdd/chest-system.md
+    requirement: "F1 toll = max(T_FLAT[tier], ceil(count × T_PCT[tier])); no relic input"
+    created: 2026-04-26
+    revised: ""
+    status: active
+  - id: TR-chest-005
+    system: chest
+    gdd: design/gdd/chest-system.md
+    requirement: "Relic multiplier chains F1 toll output via queryChestToll; floor clamped to 1"
+    created: 2026-04-26
+    revised: ""
+    status: active
+  - id: TR-chest-006
+    system: chest
+    gdd: design/gdd/chest-system.md
+    requirement: "ProximityPrompt disabled when #activeRelics >= MAX_RELIC_SLOTS"
+    created: 2026-04-26
+    revised: ""
+    status: active
+  - id: TR-chest-007
+    system: chest
+    gdd: design/gdd/chest-system.md
+    requirement: "Nearest-player tiebreak 2D distance; lower UserId secondary key"
+    created: 2026-04-26
+    revised: ""
+    status: active
+  - id: TR-chest-008
+    system: chest
+    gdd: design/gdd/chest-system.md
+    requirement: "Draft roll 3 distinct candidates; re-roll up 3×; fallback to lower rarity"
+    created: 2026-04-26
+    revised: ""
+    status: active
+  - id: TR-chest-009
+    system: chest
+    gdd: design/gdd/chest-system.md
+    requirement: "Draft timeout auto-picks highest rarity; ties by array index order"
+    created: 2026-04-26
+    revised: ""
+    status: active
+  - id: TR-chest-010
+    system: chest
+    gdd: design/gdd/chest-system.md
+    requirement: "ChestPeelOff fires to opener client only; payload {crowdId, effectiveToll}"
+    created: 2026-04-26
+    revised: ""
+    status: active
+  - id: TR-chest-011
+    system: chest
+    gdd: design/gdd/chest-system.md
+    requirement: "T1/T2 spawn at createAll; T3 skipped MVP (framework supports all tiers)"
+    created: 2026-04-26
+    revised: ""
+    status: active
+  - id: TR-chest-012
+    system: chest
+    gdd: design/gdd/chest-system.md
+    requirement: "Draft candidates exclude held relics + exclude re-rolls within same draft"
+    created: 2026-04-26
+    revised: ""
+    status: active
+  - id: TR-chest-013
+    system: chest
+    gdd: design/gdd/chest-system.md
+    requirement: "RelicEffectHandler.grant(crowdId, specId) fires before destroy + respawn"
+    created: 2026-04-26
+    revised: ""
+    status: active
+  - id: TR-chest-014
+    system: chest
+    gdd: design/gdd/chest-system.md
+    requirement: "Respawn timer deferred per tier; part re-materialises with opacity tween"
+    created: 2026-04-26
+    revised: ""
+    status: active
+  - id: TR-chest-015
+    system: chest
+    gdd: design/gdd/chest-system.md
+    requirement: "destroyAll() auto-picks DraftOpen chests first; grants fire before teardown"
+    created: 2026-04-26
+    revised: ""
+    status: active
+  - id: TR-chest-016
+    system: chest
+    gdd: design/gdd/chest-system.md
+    requirement: "Chest runs LAST in tick order (Phase 4: after Collision/Relic/Absorb)"
+    created: 2026-04-26
+    revised: ""
+    status: active
+  - id: TR-chest-017
+    system: chest
+    gdd: design/gdd/chest-system.md
+    requirement: "Non-state modifier API _crowdModifiers per crowdId cleared on destroyAll()"
+    created: 2026-04-26
+    revised: ""
+    status: active
+  - id: TR-chest-018
+    system: chest
+    gdd: design/gdd/chest-system.md
+    requirement: "Toll billboard shows effectiveToll (post-query), not baseToll"
+    created: 2026-04-26
+    revised: ""
+    status: active
+  - id: TR-chest-019
+    system: chest
+    gdd: design/gdd/chest-system.md
+    requirement: "crowdState == Active strict guard; rejects GraceWindow + Eliminated"
+    created: 2026-04-26
+    revised: ""
+    status: active
+  - id: TR-chest-020
+    system: chest
+    gdd: design/gdd/chest-system.md
+    requirement: "Invariant: no toll partial-spend across any state transition (CSM ordering)"
+    created: 2026-04-26
+    revised: ""
+    status: active
+  - id: TR-chest-021
+    system: chest
+    gdd: design/gdd/chest-system.md
+    requirement: "Tier 1-2 billboards + prompts only MVP (T3 deferred per art bible §7)"
+    created: 2026-04-26
+    revised: ""
+    status: active
+
+  # === relic-system (21 TRs) ===
+  - id: TR-relic-001
+    system: relic
+    gdd: design/gdd/relic-system.md
+    requirement: "Slot cap MAX_RELIC_SLOTS = 4; owned by CSM activeRelics array"
+    created: 2026-04-26
+    revised: ""
+    status: active
+  - id: TR-relic-002
+    system: relic
+    gdd: design/gdd/relic-system.md
+    requirement: "Draft 3 candidates filtered distinct-from-held; re-roll 3×; fallback tier"
+    created: 2026-04-26
+    revised: ""
+    status: active
+  - id: TR-relic-003
+    system: relic
+    gdd: design/gdd/relic-system.md
+    requirement: "Grant atomic: late-check slots < 4, write slot, fire onAcquire, broadcast"
+    created: 2026-04-26
+    revised: ""
+    status: active
+  - id: TR-relic-004
+    system: relic
+    gdd: design/gdd/relic-system.md
+    requirement: "Count relics route via CSM.updateCount(crowdId, delta, 'Relic')"
+    created: 2026-04-26
+    revised: ""
+    status: active
+  - id: TR-relic-005
+    system: relic
+    gdd: design/gdd/relic-system.md
+    requirement: "Radius relics write multiplier [0.5, 1.5] via CSM.recomputeRadius (CSM Batch 1)"
+    created: 2026-04-26
+    revised: ""
+    status: active
+  - id: TR-relic-006
+    system: relic
+    gdd: design/gdd/relic-system.md
+    requirement: "Non-state relics publish modifier to owning system (Chest/Follower/Absorb)"
+    created: 2026-04-26
+    revised: ""
+    status: active
+  - id: TR-relic-007
+    system: relic
+    gdd: design/gdd/relic-system.md
+    requirement: "Same-tick ordering locked: Collision → Relic → Absorb → Chest → Broadcast"
+    created: 2026-04-26
+    revised: ""
+    status: active
+  - id: TR-relic-008
+    system: relic
+    gdd: design/gdd/relic-system.md
+    requirement: "onTick hooks fire Phase 2; count mutations visible to Absorb Phase 3 same tick"
+    created: 2026-04-26
+    revised: ""
+    status: active
+  - id: TR-relic-009
+    system: relic
+    gdd: design/gdd/relic-system.md
+    requirement: "clearAll() calls onExpire per slot ascending; resets radiusMultiplier to 1.0"
+    created: 2026-04-26
+    revised: ""
+    status: active
+  - id: TR-relic-010
+    system: relic
+    gdd: design/gdd/relic-system.md
+    requirement: "CrowdRelicChanged broadcast on grant/expire only, never per-tick"
+    created: 2026-04-26
+    revised: ""
+    status: active
+  - id: TR-relic-011
+    system: relic
+    gdd: design/gdd/relic-system.md
+    requirement: "Eliminated state: onTick continues; mutations land in CSM floor clamp (silent no-op)"
+    created: 2026-04-26
+    revised: ""
+    status: active
+  - id: TR-relic-012
+    system: relic
+    gdd: design/gdd/relic-system.md
+    requirement: "GraceWindow: up-delta applies; down-delta rejected at CSM write guard"
+    created: 2026-04-26
+    revised: ""
+    status: active
+  - id: TR-relic-013
+    system: relic
+    gdd: design/gdd/relic-system.md
+    requirement: "Duration nil = permanent-for-round; integer = countdown decremented at tick 2"
+    created: 2026-04-26
+    revised: ""
+    status: active
+  - id: TR-relic-014
+    system: relic
+    gdd: design/gdd/relic-system.md
+    requirement: "activeRelicSlot.privateState never replicated in RelicSnapshot"
+    created: 2026-04-26
+    revised: ""
+    status: active
+  - id: TR-relic-015
+    system: relic
+    gdd: design/gdd/relic-system.md
+    requirement: "TollBreaker (non-state modifier): F1 toll = floor(baseToll × M); floor >= 1"
+    created: 2026-04-26
+    revised: ""
+    status: active
+  - id: TR-relic-016
+    system: relic
+    gdd: design/gdd/relic-system.md
+    requirement: "Surge (count-relic): +40 delta; CSM clamps [1, 300]; cross-GraceWindow allowed"
+    created: 2026-04-26
+    revised: ""
+    status: active
+  - id: TR-relic-017
+    system: relic
+    gdd: design/gdd/relic-system.md
+    requirement: "Wingspan radius multiplier 1.35 via recomputeRadius API; CSM validates [0.5, 1.5]"
+    created: 2026-04-26
+    revised: ""
+    status: active
+  - id: TR-relic-018
+    system: relic
+    gdd: design/gdd/relic-system.md
+    requirement: "grant(Eliminated crowd) silently rejects; no revival path"
+    created: 2026-04-26
+    revised: ""
+    status: active
+  - id: TR-relic-019
+    system: relic
+    gdd: design/gdd/relic-system.md
+    requirement: "DC with Active relics: CrowdDestroyed signal triggers flush via T7 transition"
+    created: 2026-04-26
+    revised: ""
+    status: active
+  - id: TR-relic-020
+    system: relic
+    gdd: design/gdd/relic-system.md
+    requirement: "No DataStore, no persistence; every relic Pillar 3 round-scoped"
+    created: 2026-04-26
+    revised: ""
+    status: active
+  - id: TR-relic-021
+    system: relic
+    gdd: design/gdd/relic-system.md
+    requirement: "onAcquire + onExpire always fire (handler-guaranteed); onTick + others optional"
+    created: 2026-04-26
+    revised: ""
+    status: active
+
+  # === hud (20 TRs) ===
+  - id: TR-hud-001
+    system: hud
+    gdd: design/gdd/hud.md
+    requirement: "HUD registers UILayerType.HeadsUpDisplay (coexists gameplay, not Menu)"
+    created: 2026-04-26
+    revised: ""
+    status: active
+  - id: TR-hud-002
+    system: hud
+    gdd: design/gdd/hud.md
+    requirement: "All widgets instantiated once at boot; visibility toggled only"
+    created: 2026-04-26
+    revised: ""
+    status: active
+  - id: TR-hud-003
+    system: hud
+    gdd: design/gdd/hud.md
+    requirement: "Each widget subscribes exactly one authoritative source"
+    created: 2026-04-26
+    revised: ""
+    status: active
+  - id: TR-hud-004
+    system: hud
+    gdd: design/gdd/hud.md
+    requirement: "Count pop tween triggers floor(newCount/10) > floor(oldCount/10); no down-delta"
+    created: 2026-04-26
+    revised: ""
+    status: active
+  - id: TR-hud-005
+    system: hud
+    gdd: design/gdd/hud.md
+    requirement: "MAX CROWD flash opacity 0→1 (0.1s) hold (0.6s) 1→0 (0.3s) = 1.0s total"
+    created: 2026-04-26
+    revised: ""
+    status: active
+  - id: TR-hud-006
+    system: hud
+    gdd: design/gdd/hud.md
+    requirement: "Stale broadcast > 0.5s freezes count widget at last value; no interpolation"
+    created: 2026-04-26
+    revised: ""
+    status: active
+  - id: TR-hud-007
+    system: hud
+    gdd: design/gdd/hud.md
+    requirement: "Timer state-gated: hidden Lobby/Countdown:Snap/Result/Intermission/ServerClosing"
+    created: 2026-04-26
+    revised: ""
+    status: active
+  - id: TR-hud-008
+    system: hud
+    gdd: design/gdd/hud.md
+    requirement: "3-2-1 overlay visible ONLY Countdown:Snap (hard lock)"
+    created: 2026-04-26
+    revised: ""
+    status: active
+  - id: TR-hud-009
+    system: hud
+    gdd: design/gdd/hud.md
+    requirement: "Timer format M:SS via string.format; red + scale 1.1× at <= 10 seconds"
+    created: 2026-04-26
+    revised: ""
+    status: active
+  - id: TR-hud-010
+    system: hud
+    gdd: design/gdd/hud.md
+    requirement: "AFK button visible ONLY Lobby + Countdown:Ready (hidden Countdown:Snap)"
+    created: 2026-04-26
+    revised: ""
+    status: active
+  - id: TR-hud-011
+    system: hud
+    gdd: design/gdd/hud.md
+    requirement: "Mini-leaderboard top-3 + self-rank if outside top-3 (4 rows max)"
+    created: 2026-04-26
+    revised: ""
+    status: active
+  - id: TR-hud-012
+    system: hud
+    gdd: design/gdd/hud.md
+    requirement: "Eliminated crowds strikethrough + 50% opacity for ELIM_LINGER_SEC = 5.0s"
+    created: 2026-04-26
+    revised: ""
+    status: active
+  - id: TR-hud-013
+    system: hud
+    gdd: design/gdd/hud.md
+    requirement: "Relic shelf 4-slot horizontal; rarity shapes Common/Rare/Epic = circle/star/hex"
+    created: 2026-04-26
+    revised: ""
+    status: active
+  - id: TR-hud-014
+    system: hud
+    gdd: design/gdd/hud.md
+    requirement: "Relic slot tooltip: desktop hover / mobile tap-hold 0.3s; auto-dismiss 3.0s"
+    created: 2026-04-26
+    revised: ""
+    status: active
+  - id: TR-hud-015
+    system: hud
+    gdd: design/gdd/hud.md
+    requirement: "Eliminated label 'ELIMINATED' GothamBold 48pt red; persists through Result"
+    created: 2026-04-26
+    revised: ""
+    status: active
+  - id: TR-hud-016
+    system: hud
+    gdd: design/gdd/hud.md
+    requirement: "Unknown specId renders '?' icon + warn-color frame; no error"
+    created: 2026-04-26
+    revised: ""
+    status: active
+  - id: TR-hud-017
+    system: hud
+    gdd: design/gdd/hud.md
+    requirement: "Frame budget < 1.5ms per RenderStepped (worst case); average < 0.3ms"
+    created: 2026-04-26
+    revised: ""
+    status: active
+  - id: TR-hud-018
+    system: hud
+    gdd: design/gdd/hud.md
+    requirement: "CrowdCountClamped signal (CSM Batch 1 local-filtered RemoteEvent) triggers MAX flash"
+    created: 2026-04-26
+    revised: ""
+    status: active
+  - id: TR-hud-019
+    system: hud
+    gdd: design/gdd/hud.md
+    requirement: "CrowdRelicChanged reliable remote: HUD re-renders full slot array on receipt"
+    created: 2026-04-26
+    revised: ""
+    status: active
+  - id: TR-hud-020
+    system: hud
+    gdd: design/gdd/hud.md
+    requirement: "Solo-wait widget visible when #activeRivals == 0 during Active"
+    created: 2026-04-26
+    revised: ""
+    status: active
+
+  # === player-nameplate (15 TRs) ===
+  - id: TR-nameplate-001
+    system: nameplate
+    gdd: design/gdd/player-nameplate.md
+    requirement: "Per-character BillboardGui attached HumanoidRootPart; destroyed on CharacterRemoving"
+    created: 2026-04-26
+    revised: ""
+    status: active
+  - id: TR-nameplate-002
+    system: nameplate
+    gdd: design/gdd/player-nameplate.md
+    requirement: "Double-outline structure: 2px white outer + 1px black inner UIStrokes"
+    created: 2026-04-26
+    revised: ""
+    status: active
+  - id: TR-nameplate-003
+    system: nameplate
+    gdd: design/gdd/player-nameplate.md
+    requirement: "Text = tostring(count); no commas, no suffixes, no player name (MVP)"
+    created: 2026-04-26
+    revised: ""
+    status: active
+  - id: TR-nameplate-004
+    system: nameplate
+    gdd: design/gdd/player-nameplate.md
+    requirement: "TextColor3 reads hue from CrowdStateClient; re-read on CountChanged"
+    created: 2026-04-26
+    revised: ""
+    status: active
+  - id: TR-nameplate-005
+    system: nameplate
+    gdd: design/gdd/player-nameplate.md
+    requirement: "Vertical offset F1: 4.0 × tier_mult(count); tiers 1.0/1.5/2.5 at [1-50]/[51-150]/[151+]"
+    created: 2026-04-26
+    revised: ""
+    status: active
+  - id: TR-nameplate-006
+    system: nameplate
+    gdd: design/gdd/player-nameplate.md
+    requirement: "Font GothamBold (default) → GothamBlack at count >= 151"
+    created: 2026-04-26
+    revised: ""
+    status: active
+  - id: TR-nameplate-007
+    system: nameplate
+    gdd: design/gdd/player-nameplate.md
+    requirement: "Nameplate hidden non-Active states (Lobby/Countdown/Intermission)"
+    created: 2026-04-26
+    revised: ""
+    status: active
+  - id: TR-nameplate-008
+    system: nameplate
+    gdd: design/gdd/player-nameplate.md
+    requirement: "Eliminated fade: TextTransparency + UIStroke.Transparency tween 0→1 over 1.5s"
+    created: 2026-04-26
+    revised: ""
+    status: active
+  - id: TR-nameplate-009
+    system: nameplate
+    gdd: design/gdd/player-nameplate.md
+    requirement: "MaxDistance cull 120 studs (arena diagonal 90 + 30-stud margin)"
+    created: 2026-04-26
+    revised: ""
+    status: active
+  - id: TR-nameplate-010
+    system: nameplate
+    gdd: design/gdd/player-nameplate.md
+    requirement: "Nameplate client-only; no server-side counterpart; no bandwidth cost"
+    created: 2026-04-26
+    revised: ""
+    status: active
+  - id: TR-nameplate-011
+    system: nameplate
+    gdd: design/gdd/player-nameplate.md
+    requirement: "Stale data > 0.5s freezes count at last value; no interpolation"
+    created: 2026-04-26
+    revised: ""
+    status: active
+  - id: TR-nameplate-012
+    system: nameplate
+    gdd: design/gdd/player-nameplate.md
+    requirement: "Tier hysteresis 3-count buffer: tier 1→2 at 51, revert at <=48"
+    created: 2026-04-26
+    revised: ""
+    status: active
+  - id: TR-nameplate-013
+    system: nameplate
+    gdd: design/gdd/player-nameplate.md
+    requirement: "Frame budget < 0.2ms per RenderStepped (12 combined); native BillboardGui render"
+    created: 2026-04-26
+    revised: ""
+    status: active
+  - id: TR-nameplate-014
+    system: nameplate
+    gdd: design/gdd/player-nameplate.md
+    requirement: "CrowdStateClient.CountChanged subscription drives offset + font + text updates"
+    created: 2026-04-26
+    revised: ""
+    status: active
+  - id: TR-nameplate-015
+    system: nameplate
+    gdd: design/gdd/player-nameplate.md
+    requirement: "CrowdEliminated signal triggers Fading state; BillboardGui.Enabled=false post-fade"
+    created: 2026-04-26
+    revised: ""
+    status: active
+
+  # === vfx-manager (19 TRs) ===
+  - id: TR-vfx-001
+    system: vfx
+    gdd: design/gdd/vfx-manager.md
+    requirement: "Client-only singleton; server require = fatal assertion"
+    created: 2026-04-26
+    revised: ""
+    status: active
+  - id: TR-vfx-002
+    system: vfx
+    gdd: design/gdd/vfx-manager.md
+    requirement: "Single playEffect(effectId, context) API; all callers funnel through it"
+    created: 2026-04-26
+    revised: ""
+    status: active
+  - id: TR-vfx-003
+    system: vfx
+    gdd: design/gdd/vfx-manager.md
+    requirement: "9 live MVP events mapped to upstream contracts; 1 registered no-op"
+    created: 2026-04-26
+    revised: ""
+    status: active
+  - id: TR-vfx-004
+    system: vfx
+    gdd: design/gdd/vfx-manager.md
+    requirement: "Asset IDs resolve through AssetId enum at require time; missing = skip + warn"
+    created: 2026-04-26
+    revised: ""
+    status: active
+  - id: TR-vfx-005
+    system: vfx
+    gdd: design/gdd/vfx-manager.md
+    requirement: "Burst-only emission; Enabled=false immediately; Part auto-destroy via Debris"
+    created: 2026-04-26
+    revised: ""
+    status: active
+  - id: TR-vfx-006
+    system: vfx
+    gdd: design/gdd/vfx-manager.md
+    requirement: "Particle count tracked (incremented on emit, decremented via task.delay)"
+    created: 2026-04-26
+    revised: ""
+    status: active
+  - id: TR-vfx-007
+    system: vfx
+    gdd: design/gdd/vfx-manager.md
+    requirement: "Soft 1800 drops priority <=3; hard 1950 drops <=5; hysteresis recovery <1600"
+    created: 2026-04-26
+    revised: ""
+    status: active
+  - id: TR-vfx-008
+    system: vfx
+    gdd: design/gdd/vfx-manager.md
+    requirement: "Priority table [0,10]; higher=protected; ChestOpenBurst/RelicEpic=9, AbsorbSnap=4, Expire=3"
+    created: 2026-04-26
+    revised: ""
+    status: active
+  - id: TR-vfx-009
+    system: vfx
+    gdd: design/gdd/vfx-manager.md
+    requirement: "AbsorbSnap max 6/frame globally; CollisionEvent 0.5s per-pair cooldown"
+    created: 2026-04-26
+    revised: ""
+    status: active
+  - id: TR-vfx-010
+    system: vfx
+    gdd: design/gdd/vfx-manager.md
+    requirement: "ChestPeelOff sparkle 2 particles/follower; hard cap 20 particles/peel regardless toll"
+    created: 2026-04-26
+    revised: ""
+    status: active
+  - id: TR-vfx-011
+    system: vfx
+    gdd: design/gdd/vfx-manager.md
+    requirement: "Effect anchoring modes: worldPos / crowdRelative (CrowdStateClient) / computed midpoint"
+    created: 2026-04-26
+    revised: ""
+    status: active
+  - id: TR-vfx-012
+    system: vfx
+    gdd: design/gdd/vfx-manager.md
+    requirement: "Network failure = drop; no replay; VFX presentation-only"
+    created: 2026-04-26
+    revised: ""
+    status: active
+  - id: TR-vfx-013
+    system: vfx
+    gdd: design/gdd/vfx-manager.md
+    requirement: "All timings wall-clock seconds (TweenService/task.delay); no RenderStepped frames"
+    created: 2026-04-26
+    revised: ""
+    status: active
+  - id: TR-vfx-014
+    system: vfx
+    gdd: design/gdd/vfx-manager.md
+    requirement: "playEffect non-blocking fire-and-forget; pool+emit+Debris synchronous"
+    created: 2026-04-26
+    revised: ""
+    status: active
+  - id: TR-vfx-015
+    system: vfx
+    gdd: design/gdd/vfx-manager.md
+    requirement: "HueShift visual owned by Follower Entity (Body.Color write); VFX Manager audio-only"
+    created: 2026-04-26
+    revised: ""
+    status: active
+  - id: TR-vfx-016
+    system: vfx
+    gdd: design/gdd/vfx-manager.md
+    requirement: "NameplateHighlightSet registered as no-op with code comment (future safety)"
+    created: 2026-04-26
+    revised: ""
+    status: active
+  - id: TR-vfx-017
+    system: vfx
+    gdd: design/gdd/vfx-manager.md
+    requirement: "On Intermission entry: force-reset _particleCount to 0; pool to Idle"
+    created: 2026-04-26
+    revised: ""
+    status: active
+  - id: TR-vfx-018
+    system: vfx
+    gdd: design/gdd/vfx-manager.md
+    requirement: "Scene-wide particle cap 2,000; suppression at 1,800 (soft) / 1,950 (hard)"
+    created: 2026-04-26
+    revised: ""
+    status: active
+  - id: TR-vfx-019
+    system: vfx
+    gdd: design/gdd/vfx-manager.md
+    requirement: "AbsorbSnap priority 4 (first to drop); Expire priority 3 (drops earlier)"
+    created: 2026-04-26
+    revised: ""
+    status: active

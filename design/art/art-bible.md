@@ -56,7 +56,7 @@ Pillar 5 (Comeback Always Possible) demands elimination must not feel punishing 
 
 ### Character Silhouette Philosophy
 
-Players and followers share the Roblox R15 base (for players) and a simplified 4-6-part custom rig (for followers — see Section 8.6). Both push toward chibi/chunky proportions: large head, short legs, wide torso. The oversized head produces the crowd's visual atom — a bumpy ridge line that reads at distance even through LOD reductions.
+Players and followers share the Roblox R15 base (for players) and a simplified non-Humanoid custom rig (for followers — see Section 8.6 + design/gdd/follower-entity.md §C.1 for current 2-Part topology). Both push toward chibi/chunky proportions: large head, short legs, wide torso. The oversized head produces the crowd's visual atom — a bumpy ridge line that reads at distance even through LOD reductions.
 
 *Design test*: at 50m render distance on a 375px-wide mobile viewport, a cluster of 10 followers must produce a legible bumpy silhouette (heads forming a ridge). If the cluster reads as a blob, head scale must increase.
 
@@ -145,7 +145,7 @@ Saturation ceiling **20%** on all environment surfaces. Ground #9A9A9A minimum. 
 
 ### Player/Follower Archetype
 
-Player = full Roblox R15 rig, unique (8-12 on screen). Follower = simplified custom 4-6-part rig driven by CFrame (see Section 8.6). Same visual archetype: "cheerful urban civilian, Roblox-proportioned." One character mesh family, one material palette.
+Player = full Roblox R15 rig, unique (8-12 on screen). Follower = simplified custom non-Humanoid rig driven by CFrame (see Section 8.6 + design/gdd/follower-entity.md §C.1). Same visual archetype: "cheerful urban civilian, Roblox-proportioned." One character mesh family, one material palette.
 
 ### Skin System
 
@@ -334,10 +334,10 @@ Roblox has no built-in MeshPart LOD — implement manually.
 
 - **Player characters**: standard Roblox R15 rig + standard accessory attachment. No custom bones.
 - **Followers**: **NO Humanoid instance**. Humanoid carries pathfinding + physics + health state — at 800+ followers this is prohibitive.
-  - Custom rig: root Part + 4-6 child Parts (torso, head, 2 arms, 2 legs)
-  - Movement + animation: CFrame writes from server, replicated to clients
-  - No Motor6D animation system
-  - Procedural arm-swing / head-bob via CFrame math client-side
+  - Custom rig: **2-Part — Body MeshPart + Hat MeshPart with WeldConstraint** (sole owner: design/gdd/follower-entity.md §C.1, locked 2026-04-22; reduced from earlier "root + 4-6 child Parts (torso, head, 2 arms, 2 legs)" spec for follower-pool memory budget — propagated 2026-04-26 per /architecture-review C1 + ADR-0001 amend)
+  - Movement: client-side CFrame writes (boids flock); position-lag follows authoritative crowd center
+  - No Motor6D animation system, no Motor6D, no skeletal rig
+  - Procedural walk-bob + micro-sway via CFrame math (Follower Entity GDD §F8 + §F9)
   - Bone count: **0 Bone instances, Parts only**
 - **AlignPosition / AlignOrientation**: permitted for knockback / absorb pull, but **disable immediately after effect resolves**. Leaving active constraints on 800+ chars destroys physics thread.
 

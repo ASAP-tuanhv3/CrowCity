@@ -59,7 +59,14 @@ Pre-production — Concept phase complete, moving into per-system GDD authoring.
   - DSN-B-1 Wingspan μ-cap vs `NPC_RESPAWN_MIN_CROWD_DIST > r_max × μ_max` gate — μ=1.35 sit-still feel needs hands; revisit at VS playtest
   - DSN-B-MATH grace-rescue math (late-round ρ≈0.011 collapse) — dynamic timer by ρ_effective vs density floor at count=1; needs late-round density telemetry from VS
 - [x] /consistency-check post-Batch-5 2026-04-24 — 9 🔴 conflicts fixed across CSM L70/Tuning, chest-system ChestSpec/§Tuning/§UI/AC-7-8, relic-system L181/L196/L235. Registry 66→69 (T_TOLL_PCT constants added; T_TOLL notes refreshed as FLOORs). All DSN-B-2 stale flat-toll refs propagated. All DSN-B-3 Group 2/3 → Rank 2..N refs updated. Verdict PASS.
-- [ ] /create-architecture (ready; recommended first ADRs per TD: TickOrchestrator → Perf Budget → CSM Authority → MSM/Round Lifecycle)
+- [x] `/create-architecture` 2026-04-24 — 9 sections authored (Engine Knowledge Gap, 4-layer System Map, Module Ownership, Data Flow 5 scenarios + init order, API Boundaries for 6 Core/Feature modules, ADR Audit, Required ADR list, Architecture Principles, Open Questions). TD-ARCHITECTURE self-review: APPROVED WITH CONCERNS (4 concerns, non-blocking). LP-FEASIBILITY skipped (lean). Doc: `docs/architecture/architecture.md` v1.0.
+- [x] ADR-0002 TickOrchestrator — Proposed 2026-04-24. 15 Hz accumulator, static 9-phase sequence, synchronous dispatch, no-yield-in-phase lock, single Heartbeat connection. 4 alternatives rejected (per-system Heartbeat, EventEmitter queue, split fast/slow rates, Stepped hook). Registry: +1 interface (tick_orchestration), +1 api_decision (server_gameplay_cadence via Heartbeat+accumulator), +3 forbidden patterns (competing_heartbeat_accumulators, yielding_inside_tick_phase, runtime_phase_registration), +3 referenced_by appends (crowd_state, crowd_state_broadcast, crowd_state_replication). TD-ADR skipped (lean). File: `docs/architecture/adr-0002-tick-orchestrator.md`.
+- [x] ADR-0003 Performance Budget — Proposed 2026-04-25. Consolidates piecewise GDD AC perf into one budget: 60 FPS desktop / 45 FPS mobile (binding) / 60 FPS console; 3 ms/tick server (9-phase sub-allocations summing to 2.1 ms + 0.9 ms Reserve); per-frame client (16.67 ms desktop / 22.2 ms mobile) with 8 sub-system allocations + 5.37/6.5 ms Reserve; 10 KB/s/client network with 5.4 KB/s broadcast + 4 categories + 2.75 KB/s Reserve; 36 KB Crowdsmith server memory + 100 MB leak guard; instance caps (150 rendered Parts / 12 billboards / 2000 particles soft / 60 NPCs / 9 prompts / 21 BillboardGui). 4 validation sprints named (MVP-Integration-1/2/3 + Polish-Soak-1). Risk 1+2 from ADR-0001 owned here. Registry: populated `performance_budgets:` for first time (3 platform targets + tick + 6 client subsystem + 6 network + 1 memory + 7 instance caps = 23 entries); +4 referenced_by appends (tick_orchestration, crowd_state_broadcast, crowd_state_replication, server_gameplay_cadence). TD-ADR skipped (lean). File: `docs/architecture/adr-0003-performance-budget.md`.
+- [x] ADR-0004 CSM Authority + Write-Access Contract — Proposed 2026-04-25. Locks 4-caller `updateCount` rule + per-API single-caller restrictions (create/destroy → RoundLifecycle; recomputeRadius → RelicEffectHandler; setStillOverlapping → CollisionResolver; stateEvaluate/broadcastAll → TickOrchestrator). Pillar 4 anti-P2W escalated to architectural invariant (cosmetic systems FORBIDDEN as CSM callers; cannot amend without superseding). 5-layer defense-in-depth (module placement / code review / control manifest / architecture review / story readiness). 4 alternatives rejected (convention-only, runtime traceback validation, capability tokens, per-caller submodule split). Registry: +1 interface (csm_write_api with per-method authorised_callers map), +3 forbidden patterns (cosmetic_system_writes_csm, unauthorised_csm_caller, runtime_caller_validation_via_traceback), +3 referenced_by appends (crowd_state, tick_orchestration, client_authoritative_crowd_state). TD-ADR + engine specialist skipped (lean). File: `docs/architecture/adr-0004-csm-authority.md`.
+- [x] ADR-0006 Module Placement Rules + Layer Boundary Enforcement — Proposed 2026-04-26. Closes must-have ADR set (0002/0003/0004/0006 all Proposed). Locks: §Source Tree Map (9 placement classes — server-only / shared / entry-point ×2 / vendored / Wally / SharedConstants / Network / GUI prefabs); §Layer Hierarchy (Foundation → Core → Feature → Presentation, no upward imports); §Forbidden Patterns Matrix (13 rows consolidating CLAUDE.md §Forbidden Patterns + architectural justification); §Two-Entry-Point Invariant; §Vendored vs Wally Policy; §Rojo Project File Constraints; 6-layer defense-in-depth (Roblox engine / code review / Selene rules planned / control manifest / architecture review / story readiness). 4 alternatives rejected (convention-only via CLAUDE.md, per-system placement ADRs, manifest-only patterns, Selene-only). Registry: +9 forbidden patterns (client_requires_server_storage, direct_remote_event_path_access, direct_datastoreservice_call, direct_humanoid_walkspeed_write, magic_strings_cross_module, scripts_beyond_two_entry_points, wally_package_modified, nonstrict_in_project_src, upward_layer_import); +2 api_decisions (source_tree_mapping via Rojo, persistent_data_layer via ProfileStore); +2 referenced_by appends (crowd_state, client_authoritative_crowd_state). TD-ADR + engine specialist skipped (lean). File: `docs/architecture/adr-0006-module-placement-rules.md`. **Must-have ADR batch COMPLETE — `/architecture-review` in fresh session unlocked.**
+- [ ] Write 4 should-have ADRs before relevant systems: ADR-0005 MSM/RoundLifecycle Split, ADR-0008 NPC Spawner Authority, ADR-0010 Server-Authoritative Validation, ADR-0011 Persistence Schema + Pillar 3 Exclusions
+- [ ] `/architecture-review` — populate `tr-registry.yaml`, move ADR-0001 Proposed → Accepted, produce full traceability matrix
+- [ ] `/create-control-manifest` — generate flat programmer rules sheet from Accepted ADRs + technical prefs
 
 ## Session Extract — /review-all-gdds 2026-04-24
 - Verdict: FAIL
@@ -112,7 +119,154 @@ Pre-production — Concept phase complete, moving into per-system GDD authoring.
 5. Parallel track (low-risk while prototype runs): `/design-system AssetId Registry` — unblocks MVP Foundation
 
 <!-- STATUS -->
-Epic: Pre-production
-Feature: Systems Design — Architecture Kickoff Ready
-Task: **Path A ✓ + Batch 5 partial ✓ 2026-04-24**. Pre-architecture fixes (6) + DSN-B-2 toll scaling + DSN-B-3 peak-dominance placement all landed. Registry +3 constants (T1/T2/T3_TOLL_PCT). Deferred to post-VS: DSN-B-1 Wingspan + DSN-B-MATH grace-rescue (playtest-dependent). Next: `/create-architecture` → TickOrchestrator + Perf Budget + CSM Authority + MSM/Round Lifecycle ADRs.
+Epic: Pre-production (gate FAILED — work continues)
+Feature: Sprint 0 pipeline + design-completion phase
+Task: **`/gate-check pre-production` 2026-04-27 verdict FAIL.** Director panel: CD NOT READY / TD CONCERNS / PR NOT READY / AD CONCERNS. Architecture is sufficient (9 ADRs Accepted; control-manifest written; ADR DAG acyclic; crowd-sync prototype PROCEED). Vertical Slice Validation 0/4 → automatic FAIL per skill. Stage remains Pre-Production. Tier-1 Sprint-0 blockers (pipeline + design completion, ~1 session): `/create-epics layer: foundation` + `/create-epics layer: core` + `/test-setup` + `/ux-design hud` + `/ux-design draft-modal` + `/ux-design main-menu` + `/ux-design pause-menu` + author `design/accessibility-requirements.md` (recommend Basic tier MVP) + author 5 character profiles in `design/characters/` (follower-default / player-avatar-default / npc-neutral / chest-t1 / chest-t2) + record AD-ART-BIBLE APPROVE verdict in art bible + resolve D2 drift (HUD AC-22 vs ADR-0003 1.0 ms steady — amend HUD GDD to cite ADR-0003 peak/steady framing). Tier-2 (multi-sprint): build Vertical Slice (1-player + ~30 NPCs + 1 chest + 1 relic + 90s timer + Result) per Sprint 1 (Foundation: TickOrchestrator + CSM + RoundLifecycle + MSM) → Sprint 2 (Feature: Absorb + Chest + Relic) → Sprint 3 (Presentation: HUD + Nameplate + FollowerEntity client sim) + ≥3 playtest sessions documented. Re-run `/gate-check pre-production` after Sprint 0 completes. Report: `production/gate-checks/2026-04-27-pre-production-to-production.md`.
+
+## Session Extract — /create-control-manifest 2026-04-27
+- Output: docs/architecture/control-manifest.md (1 file, 9-ADR rules consolidation)
+- ADRs covered: 9 Accepted (0001/0002/0003/0004/0005/0006/0008/0010/0011)
+- Sources: 9 ADRs + .claude/docs/technical-preferences.md + docs/engine-reference/roblox/VERSION.md
+- Sections: Foundation/Core/Feature/Presentation layer rules + Global Rules + Defense-in-Depth + Source Trace
+- Manifest Version: 2026-04-27 (stories embed this date for staleness detection)
+- TD-MANIFEST skipped (lean mode)
+- Deferrable: ADR-0007 Client Rendering + ADR-0009 VFX Suppression noted for future regen
+- Verdict: COMPLETE
+
+## Session Extract — /gate-check pre-production 2026-04-27
+- Verdict: FAIL
+- Director panel: CD NOT READY / TD CONCERNS / PR NOT READY / AD CONCERNS (2 NOT READY → panel-rule FAIL)
+- Vertical Slice Validation: 0/4 PASS → automatic FAIL trigger per skill
+- Required artifacts present: 5/14; Quality checks passing: 5/13
+- ADR DAG acyclic confirmed by TD; architecture sufficient
+- Tier 1 blockers (Sprint 0 pipeline): no epics, no test framework, no UX specs, no accessibility tier, no character profiles, AD-ART-BIBLE not recorded
+- Tier 2 blockers (multi-sprint build): Vertical Slice not built; ≥3 playtests not run
+- Tier 3 drift: D2 HUD AC-22 1.5 ms peak vs ADR-0003 1.0 ms steady — small fix
+- Report: production/gate-checks/2026-04-27-pre-production-to-production.md
+- production/stage.txt NOT updated (stage remains Pre-Production)
+- Sprint 0 next steps named: /create-epics foundation+core / /test-setup / /ux-design × 4 screens / accessibility doc / character profiles × 5 / AD-ART-BIBLE APPROVE / D2 drift fix
+
+## Session Extract — ADR-0010 Status Flip 2026-04-26
+- Action: ADR-0010 Server-Authoritative Validation Policy `Proposed` → `Accepted`
+- Surgical Status header edit + Date field bump
+- No GDD amendment needed (chest 6-guard / Absorb / CCR / Relic / MSM AFKToggle GDDs already aligned with 4-check structure)
+- 8 ADRs now Accepted: 0001 / 0002 / 0003 / 0004 / 0005 / 0006 / 0008 / 0010
+- Verdict: COMPLETE
+
+## Session Extract — ADR-0011 Persistence Schema 2026-04-26/27
+- Status: Proposed
+- File: docs/architecture/adr-0011-persistence-schema.md
+- Closes ~5 gap TRs (Pillar 3 round-scope exclusions + Pillar 4 anti-P2W persistence + schema policy)
+- Decisions: MVP 6-key schema locked (Coins/OwnedSkins/SelectedSkin/LifetimeAbsorbs/LifetimeWins/FtueStage + _schemaVersion meta); VS+ +2 (DailyQuestState/LastDailyResetTime); Alpha+ preliminary +2-4 (AnalyticsOptIn/AccessibilitySettings/LastShopRefreshTime); Pillar 3 Forbidden Keys explicit 10-class catalog; Pillar 4 3-category boundary (cosmetic/lifetime-stat/onboarding); ProfileStore-only rule reinforces ADR-0006; schema migration via OnProfileVersionUpgrade + handlers dir + test fixture; default template sole ownership; currency authority Coins server-only grant at Result entry; Robux via ReceiptProcessor template
+- Alternatives rejected: no schema lock / centralised broker / per-key versioning / no forbidden catalog
+- Registry: +1 interface (persistence_schema) + 6 new forbidden_patterns
+- TD-ADR + engine specialist skipped (lean mode)
+- No GDD amendment needed (game-concept Pillar 3+4 + ADR-0001/0004/0005 already aligned)
+- Verdict: ready for Proposed → Accepted (no remaining dependencies)
+- Must-have ADR set complete (0001-0011) when ADR-0011 flips Accepted
+
+## Session Extract — ADR-0011 Status Flip 2026-04-27
+- Action: ADR-0011 Persistence Schema `Proposed` → `Accepted`
+- Surgical Status header edit + Date field bump
+- No GDD amendment needed (game-concept + ADR-0001/0004/0005/0006 already aligned)
+- 9 ADRs now Accepted: 0001 / 0002 / 0003 / 0004 / 0005 / 0006 / 0008 / 0010 / 0011
+- **Must-have ADR set COMPLETE**
+- Verdict: COMPLETE
+- Stories unblocked: Currency grant + Skin (VS+) + Daily Quest (VS+) + Shop (Alpha+) all satisfy `/story-readiness` Accepted-gate for ADR-0011 references
+
+## Session Extract — ADR-0005 Status Flip 2026-04-26
+- Action: ADR-0005 MSM/RL Split `Proposed` → `Accepted`
+- Surgical Status header edit + Date field bump
+- No GDD amendment needed (RL+MSM GDDs already aligned)
+- 7 ADRs now Accepted: 0001 / 0002 / 0003 / 0004 / 0005 / 0006 / 0008
+- Verdict: COMPLETE
+
+## Session Extract — ADR-0010 Server-Authoritative Validation Policy 2026-04-26
+- Status: Proposed
+- File: docs/architecture/adr-0010-server-authoritative-validation-policy.md
+- Closes ~10 gap TRs (Absorb / Chest 6-guard pipeline / CCR PairEntered+peel / Relic draft-pick validation / MSM AFKToggle)
+- Decisions: 4-check guard pattern (identity/state/parameters/rate); reliable-vs-unreliable selection table; payload budgets (<4 KB target, 16 KB cap); identity model (engine player only); server-time authority; per-player rate limits via RateLimitConfig; silent-rejection model; shared RemoteValidator module; PenTest playbook; T9 chain extended with resetForRound
+- Alternatives rejected: per-handler ad-hoc / runtime crypto signing / wrapper auto-validate / typed RemoteEvent schema
+- Registry: +1 interface (remote_validator) + 6 new forbidden_patterns
+- TD-ADR + engine specialist skipped (lean mode)
+- No GDD amendment needed (chest GDD 6-guard already aligned with state-rule expansion; MSM/Absorb/CCR/Relic GDD validation rules consistent with 4-check structure)
+- Verdict: ready for Proposed → Accepted (no remaining dependencies)
+
+## Session Extract — ADR-0005 MSM/RL Split 2026-04-26
+- Status: Proposed
+- File: docs/architecture/adr-0005-msm-roundlifecycle-split.md
+- Closes ~35 gap TRs (msm: 12 + round-lifecycle: 11 + cross-system: 12)
+- Decisions: module split disjoint; MSM-only-caller of RL; T9/Result ordering invariants; InternalPlacement strip; CountChanged subscriber matrix; MIN_PLAYERS_TO_START; spectator contract; BindToClose 30s no-grant
+- Alternatives rejected: combine modules; RL owns Phase 6/7; per-state submodule; post-broadcast grant
+- Registry: +2 interfaces + 4 new forbidden_patterns + 1 cross-ADR pattern (msm_or_rl_calls_csm_mutator extends ADR-0004)
+- No GDD amendment needed (RL GDD + MSM GDD already aligned)
+- TD-ADR + engine specialist skipped (lean mode)
+- Verdict: ready for Proposed → Accepted (no remaining dependencies)
+
+## Session Extract — ADR-0008 Status Flip 2026-04-26
+- Action: ADR-0008 NPC Spawner Authority `Proposed` → `Accepted`
+- Rationale: GDD sync via /propagate-design-change cleared the only outstanding amendment dependency (NPC Spawner GDD R5 ServerTickAccumulator stale text)
+- Status header rewritten: Proposed line + GDD-sync line + final ACCEPTED line
+- Date field updated: "2026-04-26 (initial Proposed + GDD sync + Accepted, all same day)"
+- Cross-doc: design/gdd/npc-spawner.md L243 §Dependencies row updated "Proposed 2026-04-26" → "Accepted 2026-04-26"
+- Stories unblocked: NPCSpawner + AbsorbSystem implementation now satisfies `/story-readiness` Accepted-gate for ADR-0008 references
+- 6 ADRs now Accepted: 0001 / 0002 / 0003 / 0004 / 0006 / 0008
+- Verdict: COMPLETE
+
+## Session Extract — ADR-0008 NPC Spawner Authority 2026-04-26
+- Status: Proposed (closes C2 from /architecture-review 2026-04-26)
+- File: docs/architecture/adr-0008-npc-spawner-authority.md
+- Decisions locked: pool 300 anchored Parts; NpcStateBroadcast UREvent (8 B/NPC delta @ 15 Hz, per-relevance filter); NpcPoolBootstrap reliable; own Heartbeat:Connect (non-gameplay-tick exemption); CSM read-only consumer; AbsorbSystem-only reclaim()/getAllActiveNPCs(); ARENA_WALKABLE_AREA_SQ assert at boot
+- Bandwidth: 3.0 KB/s/client allocation; ADR-0003 §Network table amended (Reserve 2.75→0; Sum 10.25 KB/s nominal; absorbed by burst_allowance)
+- Registry: +3 forbidden_patterns (native_part_replication_for_npcs, npc_spawner_writes_csm, npc_instance_new_mid_round) + 2 interfaces (npc_state_broadcast, npc_pool_authority) + 1 performance_budget (npc-state-broadcast 3.0 KB/s); csm_write_api referenced_by + revised
+- Alternatives rejected: Phase 0 in TickOrchestrator (ADR-0002 already excluded); native Part replication (unbounded bandwidth); per-NPC RemoteEvents (overhead); CSM-embedded NPC state (Pillar 4 violation)
+- C2 status: 🔴 → ✅ (resolved pending Accept)
+- D-graph: 0001/0002/0003/0004/0006 → 0008 (depends on all 5 must-haves)
+
+## Session Extract — /propagate-design-change npc-cadence 2026-04-26
+- Anchor: `design/gdd/npc-spawner.md`; trigger: ADR-0008 cadence lock
+- 6 GDD edits: status header + R5 + §Interactions L70 + §Dependencies L243 + AC-05 + §DI requirements (Accumulator → RunServiceShim)
+- Live ServerTickAccumulator refs after pass: 0; historical context refs: 2 (preserved with "stale terminology / replaces prior" framing)
+- ADRs affected: only ADR-0008 (Proposed, drove sync) — 0001/0002/0003/0004/0006 ✅ Still Valid
+- Change-impact doc: docs/architecture/change-impact-2026-04-26-npc-cadence.md
+- Verdict: COMPLETE
+- ADR-0008 status: ready for Proposed → Accepted (no remaining amendment dependencies)
+
+## Session Extract — /architecture-review 2026-04-26
+- Verdict: CONCERNS
+- Requirements: 286 total — 95 covered, 60 partial, 131 gaps
+- New TR-IDs registered: 286 (full first-pass population; registry was empty placeholder)
+- GDD revision flags: None
+- Top ADR gaps: ADR-0005 MSM/RL Split (~35 TRs), ADR-0007 Client Rendering (~22 TRs), ADR-0008 NPC Spawner (~14 TRs + C2)
+- Report: docs/architecture/architecture-review-2026-04-26.md
+
+## Session Extract — /propagate-design-change rig-defer 2026-04-26
+- Anchor: ADR-0001 amend C1 (rig spec → FE GDD §C.1)
+- 7 sync edits across 4 files: systems-index.md L130 + art-bible.md L59/L148/§8.6 + architecture.md L130/L896 + registry/architecture.yaml L530
+- 2 housekeeping edits in ADR-0001 (Status header + GDD Reqs row): "pending sync" → "COMPLETE 2026-04-26"
+- Live "4-6-part" refs after pass: 0 (historical context refs preserved with explicit "reduced from earlier" framing)
+- Change-impact doc: docs/architecture/change-impact-2026-04-26-rig-defer.md
+- ADRs affected: only ADR-0001 (already amended) — 0002/0003/0004/0006 ✅ Still Valid
+- Verdict: COMPLETE
+- ADR-0001 status: ready for Proposed → Accepted (no remaining blockers)
+
+## Session Extract — ADR-0001 Status Flip 2026-04-26
+- Action: ADR-0001 Crowd Replication Strategy `Proposed` → `Accepted`
+- Rationale: `/architecture-review` 2026-04-26 verdict CONCERNS, but ADR-0001 specifically had no blocking issues post-C1-amend + downstream sync
+- Status header rewritten: status-history list (5 amendments) + final ACCEPTED line
+- Date field updated: "2026-04-20 (initial), 2026-04-24 (Batch 1/3 amendments), 2026-04-26 (C1 amend + Accepted)"
+- Registry: no edit (registry references ADR via path, no per-ADR status field)
+- Stories: now unblocked for ADR-0001 references per `/story-readiness` Accepted-status check
+- Verdict: COMPLETE
+
+## Session Extract — Batch ADR Flip + D1 Fix 2026-04-26
+- Action: ADR-0002/0003/0004/0006 batch `Proposed` → `Accepted`
+- ADR-0002 TickOrchestrator: clean flip, no edits beyond Status header
+- ADR-0003 Performance Budget: clean flip + status note "Pending amendment expected: NPC replication line item when ADR-0008 lands (closes C2)"
+- ADR-0004 CSM Authority: D1 fix applied — L102 §Module Placement Firewall heading "(depends on ADR-0006 codification)" → "(codified by ADR-0006 §Source Tree Map)"; L115 narrative "ADR-0006 will codify the no-upward-import rule for completeness" → "ADR-0006 §Layer Hierarchy + No-Upward-Import Rule codifies this for the project at large; ADR-0004 simply applies the rule to CSM specifically"; formal Depends On table (0001/0002/0003) unchanged → no cycle
+- ADR-0006 Module Placement: clean flip + status note "Selene custom rules (L3) remain deferred to Production-phase task"
+- Must-have ADR set ALL Accepted: 0001/0002/0003/0004/0006
+- Verdict: COMPLETE
+- D-graph remains acyclic: 0001 → 0002 → 0003 → 0004 → 0006 (linear)
+- C2 conflict still open (ADR-0008 NOT YET WRITTEN); D2/D3 drifts not yet addressed (defer to next session pass)
 <!-- /STATUS -->

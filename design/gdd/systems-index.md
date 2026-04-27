@@ -127,7 +127,7 @@ Narrative category omitted — Crowdsmith has no story (concept pillar decision)
 ### Feature Layer — Gameplay (depends on Core)
 
 1. **NPC Spawner** — depends on AssetId Registry; produces neutral targets
-2. **Follower Entity** — depends on AssetId Registry + Crowd State Manager; custom 4-6-part CFrame rig, NO Humanoid
+2. **Follower Entity** — depends on AssetId Registry + Crowd State Manager; custom non-Humanoid CFrame rig (2-Part Body+Hat per FE GDD §C.1)
 3. **Follower LOD Manager** — depends on Follower Entity; client-side distance-tier swap every 0.1s
 4. **Absorb System** — depends on Follower Entity + NPC Spawner + Crowd State Manager; magnetic-snap recruitment
 5. **Crowd Collision Resolution** — depends on Crowd State Manager + Follower Entity; larger consumes smaller

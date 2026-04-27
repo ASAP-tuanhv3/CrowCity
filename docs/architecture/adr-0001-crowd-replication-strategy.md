@@ -2,11 +2,19 @@
 
 ## Status
 
-Proposed (amended 2026-04-24 per design/gdd/crowd-replication-strategy.md — payload tick+state fields, buffer mandate, late-join gap acknowledged; amended 2026-04-24 per design/gdd/crowd-state-manager.md Batch 1 — Key Interfaces refreshed: `radiusMultiplier` + `state`/`tick`/`stillOverlapping`/`timer_start` fields, `recomputeRadius`/`getAllActive`/`getAllCrowdPositions`/`setStillOverlapping` APIs, 5 named reliable events replacing `GameplayEvent` discriminator; amended 2026-04-24 Batch 3 — architecture diagram tier 2 cap corrected from "4 rendered" to "1 billboard impostor per crowd" per Follower LOD Manager sole-owner declaration)
+**Accepted 2026-04-26** (validated by `/architecture-review` 2026-04-26 — verdict CONCERNS; ADR-0001 specifically had no blocking issues post-C1 amendment + downstream sync; stories may now reference this ADR per `/story-readiness`).
+
+Status history:
+- 2026-04-20 — Proposed (initial)
+- 2026-04-24 — amended per design/gdd/crowd-replication-strategy.md: payload tick+state fields, buffer mandate, late-join gap acknowledged
+- 2026-04-24 — amended per design/gdd/crowd-state-manager.md Batch 1: Key Interfaces refreshed (`radiusMultiplier` + `state`/`tick`/`stillOverlapping`/`timer_start` fields, `recomputeRadius`/`getAllActive`/`getAllCrowdPositions`/`setStillOverlapping` APIs, 5 named reliable events replacing `GameplayEvent` discriminator)
+- 2026-04-24 Batch 3 — amended: architecture diagram tier 2 cap corrected from "4 rendered" to "1 billboard impostor per crowd" per Follower LOD Manager sole-owner declaration
+- 2026-04-26 — amended per `/architecture-review` C1: follower rig spec deferred to design/gdd/follower-entity.md §C.1 as sole owner; ADR-0001 references "non-Humanoid CFrame rig" without part-count claim. Downstream stale-text sync COMPLETE via `/propagate-design-change` (7 edits across systems-index.md L130 + art-bible.md L59 + L148 + L337-§8.6 + architecture.md L130 + L896 + registry/architecture.yaml L530; see `docs/architecture/change-impact-2026-04-26-rig-defer.md`)
+- **2026-04-26 — ACCEPTED**
 
 ## Date
 
-2026-04-20 (initial), 2026-04-24 (amendment)
+2026-04-20 (initial), 2026-04-24 (Batch 1/3 amendments), 2026-04-26 (C1 amend + Accepted)
 
 ## Engine Compatibility
 
@@ -54,7 +62,7 @@ Crowdsmith gameplay requires 8-12 players per server, each commanding 100-300 fo
 
 ## Decision
 
-**Server tracks per-player crowd aggregate state only. Individual follower positions are purely client-side visual decoration. Rendered follower count is decoupled from gameplay follower count via distance-based render caps. Followers use a custom 4-6-part CFrame rig (no Humanoid). Client-side boids flocking drives visual motion. LOD swap occurs in three tiers. All broadcasts use `UnreliableRemoteEvent` at 15 Hz.**
+**Server tracks per-player crowd aggregate state only. Individual follower positions are purely client-side visual decoration. Rendered follower count is decoupled from gameplay follower count via distance-based render caps. Followers use a custom non-Humanoid CFrame rig (rig part count + composition owned by `design/gdd/follower-entity.md` §C.1 — currently 2-Part Body + Hat MeshPart with WeldConstraint; ADR-0001 does not constrain rig topology). Client-side boids flocking drives visual motion. LOD swap occurs in three tiers. All broadcasts use `UnreliableRemoteEvent` at 15 Hz.**
 
 ### Architecture Diagram
 
@@ -239,7 +247,7 @@ Full report: `prototypes/crowd-sync/REPORT.md`. Mobile and multi-client tests de
 | game-concept.md | Pillar 3 (5-Min Clean Rounds) — no persistent power | Follower identity is cosmetic only; no individual follower state persists |
 | game-concept.md | Pillar 4 (Cosmetic Expression) — skin applies to whole crowd | Client-side rendering means skin swap is a single material update per crowd, not 300 per-entity updates |
 | art-bible.md §5 (LOD Tiers) | 3-tier LOD: 0-20m full / 20-40m simple / 40-100m billboard / cull >100m | ADR specifies exact same tiers + 0.1s client re-check cadence |
-| art-bible.md §8.5 (Rigging Standards) | Followers use custom 4-6-part CFrame rig, NO Humanoid | Incorporated as normative — no Humanoid on any follower |
+| art-bible.md §8.6 (Rigging Standards) | Followers use custom non-Humanoid CFrame rig | NO-Humanoid rule incorporated as normative; rig part-count + composition owned by Follower Entity GDD §C.1 (2-Part Body + Hat MeshPart with WeldConstraint). art-bible.md §8.6 + L59 + L148 synced 2026-04-26 via `/propagate-design-change` |
 | systems-index.md | Crowd Replication Strategy (high-risk system) | This ADR IS that system's formal architecture |
 | design/gdd/crowd-replication-strategy.md Rule 6 | Out-of-order broadcast defense | Added `tick: uint16` counter to payload (amended 2026-04-24) |
 | design/gdd/crowd-replication-strategy.md Rule 9 + Rule 13 | `state: uint8 enum` in broadcast payload incl. Eliminated | Added `state` field to payload; eliminated crowds broadcast until `destroyAll` (amended 2026-04-24) |
