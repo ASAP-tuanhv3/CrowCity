@@ -1,9 +1,18 @@
 # Crowdsmith — Art Bible
 
 *Created: 2026-04-20*
-*Status: Draft*
+*Status: **APPROVED** (AD-ART-BIBLE 2026-04-27)*
 
-> **Art Director Sign-Off (AD-ART-BIBLE)**: SKIPPED — Lean review mode.
+> **Art Director Sign-Off (AD-ART-BIBLE)**: **APPROVED 2026-04-27** (Sprint 1 Design-Lock).
+>
+> Visual identity is locked at the document's 9 sections. Cel-shaded silhouette discipline (§8.4) holds across follower / NPC / player avatar profiles authored 2026-04-27 in `design/characters/`. Neon-permit policy (§8.4) reconciled with `design/accessibility-requirements.md` Standard-tier photosensitivity reduction toggle — all Pillar 1 VFX (`MaxCrowdFlash`, `AbsorbSnap`, `ChestOpenT2Confetti`) carry mitigation paths. AssetId registry (Foundation epic) reserves all 38 slots with budgets defined in `design/art/asset-specs.md` per category.
+>
+> Open issues at sign-off (none blocking the Pre-Production → Production gate from art-direction perspective; all are Sprint 1/Sprint 2 actionable):
+> - Pattern-overlay encoding implementation (`design/art/asset-specs.md` OQ-4) — texture-baked vs runtime decal vs `SurfaceAppearance.ColorMap` swap. Required by `design/accessibility-requirements.md` Standard-elevated tier. Decision before Sprint 2 art production lock.
+> - Source-file storage workflow (`design/art/asset-specs.md` OQ-2) — Git LFS / external bucket / committed binaries. Decision needed before Sprint 1 close to enable artist onboarding.
+> - Final hue-palette RGB ratification (`design/characters/follower.md` §4) — current 8-color values are placeholders pending art-director final pass.
+>
+> Sign-off rationale: art-director gate-check verdict 2026-04-27 was CONCERNS, with all blockers identified as Sprint 1 actionable items. This session shipped the Sprint 1 deliverables (`design/accessibility-requirements.md`, three character profiles, asset-specs aggregate). Remaining gate-block from art-direction perspective is the Vertical Slice build itself (Sprint 2). Visual identity is no longer a blocker.
 
 ## Visual Identity Anchor (source: `design/gdd/game-concept.md`)
 
