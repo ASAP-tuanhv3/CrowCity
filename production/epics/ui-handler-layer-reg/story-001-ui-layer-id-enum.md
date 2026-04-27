@@ -1,11 +1,12 @@
 # Story 001: UILayerId enum + UILayerType mapping
 
 > **Epic**: ui-handler-layer-reg
-> **Status**: Ready
+> **Status**: Complete
 > **Layer**: Foundation
 > **Type**: Logic
 > **Manifest Version**: 2026-04-27
 > **Estimate**: 2–3 hours (enum + UILayerType mapping)
+> **Completed**: 2026-04-27
 
 ## Context
 
@@ -126,3 +127,29 @@ return UILayerTypeByLayerId
 
 - Depends on: None (Foundation; first story for this epic)
 - Unlocks: Story 002 (boot-time registration consumes the enum); HUD epic; RelicDraft modal epic; MainMenu + PauseMenu UX-spec-driven epics
+
+---
+
+## Completion Notes
+
+**Completed**: 2026-04-27
+**Criteria**: 7/7 passing
+**Deviations**:
+- ADVISORY: AC-6 wording specified `export type UILayerIdValue = string`. Implementation uses `export type EnumType = "HUD" | "RelicDraft" | ...` (string-union) per Implementation Notes "Match the existing pattern exactly — do not introduce a new style". Template precedent (`UILayerType.luau`, `ZoneIdTag.luau`, existing `UILayerId.luau`) all use `EnumType` string-union. String-union is strictly stronger typing than `string` alias — gives consumers compile-time narrowing on assignment.
+- ADVISORY: AC-3 was a no-op verification — `UILayerType.luau` already exports `HeadsUpDisplay` + `Menu` per template. Documented but no edit required.
+
+**Test Evidence**: Logic story — unit test at `tests/unit/ui-handler/layer-id-enum_test.luau` (10 test functions across 4 describe blocks; AC-6 + AC-7 marked ADVISORY proxies — type-export + `--!strict` directive are compile-time gates, not TestEZ-runtime-introspectable).
+**Code Review**: Skipped — Lean mode
+**Gates**: QL-TEST-COVERAGE + LP-CODE-REVIEW skipped — Lean mode
+
+**Files**:
+- `src/ReplicatedStorage/Source/SharedConstants/UILayerId.luau` (32 L) — added `HUD`, `RelicDraft`, `MainMenu`, `PauseMenu` to `EnumType` union + table; preserved 3 pre-existing template entries (`DataErrorNotice`, `ExampleHud`, `ResetDataButton`)
+- `src/ReplicatedStorage/Source/SharedConstants/UILayerTypeByLayerId.luau` (NEW, 27 L) — separate-mapping module per template precedent (`UILayerIdByZoneId.luau` pattern); 4 entries: `HUD → HeadsUpDisplay`, `RelicDraft → Menu`, `MainMenu → Menu`, `PauseMenu → Menu`
+- `src/ReplicatedStorage/Source/SharedConstants/UILayerType.luau` — verified unchanged (already has both required types)
+- `tests/unit/ui-handler/layer-id-enum_test.luau` (NEW, 105 L, 10 test fns)
+
+**Manifest Version**: 2026-04-27 (current ✓ no staleness)
+
+**Audit gate verification**: `bash tools/audit-asset-ids.sh` → exit 0 (no asset-id leak introduced).
+
+**Unblocks**: Story 002 (boot-time registration scaffold consumes `UILayerTypeByLayerId`).

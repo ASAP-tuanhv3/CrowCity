@@ -1,11 +1,11 @@
 # Story 002: Boot-time layer registration scaffold (no-op setup stubs)
 
 > **Epic**: ui-handler-layer-reg
-> **Status**: Ready
+> **Status**: Obsolete (2026-04-27 — closed unimplemented per architectural review)
 > **Layer**: Foundation
 > **Type**: Integration
 > **Manifest Version**: 2026-04-27
-> **Estimate**: 2–3 hours (boot-time registration, no-op stubs)
+> **Estimate**: ~~2–3 hours~~ (closed — see Closure Note)
 
 ## Context
 
@@ -139,3 +139,42 @@
 
 - Depends on: Story 001 (UILayerId enum + UILayerType mapping must exist)
 - Unlocks: HUD epic (consumer replaces no-op stub for `UILayerId.HUD`); RelicDraft modal epic (replaces stub for `UILayerId.RelicDraft`); MainMenu + PauseMenu epics (UX-spec-driven; replace remaining stubs)
+
+---
+
+## Closure Note (2026-04-27 — Obsolete, Unimplemented)
+
+**Decision**: Story closed without implementation. Premise contradicts shipped UIHandler architecture.
+
+**Discovered during /dev-story spec inspection**: This story's Implementation Notes (L53) and ACs assume a callback-based `UIHandler.registerLayer(id, type, setupCB, teardownCB)` API plus `openLayer` / `closeLayer` methods (AC-5 through AC-8). The shipped API is structurally different:
+
+```luau
+-- Actual src/ReplicatedStorage/Source/UI/UIHandler.luau:35
+function UIHandler.registerLayer(
+    layerId: UILayerId.EnumType,
+    layerType: UILayerType.EnumType,
+    layerClassInstance: any
+): Signal.ClassType  -- returns visibilityChangedSignal
+```
+
+- 3 args (not 4) — no `setup` / `teardown` callback parameters
+- Returns a `visibilityChangedSignal` consumers connect to
+- Show/hide API is `UIHandler.show(id)` / `UIHandler.hide(id)` — `openLayer` / `closeLayer` do not exist
+
+**Template idiom (per `UIExampleHud.luau:53-59`)**: Each UI layer self-registers from inside its own `setup(parent)` function. Each layer module calls `UIHandler.registerLayer(LAYER_ID, type, self)`, captures the returned signal, and connects its own visibility logic to that signal. Registration is layer-driven, not centrally scaffolded.
+
+**Why this story doesn't ship**:
+1. Boot-time central registration with stub callbacks has no place in the actual API surface — there are no callback parameters to stub.
+2. Even if implemented as `registerLayer(id, type, {})` with empty class instances, the stub registrations would be replaced 1:1 the moment each consumer Presentation epic (HUD, RelicDraft, MainMenu, PauseMenu) ships its real layer module. The work is dead-code-on-arrival.
+3. The Foundation contract this story was meant to provide — "UI layers can be discovered + opened by ID at runtime" — is already satisfied by story 001's `UILayerId` enum + `UILayerTypeByLayerId` mapping. UIHandler's existing layer registry serves the rest.
+
+**Foundation deliverable preserved**: Story 001 (UILayerId enum + UILayerType mapping + UILayerTypeByLayerId) ships the Foundation infrastructure consumer epics need. ui-handler-layer-reg epic re-scoped to **1/1** effective (story 001 only).
+
+**Future work**: Consumer Presentation epics own their own registrations:
+- HUD Presentation epic — registers `UILayerId.HUD` from its own layer module
+- RelicDraft modal epic — registers `UILayerId.RelicDraft` from its own layer module
+- MainMenu / PauseMenu epics (UX-spec-driven) — same self-registration pattern
+
+Each consumer epic's first story should pattern-match `UIExampleHud.luau` exactly.
+
+**No code shipped. No artifacts created.** This story is preserved as documentation of the architectural review that closed it.
