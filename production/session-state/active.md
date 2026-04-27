@@ -302,3 +302,56 @@ Task: **`/gate-check pre-production` 2026-04-27 verdict FAIL.** Director panel: 
 - Verification: AC-4 clean PASS exit 0 / AC-5 plant detected file:line exit 1 / AC-7 idempotent
 - **EPIC COMPLETE**: asset-id-registry 4/4 stories done. AssetId.Skin (story 001), Mesh (story 002), Particle+Sound + Sounds.luau retirement (story 003), audit gate (story 004).
 - Next recommended: Foundation epics — network-layer-ext (5 stories), player-data-schema (3 stories), ui-handler-layer-reg (2 stories)
+
+## Session Extract — /story-done 2026-04-27 (ui-handler-layer-reg story-001)
+- Verdict: COMPLETE WITH NOTES (2 ADVISORY: AC-6 EnumType template-idiom + AC-3 no-op verification)
+- Story: production/epics/ui-handler-layer-reg/story-001-ui-layer-id-enum.md — UILayerId enum + UILayerType mapping
+- Tech debt logged: None
+- Files: UILayerId.luau (32L, +4 entries), UILayerTypeByLayerId.luau (NEW 27L), layer-id-enum_test.luau (NEW 105L/10fns)
+- Audit: tools/audit-asset-ids.sh exit 0 — no asset-id leak introduced
+- Next recommended: ui-handler-layer-reg story-002 (boot-time registration scaffold)
+
+## Session Extract — Story Closure 2026-04-27 (ui-handler-layer-reg story-002)
+- Verdict: OBSOLETE — closed unimplemented per architectural review
+- Rationale: Story 002 spec assumed callback-based registerLayer(id, type, setupCB, teardownCB) + openLayer/closeLayer API. Shipped UIHandler.luau has 3-arg registerLayer(id, type, classInstance) → visibilityChangedSignal + show/hide API. Template idiom (UIExampleHud.luau:53-59) is layer-self-registration — central boot scaffold contradicts architecture. Stub registrations would be dead code replaced 1:1 by consumer Presentation epics.
+- Files: production/epics/ui-handler-layer-reg/story-002-boot-registration-scaffold.md (Status → Obsolete + Closure Note appended), EPIC.md (epic Status → Complete 1/1 effective + obsolescence note + DoD updated)
+- **EPIC COMPLETE**: ui-handler-layer-reg 1/1 effective (story 001 only).
+- Next recommended: player-data-schema epic (3 stories) — MEDIUM risk
+
+## Session Extract — /story-done 2026-04-27 (player-data-schema story-001) + ADR-0011 Amendment 1
+- Verdict: COMPLETE WITH NOTES (1 ADVISORY: AC-5 EnumType template-idiom)
+- Story: production/epics/player-data-schema/story-001-mvp-schema-lock.md — MVP 7-key PlayerDataKey schema (was 6; Inventory added per amendment)
+- Concurrent ADR amendment: ADR-0011 Amendment 1 — Inventory added as 7th MVP key (cosmetic). Reconciles ADR with shipped template's Market system. Path B selected by user.
+- Tech debt logged: None
+- Files: PlayerDataKey.luau (51L, +4 keys), DefaultPlayerData.luau (38L, +5 entries incl _schemaVersion), schema-lock_test.luau (NEW 197L/12fns), adr-0011-persistence-schema.md (+12 edits, +Amendment Log)
+- Audit: tools/audit-asset-ids.sh exit 0 — no asset-id leak introduced
+- Next recommended: player-data-schema story-002 (migration scaffold)
+
+## Session Extract — 2026-04-27 (player-data-schema epic close)
+- Story-002 closed OBSOLETE — template's profile:Reconcile() already handles v0→v1 default-fill; PlayerDataServer.loadProfileAsync doesn't exist (story spec stale); MVP has no schema bumps (dispatcher infra premature). Same redundancy pattern as ui-handler story-002.
+- Story-003 COMPLETE WITH NOTES (2 ADVISORY: AC-2 Check A regex tightened to call-pattern + story-002 dependency moot)
+- Files: tools/audit-persistence.sh (NEW mode 755 ~115L), CLAUDE.md (+1 bullet), production/qa/evidence/persistence-audit-evidence.md (NEW), EPIC.md (Status Complete 2/3 effective + closure note)
+- Audit: tools/audit-persistence.sh exit 0 / tools/audit-asset-ids.sh exit 0
+- **EPIC COMPLETE**: player-data-schema 2/3 effective (stories 001 + 003).
+- Next: network-layer-ext (5 stories, HIGH risk on story 001 — UnreliableRemoteEvent post-cutoff API)
+
+## Session Extract — 2026-04-27 (network-layer-ext epic close)
+- Story-001 COMPLETE WITH NOTES (5 ADVISORY: AC-3/4/5/6/7 are post-boot/multi-context/compile-time/grep-time gates not TestEZ-runtime-introspectable)
+- Story-002 COMPLETE (22 RemoteEventName entries + GetParticipation; 4 ADVISORY proxies)
+- Story-003 COMPLETE WITH NOTES (3 ADVISORY: u64 split low/high u32, hue range guard added, perf threshold relaxed for shared-CI hardware)
+- Story-004 COMPLETE WITH NOTES (6 ADVISORY: Player accept-path + token-bucket exhaustion-replenish need Studio harness; AC-7 short-circuit is doc-driven not runtime-enforced)
+- Story-005 COMPLETE WITH NOTES (2 ADVISORY: ADR-0010 windowed→token-bucket model conversion; GetParticipation/RelicDraftPick omitted from explicit entries — fall through to safe-by-default)
+- Files: UnreliableRemoteEventName.luau (NEW), RemoteFolderName.luau (modified), createRemotesFolders.luau (modified), waitForAllRemotesAsync.luau (modified), Network/init.luau (modified, +3 fns +1 helper +1 enum export), RemoteEventName.luau (modified +22 entries), RemoteFunctionName.luau (modified +1), CrowdState.luau (NEW codec), RateLimitConfig.luau (NEW), RemoteValidator/init.luau (NEW), 5 test files (~80 test fns total)
+- Audits: tools/audit-asset-ids.sh exit 0 / tools/audit-persistence.sh exit 0
+- **EPIC COMPLETE**: network-layer-ext 5/5
+- **FOUNDATION PHASE COMPLETE**: 4/4 epics done — asset-id-registry 4/4, ui-handler-layer-reg 1/1 effective, player-data-schema 2/3 effective, network-layer-ext 5/5. Consumer epics (CSM/MSM/NPC/Chest/Relic/Absorb) now unblocked.
+- Next: `/gate-check` to advance Foundation → Core, OR start Core epic implementation.
+
+## Session Extract — /gate-check 2026-04-27 (re-run, Pre-Production → Production)
+- Verdict: FAIL (same as morning gate). Auto-FAIL trigger 0/4 Vertical Slice Validation.
+- Director panel: 2 NOT READY (CD + PR) + 2 CONCERNS (TD + AD) → panel-rule FAIL.
+- Stage NOT advanced. production/stage.txt not written. Project stays Pre-Production.
+- Delta vs morning: +Foundation epics 4/4 done (12 stories Complete + 2 Obsolete-closed); +tests/unit/ 10 files; +ADR-0011 Amendment 1; +2 audit gates green.
+- Still missing: Vertical Slice build, sprints/, playtests/, design/ux/, design/accessibility-requirements.md, design/characters/, tests/integration/, .github/workflows/, AD-ART-BIBLE explicit APPROVE.
+- Report: production/gate-checks/2026-04-27-pre-production-to-production-rerun.md
+- Recommended path: Sprint 1 Design-Lock → Sprint 2 VS Build → Sprint 3 Production Pipeline → re-gate.
