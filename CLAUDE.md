@@ -47,6 +47,7 @@ See `docs/COLLABORATIVE-DESIGN-PRINCIPLE.md` for full protocol and examples.
 - **Linting**: Selene (`selene src/`)
 - **Packages**: Wally (`wally install` → installs to `Packages/`)
 - **Testing**: Manual verification in Roblox Studio via `rojo serve` (no automated CI tests)
+- **Asset-ID audit**: `bash tools/audit-asset-ids.sh` — fails with exit 1 if any `rbxassetid://N` magic string lives in a `.luau` module outside `SharedConstants/AssetId.luau` (ADR-0006 §Verification Required A). Run before every commit that touches asset references.
 
 ## Engine Version Reference
 
