@@ -1,11 +1,11 @@
 # Story 002: Schema migration handler scaffold + OnProfileVersionUpgrade wiring
 
 > **Epic**: player-data-schema
-> **Status**: Ready
+> **Status**: Obsolete (2026-04-27 — closed unimplemented per architectural review)
 > **Layer**: Foundation
 > **Type**: Logic
 > **Manifest Version**: 2026-04-27
-> **Estimate**: 3–4 hours (migration scaffold, OnProfileVersionUpgrade wiring)
+> **Estimate**: ~~3–4 hours~~ (closed — see Closure Note)
 
 ## Context
 
@@ -124,5 +124,40 @@
 
 ## Dependencies
 
-- Depends on: Story 001 (MVP schema lock — `_schemaVersion = 1` baseline + 6-key default)
-- Unlocks: Story 003 (audit script verifies migration handler dir exists); future VS+ schema bump (single-handler addition); MSM Currency grant story (consumer)
+- Depends on: Story 001 (MVP schema lock — `_schemaVersion = 1` baseline + 7-key default per Amendment 1)
+- Unlocks: ~~Story 003 (audit script verifies migration handler dir exists)~~ — story 003 audit refactored to drop the migration-dir check; future VS+ schema bump (single-handler addition); MSM Currency grant story (consumer)
+
+---
+
+## Closure Note (2026-04-27 — Obsolete, Unimplemented)
+
+**Decision**: Story closed without implementation. Premise overlaps with shipped template behaviour and would produce dead-code-on-arrival.
+
+**Discovered during /dev-story spec inspection of `src/ServerStorage/Source/PlayerData/Server.luau`**:
+
+1. **Template already implements default-fill on load** — `Server.luau:198` calls `profile:Reconcile()` immediately after `_profileStore:StartSessionAsync(userId)`. ProfileStore's `Reconcile()` walks the default template (passed at `start(defaultValue)`) and fills any missing fields on the loaded profile. For a v0 legacy profile (no `_schemaVersion`, only `Coins`), Reconcile fills the 6 missing MVP keys + `_schemaVersion = 1` automatically. This is exactly what story 002 AC-7 round-trip test was specified to verify.
+
+2. **Story 002 spec referenced a non-existent function** — AC-4 says "wire `PlayerDataServer.loadProfileAsync`" but that function does not exist in the template. Actual entry point is `_onPlayerAddedAsync` (private, called via `safePlayerAdded`). Story spec also assumed `OnProfileVersionUpgrade` callback is wired; it is not — vendored ProfileStore exposes the API but the template's PlayerDataServer never registers a handler.
+
+3. **MVP ships at `_schemaVersion = 1` with no bumps** — Story 002 builds dispatcher infrastructure for a delta that does not occur in MVP. The first real schema bump (v1 → v2) lands when VS+ Daily Quest System lands; that's the appropriate time to add a `v1_to_v2.luau` handler + the dispatcher seam, with full context of what the v2 schema actually changes. Building a v0_to_v1 stub now means writing a no-op handler for a transition that ProfileStore's `Reconcile()` already handles correctly.
+
+4. **AC-7 spec was stale** — referenced "6 MVP keys" pre-Amendment 1; would have needed revision to 7 keys before any implementation.
+
+**Why this story doesn't ship**:
+- The Foundation contract this story was meant to provide — "legacy profiles upgrade cleanly to MVP v1 schema" — is already satisfied by template's `profile:Reconcile()` call. No additional code needed.
+- Building dispatcher + mock-ProfileStore round-trip test for a v0_to_v1 transition that ProfileStore handles natively is dead-code-on-arrival pattern (same architectural-redundancy reasoning that closed ui-handler-layer-reg story-002).
+- The seam this story would land — `migrations/init.luau` dispatcher + `OnProfileVersionUpgrade` registration — is appropriate to land in the FIRST story that actually bumps `_schemaVersion`. That's a VS+ epic concern (Daily Quest System story).
+
+**Foundation deliverable preserved**: Story 001 ships the v1 baseline schema; template's `profile:Reconcile()` ensures any future profile loads (including any pre-existing test profiles) reconcile against this baseline. player-data-schema epic re-scoped to **2/3 effective** (stories 001 + 003).
+
+**Future work**: When VS+ Daily Quest System lands, that epic's first story will:
+1. Bump `_schemaVersion` constant 1 → 2 in `DefaultPlayerData.luau` (or wherever it ends up)
+2. Add `src/ServerStorage/Source/PlayerData/migrations/v1_to_v2.luau` handler module
+3. Add a small dispatch hook to `Server.luau:_onPlayerAddedAsync` between `StartSessionAsync` and `Reconcile()` — read `profile.Data._schemaVersion`, run incremental handlers, then let Reconcile fill any remaining fields
+4. Migration round-trip test against the actual v1 → v2 delta
+
+That work is best done with concrete v2 schema requirements in hand, not against a hypothetical v0 → v1 stub.
+
+**No code shipped. No artifacts created.** Story preserved as documentation of the architectural review that closed it.
+
+**Consequence for story 003**: AC-2 of story 003 will reference the audit script's migration-dir check — that check is dropped; story 003 to be revised at /dev-story time.

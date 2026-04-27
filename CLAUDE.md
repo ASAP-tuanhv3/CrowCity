@@ -48,6 +48,7 @@ See `docs/COLLABORATIVE-DESIGN-PRINCIPLE.md` for full protocol and examples.
 - **Packages**: Wally (`wally install` → installs to `Packages/`)
 - **Testing**: Manual verification in Roblox Studio via `rojo serve` (no automated CI tests)
 - **Asset-ID audit**: `bash tools/audit-asset-ids.sh` — fails with exit 1 if any `rbxassetid://N` magic string lives in a `.luau` module outside `SharedConstants/AssetId.luau` (ADR-0006 §Verification Required A). Run before every commit that touches asset references.
+- **Persistence audit**: `bash tools/audit-persistence.sh` — fails with exit 1 if `DataStoreService` is called outside the vendored ProfileStore, OR if any Pillar 3 forbidden key class (round-scope state, gameplay-outcome modifiers) appears in `PlayerDataKey.luau` / `DefaultPlayerData.luau` (ADR-0011 §Verification Required A + B). Run before every commit that touches persistence layer.
 
 ## Engine Version Reference
 

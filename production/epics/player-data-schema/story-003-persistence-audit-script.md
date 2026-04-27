@@ -1,11 +1,12 @@
 # Story 003: Persistence audit script (DataStoreService + forbidden-keys grep)
 
 > **Epic**: player-data-schema
-> **Status**: Ready
+> **Status**: Complete
 > **Layer**: Foundation
 > **Type**: Config/Data
 > **Manifest Version**: 2026-04-27
 > **Estimate**: 1–2 hours
+> **Completed**: 2026-04-27
 
 ## Context
 
@@ -149,5 +150,40 @@ exit "$exit_code"
 
 ## Dependencies
 
-- Depends on: Story 001 (need clean schema for AC-5 baseline) + Story 002 (migration dir present so script doesn't false-flag)
+- Depends on: Story 001 (need clean schema for AC-5 baseline). ~~Story 002~~ (closed obsolete — audit does not reference migration dir; no impact).
 - Unlocks: `/test-setup` story that adds the script as a CI step; Pillar 3 / Pillar 4 audit at `/gate-check pre-production`
+
+---
+
+## Completion Notes
+
+**Completed**: 2026-04-27
+**Criteria**: 9/9 passing (verified end-to-end via smoke run + AC-6 + AC-7 synthetic plants + AC-9 byte-compare idempotency)
+
+**Deviations**:
+- ADVISORY: AC-2 Check A regex tightened from literal substring `"DataStoreService"` to call-pattern `:GetService\(["']DataStoreService["']\)`. Pre-existing template files (`PlayerData/Server.luau:73` + `PlayerData/Readme.luau:6`) reference the service name in explanatory comments not actual code; literal substring would false-positive on those. Tightening preserves the gate's purpose (catch real call sites) while skipping prose. AC-6 synthetic plant uses the call-pattern shape exactly, so failure mode is unchanged. Documented inline in script header + smoke evidence doc.
+- ADVISORY: Original AC dependency on story 002 ("migration dir present") is moot — story 002 closed obsolete; audit script never references migration dir. No AC impacted; recorded in evidence doc.
+
+**Test Evidence**: Config/Data story — smoke check pass at `production/qa/evidence/persistence-audit-evidence.md` (full run logs for AC-5 clean PASS + AC-6 DataStoreService plant FAIL + AC-7 RoundCount plant FAIL + AC-9 idempotency byte-compare).
+
+**Code Review**: Skipped — Lean mode
+**Gates**: QL-TEST-COVERAGE + LP-CODE-REVIEW skipped — Lean mode
+
+**Files**:
+- `tools/audit-persistence.sh` (NEW, ~115 L, mode 755) — POSIX bash with two checks (DataStoreService confinement, Pillar 3 forbidden-class scan); 10-pattern regex catalog inline + ADR-0011 §Pillar 3 cross-references in header comment block
+- `CLAUDE.md` (Technology Stack section) — added `Persistence audit` bullet alongside `Asset-ID audit` (both now part of pre-commit checklist)
+- `production/qa/evidence/persistence-audit-evidence.md` (NEW, smoke evidence — Config/Data story type required artifact)
+
+**Manifest Version**: 2026-04-27 (current ✓ no staleness).
+
+**Verification runs (recap)**:
+- AC-5 clean tree: `[OK] Persistence audit clean ...` — exit 0
+- AC-6 DataStoreService plant at `Network/init.luau:165`: detected, `[FAIL Check A]` — exit 1; reverted
+- AC-7 RoundCount plant in `PlayerDataKey.luau:43`: detected, `[FAIL Check B]` matched `round.*count` class — exit 1; reverted
+- AC-9 idempotency: byte-identical stdout + identical exit codes across 2 consecutive runs
+
+**Audit gate verification**: `bash tools/audit-asset-ids.sh` → exit 0 (no asset-id leak introduced).
+
+**Unblocks**: `/test-setup` epic (CI hookup); Pillar 3 / Pillar 4 audit at `/gate-check pre-production`.
+
+**Epic status**: player-data-schema **2/3 effective** (stories 001 + 003 Complete; story 002 closed obsolete). Foundation deliverable shipped.
