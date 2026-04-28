@@ -1,10 +1,10 @@
 # Active Session State
 
-*Last updated: 2026-04-22*
+*Last updated: 2026-04-28*
 
 ## Current Task
 
-Pre-production — Concept phase complete, moving into per-system GDD authoring.
+Production — Foundation epics Complete (4/4). Core layer epics Ready (5/5) with all 31 stories drafted. Next: `/story-readiness` + `/dev-story` for first story, OR `/sprint-plan` to sequence Sprint 2 Vertical Slice Build.
 
 ## Progress
 
@@ -355,3 +355,72 @@ Task: **`/gate-check pre-production` 2026-04-27 verdict FAIL.** Director panel: 
 - Still missing: Vertical Slice build, sprints/, playtests/, design/ux/, design/accessibility-requirements.md, design/characters/, tests/integration/, .github/workflows/, AD-ART-BIBLE explicit APPROVE.
 - Report: production/gate-checks/2026-04-27-pre-production-to-production-rerun.md
 - Recommended path: Sprint 1 Design-Lock → Sprint 2 VS Build → Sprint 3 Production Pipeline → re-gate.
+
+## Session Extract — Sprint 1 Design-Lock COMPLETE 2026-04-27 (afternoon)
+
+5/5 Sprint 1 deliverables shipped per gate-check minimal-path:
+- ✓ design/accessibility-requirements.md (271 L; Standard tier committed; photosensitivity + hue-pattern alternative encoding elevated above tier baseline)
+- ✓ design/ux/hud.md (992 L, 11 widgets, ux-designer-authored)
+- ✓ design/ux/main-menu.md (940 L, 8 widgets, ux-designer-authored)
+- ✓ design/ux/pause-menu.md (~430 L, 6 widgets, multiplayer-pause-impossibility expression)
+- ✓ design/characters/{index,follower,npc-neutral,player-avatar}.md (4 files, ~1100 L; rig structures, palettes, animation hooks, 17 open questions)
+- ✓ design/art/asset-specs.md (~280 L, all 38 AssetId slots with budgets)
+- ✓ design/art/art-bible.md AD-ART-BIBLE APPROVE 2026-04-27
+
+3 commits this Sprint 1 session:
+- af4a825 (accessibility + HUD)
+- 5b59a15 (main-menu + pause-menu)
+- 7ad9232 (characters + asset-specs + art-bible APPROVE)
+
+Plus prior session: ccd08f0 (ui-handler) + 2165659 (schema+ADR-0011-Amendment-1) + d5fbb5f (persistence audit) + 5c572ff (network-layer-ext epic) + 2c4e173 (gate-check FAIL re-run).
+
+Gate-check delta:
+- CD blockers resolved: hud.md + accessibility-requirements.md exist
+- AD blockers resolved: AD-ART-BIBLE APPROVE + characters profiles + asset-specs aggregate
+- TD + PR blockers PERSIST: Vertical Slice not built; sprint plan absent; tests/integration/ + .github/workflows/ missing
+
+Next per gate-check minimal path:
+- Sprint 2 — Vertical Slice Build (Core epic stories: CSM broadcastAll + MSM + Round-Lifecycle + Absorb basic + HUD count/timer; 3+ playtest sessions)
+- Sprint 3 — Production Pipeline (tests/integration/ + GitHub Actions CI + multi-client validation + sprint-0.md)
+- Re-run /gate-check after Sprint 2 + Sprint 3 complete.
+
+Recommended immediate next action: create Core epics OR /sprint-plan to sequence Sprint 2.
+
+---
+
+## 2026-04-27 — Core epics created (`/create-epics layer: core`, lean review)
+
+Layer: Core. 5/5 epic files written + index updated. PR-EPIC gate skipped (lean mode).
+
+Epics Ready (dependency order):
+1. **tick-orchestrator** — `production/epics/tick-orchestrator/EPIC.md`. Module: `ServerStorage/Source/TickOrchestrator/init.luau`. ADRs: 0002 (primary) + 0003 + 0006. Risk: MEDIUM (mobile Heartbeat jitter). TR: 17 indirect via consumer epics; no `tick-orchestrator` system slug (intentional — orchestrator is contract host).
+2. **crowd-state-server** — `production/epics/crowd-state-server/EPIC.md`. Module: `ServerStorage/Source/CrowdStateServer/init.luau`. ADRs: 0004 (primary) + 0001 + 0002 + 0006 + 0010 + 0011. Risk: HIGH (broadcast inside `broadcastAll`). TR: 24 (19 ✅ / 2 ⚠️ / 3 design-internal F-formulas).
+3. **match-state-server** — `production/epics/match-state-server/EPIC.md`. Module: `ServerStorage/Source/MatchStateServer/init.luau`. ADRs: 0005 (primary) + 0002 + 0010 + 0011 + 0006. Risk: MEDIUM. TR: 20/20 ✅ (ADR-0005 closes all prior gaps).
+4. **round-lifecycle** — `production/epics/round-lifecycle/EPIC.md`. Module: `ServerStorage/Source/RoundLifecycle/init.luau`. ADRs: 0005 (primary) + 0004 + 0003 + 0006. Risk: LOW. TR: 15 ✅ / 1 ⚠️ (perf reserve).
+5. **crowd-replication-broadcast** — `production/epics/crowd-replication-broadcast/EPIC.md`. Bi-layer module (server `broadcastAll` inside CSM + `CrowdStateClient` mirror in `ReplicatedStorage/Source/CrowdStateClient/init.luau`). ADRs: 0001 (primary) + 0003 + 0004. Risk: HIGH (UREvent + buffer post-cutoff). TR: 25 ✅ / 2 ⚠️ (TR-crs-021 cross-channel ordering, TR-crs-024 mid-round join blocked — both A1-noted).
+
+Layer coverage: Foundation 4/4 Complete. Core 5/5 Ready. Feature 0 (run after Core stories begin landing). Presentation 0.
+
+Recommended immediate next action: `/create-stories tick-orchestrator` (foundation of every Core tick phase).
+
+---
+
+## 2026-04-28 — Core stories drafted (autonomous /create-stories pass, lean review)
+
+All 5 Core epics decomposed into stories. 31 stories total. QL-STORY-READY gate skipped per lean review mode. `/create-stories` invoked per epic in dependency order.
+
+Stories per epic:
+- **tick-orchestrator** — 5 stories (story-001 cadence + start/stop, story-002 phase dispatch + pcall, story-003 boot wiring + 9 stubs, story-004 BindToClose, story-005 instrumentation hook)
+- **crowd-state-server** — 8 stories (story-001 skeleton + lifecycle + DC, story-002 updateCount + F5 clamp + signals, story-003 hue F6 + activeRelics cap, story-004 F1 radius + recomputeRadius, story-005 F2 position + nil HRP, story-006 Phase 5 evaluator + F7 grace + CrowdEliminated, story-007 read accessors + setStillOverlapping, story-008 Phase 8 broadcastAll + perf integration)
+- **match-state-server** — 8 stories (story-001 skeleton + 7-state enum + Lobby + Snap freeze, story-002 Lobby→Ready→Snap→Active driver, story-003 Phase 6 timerCheck + F4 tiebreak, story-004 Phase 7 elimConsumer + double-signal + T8, story-005 Result→Intermission T9 + grant-before-broadcast, story-006 T11 BindToClose, story-007 broadcasts + GetParticipation + AFK validation, story-008 perf evidence)
+- **round-lifecycle** — 5 stories (story-001 skeleton + Janitor + createAll/destroyAll, story-002 CountChanged + F1 peak tracking, story-003 Eliminated + DC freeze, story-004 setWinner + getPeakTimestamp, story-005 getPlacements F3 5-key sort + strip + perf)
+- **crowd-replication-broadcast** — 5 stories (story-001 client skeleton + tick_is_newer F4, story-002 broadcast subscriber + decode + stale + Eliminated terminal, story-003 reliable subscribers + 4 client signals, story-004 transport phase machine integration test, story-005 F1 bandwidth + static gates + perf deferred)
+
+Cross-epic contracts surfaced:
+- CSM `CrowdEliminatedServer` BindableEvent (server-only) is the parallel signal to client-facing reliable `CrowdEliminated` RemoteEvent — CSM story-006 fires both; MSM story-004 + RoundLifecycle story-003 subscribe to BindableEvent.
+- TickOrchestrator boot wiring uses 9 phase stubs in `ServerStorage/Source/_PhaseStubs/` — each replaced in-place via `_registerPhases` table edit when consuming epic ships its real `tick(tickCount, ctx)` callback. CSM story-008 replaces `CSMBroadcastAllStub.tick` w/ `CrowdStateServer.broadcastAll`; MSM story-003+story-004 replace `MSMTimerCheckStub.tick` + `MSMEliminationConsumerStub.tick`.
+- TickOrch story-004 BindToClose handler invokes `MatchStateServer.requestServerClosing()` AFTER `TickOrchestrator.stop()`; MSM story-006 owns the requestServerClosing implementation.
+- Foundation `network-layer-ext` story-003 buffer codec (already shipped) consumed by CSM story-008 (encode) + crowd-replication-broadcast story-002 (decode).
+- EPIC.md fix during story creation: tick-orchestrator EPIC's "Exception in any phase callback logs + halts current tick" wording was incorrect per ADR-0002 §Decision L185 (logs + continues remaining phases). Fixed in EPIC.md.
+
+Recommended next action: `/sprint-plan` to sequence Sprint 2 Vertical Slice Build OR `/story-readiness production/epics/tick-orchestrator/story-001-core-module-skeleton-cadence.md` to validate the first dependency-root story.
