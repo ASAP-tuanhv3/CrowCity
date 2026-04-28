@@ -1,0 +1,71 @@
+{
+  "name": "RobloxTemplate-Test",
+  "tree": {
+    "$className": "DataModel",
+    "Lighting": {
+      "$ignoreUnknownInstances": true,
+      "$path": "src/Lighting"
+    },
+    "MaterialService": {
+      "$ignoreUnknownInstances": true,
+      "$path": "src/MaterialService"
+    },
+    "ReplicatedFirst": {
+      "$ignoreUnknownInstances": true,
+      "$path": "src/ReplicatedFirst"
+    },
+    "ReplicatedStorage": {
+      "$ignoreUnknownInstances": true,
+      "$path": "src/ReplicatedStorage",
+      "Packages": {
+        "$path": "Packages"
+      }
+    },
+    "ServerScriptService": {
+      "$ignoreUnknownInstances": true,
+      "$path": "src/ServerScriptService",
+      "TestRunner": {
+        "$path": "tests/runner.server.luau"
+      }
+    },
+    "ServerStorage": {
+      "$ignoreUnknownInstances": true,
+      "$path": "src/ServerStorage",
+      "Tests": {
+        "$className": "Folder",
+        "unit": {
+          "$path": "tests/unit"
+        },
+        "integration": {
+          "$path": "tests/integration"
+        }
+      }
+    },
+    "SoundService": {
+      "$ignoreUnknownInstances": true,
+      "$path": "src/SoundService"
+    },
+    "StarterGui": {
+      "$ignoreUnknownInstances": true,
+      "$path": "src/StarterGui"
+    },
+    "StarterPack": {
+      "$ignoreUnknownInstances": false,
+      "$path": "src/StarterPack"
+    },
+    "StarterPlayer": {
+      "StarterCharacterScripts": {
+        "$ignoreUnknownInstances": true,
+        "$path": "src/StarterPlayer/StarterCharacterScripts"
+      },
+      "StarterPlayerScripts": {
+        "$ignoreUnknownInstances": true,
+        "$path": "src/StarterPlayer/StarterPlayerScripts"
+      }
+    },
+    "Workspace": {
+      "$ignoreUnknownInstances": true,
+      "$path": "src/Workspace"
+    }
+  }
+}

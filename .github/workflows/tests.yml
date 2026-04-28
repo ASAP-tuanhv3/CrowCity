@@ -1,0 +1,115 @@
+name: Automated Tests
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+
+jobs:
+  lint:
+    name: Selene Lint
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          lfs: true
+
+      - name: Install aftman
+        uses: ok-nick/setup-aftman@v0.4.2
+
+      - name: Install toolchain (rojo + selene + wally)
+        run: aftman install
+
+      - name: Install Wally packages
+        run: wally install
+
+      - name: Run Selene
+        run: selene src/
+
+  audit:
+    name: Repository Audit Gates
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          lfs: true
+
+      - name: Audit AssetId magic-string isolation (ADR-0006 §Verification A)
+        run: bash tools/audit-asset-ids.sh
+
+      - name: Audit ProfileStore + Pillar 3 forbidden keys (ADR-0011 §Verification A+B)
+        run: bash tools/audit-persistence.sh
+
+  unit-tests:
+    name: TestEZ Unit + Integration
+    runs-on: ubuntu-latest
+    needs: [lint, audit]
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          lfs: true
+
+      - name: Install aftman
+        uses: ok-nick/setup-aftman@v0.4.2
+
+      - name: Install toolchain
+        run: aftman install
+
+      - name: Install Wally packages
+        run: wally install
+
+      - name: Build test place
+        run: rojo build test.project.json -o test-place.rbxl
+
+      - name: Cache Roblox Studio install
+        id: studio-cache
+        uses: actions/cache@v4
+        with:
+          path: ~/.local/share/Roblox
+          key: roblox-studio-${{ runner.os }}-v1
+
+      - name: Install Roblox Studio (for run-in-roblox)
+        if: steps.studio-cache.outputs.cache-hit != 'true'
+        run: |
+          # run-in-roblox requires a local Studio install. On Linux runners this
+          # is not natively supported — Studio is Windows/macOS only. Until a
+          # Linux runner is available, this job is configured to run on a
+          # self-hosted macOS or Windows runner. See README in tests/ for the
+          # local headless command pattern.
+          echo "::warning::TestEZ headless run requires self-hosted runner with Roblox Studio; skipping on ubuntu-latest"
+          exit 0
+
+      - name: Run TestEZ headless
+        run: |
+          # Switch this job to a self-hosted runner with Studio + run-in-roblox
+          # installed to actually execute. Stub for now so PRs aren't blocked
+          # on infrastructure that doesn't exist yet.
+          echo "::warning::TestEZ headless run pending self-hosted runner — skipped"
+
+      - name: Upload test artifacts
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: test-results
+          path: |
+            test-place.rbxl
+            tests/evidence/
+
+# NOTE on TestEZ headless execution:
+#
+# `run-in-roblox` requires Roblox Studio to be installed on the runner.
+# Studio is available on Windows + macOS; the official `ubuntu-latest`
+# runner has no Studio binary. Two options:
+#
+#   1. Self-hosted macOS or Windows runner with Studio installed
+#      (preferred for full headless TestEZ + run-in-roblox).
+#   2. GitHub-hosted `macos-latest` runner — Studio install adds ~10 min
+#      bootstrap per CI run.
+#
+# Until one is configured, the unit-tests job logs a warning and exits 0.
+# Lint + audit gates remain blocking. Local dev runs the full TestEZ
+# suite via `rojo build && run-in-roblox` per tests/README.md.
