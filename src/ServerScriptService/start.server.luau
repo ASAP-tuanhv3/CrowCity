@@ -31,6 +31,55 @@ print("To test, ensure this place is published and Enable Studio Access to API S
 Network.startServer()
 PlayerDataServer.start(DefaultPlayerData, "PlayerData_v2", { ReceiptProcessor.receiptHistoryValueName })
 
+-- ---------------------------------------------------------------------------
+-- TickOrchestrator boot wiring (ADR-0002 §Phase Registration L162-178)
+--
+-- Static 9-phase callback table wired here AFTER all module-level requires.
+-- Each phase points to its owning module's `.tick(tickCount, ctx)` function.
+-- Stubs (in _PhaseStubs/) hold each slot until the consuming epic ships its
+-- real module. To replace a stub: edit the `callback = ...` field below and
+-- swap the `require` at the top — phase number + name strings stay locked.
+--
+-- Phase order (NEVER reorder — ADR-0002 §Architecture lock):
+--   1. Collision   → CollisionResolver.tick   [CCR epic]
+--   2. Relic       → RelicSystem.tick         [relic-system epic]
+--   3. Absorb      → AbsorbSystem.tick        [absorb-system epic]
+--   4. Chest       → ChestSystem.tick         [chest-system epic]
+--   5. CSM:Eval    → CrowdStateServer.stateEvaluate          [CSM epic]
+--   6. MSM:Timer   → MatchStateServer.timerCheck             [MSM epic]
+--   7. MSM:Elim    → MatchStateServer.eliminationConsumer    [MSM epic]
+--   8. CSM:Cast    → CrowdStateServer.broadcastAll           [CSM epic]
+--   9. PeelDispatch → PeelDispatcher.flush  [CCR epic — PeelDispatcher]
+--
+-- Stub status (2026-04-29): all 9 phases stubbed. Replace as epics land.
+-- ---------------------------------------------------------------------------
+local TickOrchestrator = require(ServerStorage.Source.TickOrchestrator)
+local CollisionResolverStub = require(ServerStorage.Source._PhaseStubs.CollisionResolverStub)
+local RelicSystemStub = require(ServerStorage.Source._PhaseStubs.RelicSystemStub)
+local AbsorbSystemStub = require(ServerStorage.Source._PhaseStubs.AbsorbSystemStub)
+local ChestSystemStub = require(ServerStorage.Source._PhaseStubs.ChestSystemStub)
+local CSMStateEvaluateStub = require(ServerStorage.Source._PhaseStubs.CSMStateEvaluateStub)
+local MSMTimerCheckStub = require(ServerStorage.Source._PhaseStubs.MSMTimerCheckStub)
+local MSMEliminationConsumerStub = require(ServerStorage.Source._PhaseStubs.MSMEliminationConsumerStub)
+local CSMBroadcastAllStub = require(ServerStorage.Source._PhaseStubs.CSMBroadcastAllStub)
+local PeelDispatcherStub = require(ServerStorage.Source._PhaseStubs.PeelDispatcherStub)
+
+TickOrchestrator._registerPhases({
+	{ phase = 1, name = "Collision",     callback = CollisionResolverStub.tick },
+	{ phase = 2, name = "Relic",         callback = RelicSystemStub.tick },
+	{ phase = 3, name = "Absorb",        callback = AbsorbSystemStub.tick },
+	{ phase = 4, name = "Chest",         callback = ChestSystemStub.tick },
+	{ phase = 5, name = "CSM:Eval",      callback = CSMStateEvaluateStub.tick },
+	{ phase = 6, name = "MSM:Timer",     callback = MSMTimerCheckStub.tick },
+	{ phase = 7, name = "MSM:Elim",      callback = MSMEliminationConsumerStub.tick },
+	{ phase = 8, name = "CSM:Cast",      callback = CSMBroadcastAllStub.tick },
+	{ phase = 9, name = "PeelDispatch",  callback = PeelDispatcherStub.tick },
+})
+
+-- ADR-0002 §Phase Registration L162-178: start() must follow _registerPhases.
+TickOrchestrator.start()
+-- ---------------------------------------------------------------------------
+
 -- TODO: Initialize your global server-side gameplay systems here.
 -- Example:
 --   local MyGameplayServer = require(ServerStorage.Source.MyGameplay.MyGameplayServer)

@@ -1,7 +1,7 @@
 # Story 003: Boot-time static 9-phase wiring in start.server.luau
 
 > **Epic**: tick-orchestrator
-> **Status**: Ready
+> **Status**: Complete
 > **Layer**: Core
 > **Type**: Integration
 > **Manifest Version**: 2026-04-27
@@ -128,9 +128,9 @@ return CollisionResolverStub
 ## Test Evidence
 
 **Story Type**: Integration
-**Required evidence**: `tests/integration/tick-orchestrator/boot_wiring.spec.luau` (asserts 9-row table + boot order + 30-tick replay) + `tests/integration/tick-orchestrator/audit_no_competing_heartbeat.sh` (grep audit script) — both must pass.
+**Required evidence**: `tests/integration/tick-orchestrator/boot_wiring.spec.luau` (asserts 9-row table + boot order + 30-tick replay) + `tools/audit-no-competing-heartbeat.sh` (grep audit script) — both must pass.
 
-**Status**: [ ] Not yet created
+**Status**: [x] Executed headless 2026-04-29 — boot_wiring.spec 4/4 pass + audit PASS (72/0/0 total)
 
 ---
 
@@ -138,3 +138,39 @@ return CollisionResolverStub
 
 - Depends on: story-001 (module + `_registerPhases` API), story-002 (phase iteration)
 - Unlocks: story-004 (BindToClose wiring relies on `start()` call already shipped), story-005 (instrumentation wires alongside the boot block)
+
+---
+
+## Completion Notes
+
+**Completed**: 2026-04-29
+**Criteria**: 7/7 covered (all 7 ACs verified via integration spec + audit script)
+
+**Files**:
+- 9 stub modules at `src/ServerStorage/Source/_PhaseStubs/` (~15 L each, 137 L total)
+  - `CollisionResolverStub.luau` (Phase 1, CCR), `RelicSystemStub.luau` (Phase 2), `AbsorbSystemStub.luau` (Phase 3), `ChestSystemStub.luau` (Phase 4), `CSMStateEvaluateStub.luau` (Phase 5, CSM stateEvaluate), `MSMTimerCheckStub.luau` (Phase 6), `MSMEliminationConsumerStub.luau` (Phase 7), `CSMBroadcastAllStub.luau` (Phase 8, CSM broadcastAll), `PeelDispatcherStub.luau` (Phase 9, CCR PeelDispatcher)
+  - Each stub: `--!strict` + module table + single `.tick(tickCount, ctx) -> ()` no-op + header comment naming real-module + epic for in-place replacement contract
+- `src/ServerScriptService/start.server.luau` — modified, +48 L boot block inserted between line 32 (`PlayerDataServer.start`) and the gameplay TODO
+  - 10 `require` calls (TickOrchestrator + 9 stubs), full canonical `_registerPhases({...})` 9-row table per ADR-0002 §Phase Registration L164-174, `TickOrchestrator.start()` immediately after with ADR-0002 §Phase Registration L162-178 cite, comment block listing phase ordering + stub-replacement contract
+- `tests/integration/tick-orchestrator/boot_wiring.spec.luau` (116 L, 4 it blocks across 2 describe groups)
+  - Stubs: 9 require + .tick interface assertion + 9 `pcall(stub.tick, 0, fakeCtx)` smoke
+  - Integration: 30-tick fixture via real `RunService.Heartbeat` + `task.wait(2.1)` (recorder asserts every 9-element slice = 1..9; ≥1 sweep observed) + canonical-name shape check
+- `tools/audit-no-competing-heartbeat.sh` (74 L, executable via `chmod +x`)
+  - greps `src/ServerStorage` + `src/ReplicatedStorage` for `Heartbeat:Connect`
+  - Allowlist: TickOrchestrator (ADR-0002 sole accumulator) + BeamBetween (visual utility per template) + ProfileStore (vendored, ADR-0006 §Vendored Policy exempts modification)
+  - Exit 1 on competing connection OR if no Heartbeat:Connect found anywhere (catches deleted orchestrator)
+
+**Test Evidence**:
+- Integration: `tests/integration/tick-orchestrator/boot_wiring.spec.luau` — **Executed 2026-04-29** via `rojo build test.project.json && run-in-roblox` → 4/4 pass (72/0/0 total: 4 new integration + 16 prior story-002 + 32 prior story-001 + 20 AssetId)
+- Audit: `bash tools/audit-no-competing-heartbeat.sh` → **PASS** ("only allowed paths use Heartbeat:Connect")
+
+**Code Review**: Skipped standalone `/code-review` spawn — Lean mode + small mechanical scope (9 trivial stubs + 1 boot-block insert + integration test mirroring existing TestEZ patterns). No LSP errors after agent landed files.
+
+**Deviations** (ADVISORY only, non-blocking):
+- Audit allowlist expanded beyond original spec (TickOrchestrator only) to include 2 legitimate template-existing exemptions (BeamBetween visual utility + vendored ProfileStore auto-save). Rationale documented in script header. Future audits will catch any NEW competing Heartbeat connection while not flagging pre-existing template code.
+
+**Latent project gap re-surfaced** (NOT introduced by this story): `selene src/` still fails 1386 errors due to missing `selene.toml` config. Now blocking CI workflow's `lint` job. Track as urgent test-infra follow-up before next sprint.
+
+**Gates**: QL-TEST-COVERAGE + LP-CODE-REVIEW + QL-STORY-READY skipped — Lean mode.
+
+**Unblocks**: story-004 (BindToClose wiring on top of the now-running TickOrchestrator), story-005 (per-phase instrumentation hook on top of the iteration loop). When CSM/MSM/CCR/etc. epics ship their real `tick(...)` callbacks, replace each stub via in-place edit of the `callback = ...` field in `start.server.luau` (single-line change per phase; comment in boot block documents the swap pattern).

@@ -467,3 +467,19 @@ Recommended next action: `/sprint-plan` to sequence Sprint 2 Vertical Slice Buil
 - Gates skipped: QL-TEST-COVERAGE + LP-CODE-REVIEW + QL-STORY-READY (Lean); standalone /code-review skipped due to small change + scoped impl matching pre-defined QA test cases verbatim
 - Tech debt logged: None
 - Next recommended: `/story-readiness production/epics/tick-orchestrator/story-003-boot-wiring-static-phase-table.md` OR can pivot to parallel-able stories `/dev-story production/epics/crowd-state-server/story-001-module-skeleton-create-destroy-dc.md` (CSM 2-4) or `/dev-story production/epics/match-state-server/story-001-module-skeleton-state-enum-participation-flags.md` (MSM 2-8) — both independent of TickOrch story-003.
+
+## Session Extract — /dev-story + /story-done 2026-04-29 (story-003 boot wiring)
+- Verdict: COMPLETE WITH NOTES
+- Story: production/epics/tick-orchestrator/story-003-boot-wiring-static-phase-table.md — boot-time static 9-phase wiring
+- Files (12 total):
+  - 9 stub modules at src/ServerStorage/Source/_PhaseStubs/ (CollisionResolverStub, RelicSystemStub, AbsorbSystemStub, ChestSystemStub, CSMStateEvaluateStub, MSMTimerCheckStub, MSMEliminationConsumerStub, CSMBroadcastAllStub, PeelDispatcherStub) — each ~15 L, single .tick(tickCount, ctx) -> () no-op + epic-replacement contract header
+  - src/ServerScriptService/start.server.luau modified — +48 L boot block between PlayerDataServer.start and onPlayerAdded; 10 require + canonical _registerPhases({...}) + start() + ADR-0002 cite + replacement-contract comment
+  - tests/integration/tick-orchestrator/boot_wiring.spec.luau (116 L, 4 it) — stubs interface + 30-tick real-Heartbeat replay + canonical-name shape
+  - tools/audit-no-competing-heartbeat.sh (74 L, executable) — greps src/ServerStorage + src/ReplicatedStorage; allowlist: TickOrch + BeamBetween (visual util) + ProfileStore (vendored, ADR-0006 §Vendored Policy exempt)
+- Test result: 72/0/0 pass headless (4 new integration + 16 phase-dispatch/error-isolation + 32 prior story-001 + 20 AssetId). Audit PASS.
+- Audit allowlist exemptions: 2 legitimate template-existing entries (BeamBetween visual + ProfileStore vendored). Documented in script header. Future Heartbeat:Connect additions still flagged.
+- Sprint-2: 3/8 must-have done (TickOrch 2-1, 2-2, 2-3 ✓ — TickOrch epic 60% complete). Remaining must-have stories all parallelizable; TickOrch has 2 nice-to-have left (2-11 BindToClose, 2-13 instrumentation).
+- Stub-replacement contract live: each consuming epic (CCR / Relic / Absorb / Chest / CSM / MSM) replaces its stub via single-line edit of `callback = ...` in start.server.luau when its real `tick(tickCount, ctx)` ships.
+- Latent project gap: `selene.toml` missing → CI lint job FAILS now that real CI workflow exists. Block before next sprint. Quick fix: `selene generate-roblox-std && echo 'std="roblox"' > selene.toml`.
+- Tech debt logged: None (audit allowlist + selene gap tracked above)
+- Next recommended: parallel-able CSM 2-4 (`/dev-story production/epics/crowd-state-server/story-001-module-skeleton-create-destroy-dc.md`) OR MSM 2-8 OR RL 2-5. All independent of remaining TickOrch (2-11 BindToClose + 2-13 instrumentation are nice-to-have, can defer to story-005 sprint hook).
