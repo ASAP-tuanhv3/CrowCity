@@ -507,3 +507,17 @@ Recommended next action: `/sprint-plan` to sequence Sprint 2 Vertical Slice Buil
 - Deviations: get() implemented here (officially story-007 scope) — required to verify create/destroy ACs; documented in story completion notes. Story-007 still ships getAllActive + getAllCrowdPositions + setStillOverlapping. `read` field qualifiers omitted (selene 0.26.1 doesn't parse) — convention enforced via control-manifest L155.
 - Tech debt logged: None
 - Next recommended: MSM 2-8 (`/dev-story production/epics/match-state-server/story-001-module-skeleton-state-enum-participation-flags.md`) — parallel chain, no CSM dep; OR RL 2-5 (`/dev-story production/epics/round-lifecycle/story-001-module-skeleton-janitor-createall-destroyall.md`) — consumes CSM create/destroy via createAll/destroyAll.
+
+## Session Extract — /dev-story + /story-done 2026-04-29 (RL 2-7)
+- Verdict: COMPLETE
+- Story: production/epics/round-lifecycle/story-001-module-skeleton-janitor-createall-destroyall.md
+- Files (4 created):
+  - src/ServerStorage/Source/RoundLifecycle/init.luau (271 L) — singleton; Janitor + InternalAuxRecord + DI-seam pattern (`_setCSMOverride`); createAll asserts no-prior-Janitor + ≤12 participants then pcall-wraps each CSM.create; destroyAll Janitor-FIRST then CSM destroys then state-zero
+  - tests/unit/round-lifecycle/createall.spec.luau (167 L, 6 it) — AC-1 + AC-2 + AC-2-edge (all-fail) + MAX_PARTICIPANTS guard + empty list + hue assignment 12 players
+  - tests/unit/round-lifecycle/destroyall.spec.luau (121 L, 4 it) — AC-4 clear all state + AC-4 CSM.destroy fanout + dormant-state no-op + double destroyAll idempotent
+  - tests/unit/round-lifecycle/double_createall_assert.spec.luau (83 L, 3 it) — AC-3 assert + AC-3 no-mutation-on-error + create/destroy/create round cycle
+- Test result: 102/0/0 pass headless (13 new RL + 89 prior). All 4 audit gates PASS.
+- Sprint-2: 5/8 must-have done (TickOrch 2-1/2/3 + CSM 2-4 + RL 2-7 ✓ — 62.5% done; 3 remaining must-have). Days spent ~5; ~3 remain in 8-day budget.
+- DI seam pattern: RL._setCSMOverride mirrors CSM._setTestFanoutInterceptor. Confirms reusable test seam idiom for cross-module Core dependencies.
+- Tech debt logged: None
+- Next recommended: MSM 2-8 (`/dev-story production/epics/match-state-server/story-001-module-skeleton-state-enum-participation-flags.md`) OR CSM 2-5 (updateCount + clamp + signals; consumes CSM 2-4 contract directly). MSM 2-8 is independent parallel chain — favor for breadth. CSM 2-5 unblocks CSM 003-007 chain.

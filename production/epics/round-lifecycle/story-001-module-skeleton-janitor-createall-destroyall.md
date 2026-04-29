@@ -1,7 +1,7 @@
 # Story 001: Module skeleton + Janitor lifecycle + createAll + destroyAll
 
 > **Epic**: round-lifecycle
-> **Status**: Ready
+> **Status**: Complete
 > **Layer**: Core
 > **Type**: Logic
 > **Manifest Version**: 2026-04-27
@@ -89,7 +89,7 @@
 
 `tests/unit/round-lifecycle/createall.spec.luau` + `tests/unit/round-lifecycle/destroyall.spec.luau` + `tests/unit/round-lifecycle/double_createall_assert.spec.luau`.
 
-**Status**: [ ] Not yet created
+**Status**: [x] Executed headless 2026-04-29 — 102/0/0 pass via `run-in-roblox` (13 new RL + 89 prior)
 
 ---
 
@@ -97,3 +97,37 @@
 
 - Depends on: CSM story-001 (create/destroy API)
 - Unlocks: story-002..005
+
+---
+
+## Completion Notes
+
+**Completed**: 2026-04-29
+**Criteria**: 8/8 covered (AC-1, AC-2, AC-3, AC-4, MAX_PARTICIPANTS guard, empty participants, hue assignment, double-destroyAll idempotence)
+
+**Files**:
+- `src/ServerStorage/Source/RoundLifecycle/init.luau` (271 L) — singleton module
+  - Imports: `Packages.janitor` (Wally), `CrowdStateServer` (CSM)
+  - Constants: `MAX_PARTICIPANTS_PER_ROUND = 12`, `CROWD_START_COUNT = 10`
+  - `hueForIndex(i): number` — round-robin 1..12 hue assignment per participant index (ADR-0001 §Key Interfaces palette)
+  - Type `InternalAuxRecord` per spec (7 fields: crowdId, userId, peakCount, peakTimestamp, finalCount, eliminationTime, survived)
+  - DI seam: `_setCSMOverride(csm)` test hook + `getCSM()` returns override or real CSM
+  - Public surface (story-001): `createAll(participants)`, `destroyAll()`
+  - Test-only surface: `_resetForTests`, `_getCrowdsCount`, `_getParticipantsCount`, `_getJanitor`, `_setCSMOverride`
+  - `createAll`: assert no prior Janitor + assert ≤12 → allocate Janitor → init `_participants/_winnerId/_crowds` → for each player pcall CSM.create + on-success build aux record + insert participant; on failure warn + skip
+  - `destroyAll`: Janitor:Destroy() FIRST → CSM.destroy(crowdId) for each tracked → zero local state
+- `tests/unit/round-lifecycle/createall.spec.luau` (167 L, 6 it blocks)
+- `tests/unit/round-lifecycle/destroyall.spec.luau` (121 L, 4 it blocks)
+- `tests/unit/round-lifecycle/double_createall_assert.spec.luau` (83 L, 3 it blocks)
+
+**Test Evidence**: 3 TestEZ spec files at `tests/unit/round-lifecycle/`. **Executed 2026-04-29** via `run-in-roblox` → **102/0/0 pass** (13 new RL + 89 prior).
+
+**Audit gates ALL PASS**: selene + audit-asset-ids + audit-persistence + audit-no-competing-heartbeat.
+
+**Code Review**: Standalone `/code-review` skipped — Lean mode + small scope + DI pattern mirrors CSM 2-4's interceptor approach + impl matches spec verbatim.
+
+**Deviations**: None.
+
+**Gates**: QL-TEST-COVERAGE + LP-CODE-REVIEW + QL-STORY-READY skipped — Lean mode.
+
+**Unblocks**: RL story-002 (CountChanged subscription + peak tracking — uses `_janitor:Add(connection, "Disconnect")` pattern), story-003 (Eliminated subscription + DC freeze), story-004 (setWinner + getPeakTimestamp), story-005 (getPlacements F3 sort).

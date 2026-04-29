@@ -73,11 +73,11 @@ stories:
     name: "RL story-001 — module skeleton + Janitor + createAll + destroyAll"
     file: "production/epics/round-lifecycle/story-001-module-skeleton-janitor-createall-destroyall.md"
     priority: must-have
-    status: ready-for-dev
+    status: done
     owner: ""
     estimate_days: 1.0
     blocker: ""
-    completed: ""
+    completed: "2026-04-29"
 
   - id: "2-8"
     name: "MSM story-001 — module skeleton + 7-state enum + Lobby boot + participation flags + Snap freeze"
