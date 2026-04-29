@@ -1,7 +1,7 @@
 # Story 002: Phase dispatch loop + pcall isolation + ctx assembly
 
 > **Epic**: tick-orchestrator
-> **Status**: Ready
+> **Status**: Complete
 > **Layer**: Core
 > **Type**: Logic
 > **Manifest Version**: 2026-04-27
@@ -125,7 +125,7 @@
 **Story Type**: Logic
 **Required evidence**: `tests/unit/tick-orchestrator/phase_dispatch.spec.luau` (iteration order, ctx propagation, deterministic 1000-tick fixture) + `tests/unit/tick-orchestrator/error_isolation.spec.luau` (pcall + error + log + recovery).
 
-**Status**: [ ] Not yet created
+**Status**: [x] Executed headless 2026-04-29 — 68/0/0 pass via `run-in-roblox` (16 new + 32 prior TickOrch + 20 AssetId)
 
 ---
 
@@ -133,3 +133,30 @@
 
 - Depends on: story-001 (module skeleton + accumulator + `_registerPhases` assertion + Heartbeat connection)
 - Unlocks: story-003 (boot wiring with real callbacks), story-005 (instrumentation hook on top of phase iteration)
+
+---
+
+## Completion Notes
+
+**Completed**: 2026-04-29
+**Criteria**: 10/10 covered (AC-08 structurally enforced — `for i = 1, 9` loop guarantees one `pcall` per phase per tick; no dedicated test required since AC-06 single-tick verification + AC-07 30-tick fixture together prove no log duplication)
+
+**Files**:
+- `src/ServerStorage/Source/TickOrchestrator/init.luau` — modified (+ ~25 L net)
+  - `_registerPhases`: added `table.sort(phases, ...)` by `.phase` field after validation, before `_phases = phases` assignment (avoids per-tick sort cost)
+  - `_runTick`: replaced story-001 stub body with fresh-per-tick `ctx = { tickCount, outPairs = {}, outPeel = {} }` construction + `for i = 1, 9` index loop + `pcall(cb, tickCount, ctx)` wrapper + `warn(string.format(...))` log on error
+  - LSP fix: `phase.callback :: (number, TickContext) -> any` cast inside `_runTick` — Luau strict pcall infers Rets... from callback signature; original `(...) -> ()` typed pcall as returning only `(boolean)`, breaking 2-value destructure. Cast preserves typed iteration body without losing the err captured for the warn log
+- `tests/unit/tick-orchestrator/phase_dispatch.spec.luau` (339 L, 10 it blocks) — iteration order (3 input shapes), ctx fresh-per-tick (outPairs + outPeel), cross-phase ctx ref propagation, tickCount arg = ctx.tickCount, delegate short-circuit (2 blocks), 1000-tick determinism fixture
+- `tests/unit/tick-orchestrator/error_isolation.spec.luau` (179 L, 6 it blocks) — error in P1/P3/P9 (3 blocks), 30-tick recurring error preserves tickCount, all-9-phases-erroring orchestrator stays alive, `task.wait(0.1)` inside phase doesn't crash + recovers next tick
+
+**Test Evidence**: 2 TestEZ spec files at `tests/unit/tick-orchestrator/`. **Executed 2026-04-29** via `rojo build test.project.json -o test-place.rbxl && run-in-roblox --place test-place.rbxl --script tests/runner.server.luau` → **68/0/0 pass** (16 new + 52 prior).
+
+**Code Review**: Skipped standalone `/code-review` spawn — Lean mode + small change scope (~25 L impl + 16 tests against pre-defined QA test cases). Inline LSP type error caught + fixed before close.
+
+**Deviations** (ADVISORY only, non-blocking):
+- AC-09 `task.wait(0.5)` → `task.wait(0.1)` per spec's own inline note ("keep test runtime tight while still validating yield-survival contract"). 0.5 → 0.1 yields 80% test-runtime savings without changing semantic. Documented inline in `error_isolation.spec.luau`.
+- AC-04 warn-content string verification: TestEZ does not intercept `warn` output; tests validate the structural contract (all 9 phases run + tickCount unaffected) but cannot directly assert warn text contains `"Phase 3"` + error message. Direct warn-content assertion deferred to story-005 instrumentation telemetry hook.
+
+**Gates**: QL-TEST-COVERAGE + LP-CODE-REVIEW + QL-STORY-READY skipped — Lean mode.
+
+**Unblocks**: story-003 (boot-time `_registerPhases({...})` wiring with the real 9 callbacks + `start()` invocation in `start.server.luau`), story-005 (per-phase `os.clock` instrumentation hook on top of the now-implemented iteration loop).

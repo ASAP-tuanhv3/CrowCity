@@ -454,3 +454,16 @@ Recommended next action: `/sprint-plan` to sequence Sprint 2 Vertical Slice Buil
 - Sprint-status 2-1 → done; sprint-2 progress: 1/8 must-have done
 - Tech debt logged: None (selene.toml gap tracked above as test-infra follow-up; project-level test-naming convention review tracked in story-001 deviations)
 - Next recommended: `/story-readiness production/epics/tick-orchestrator/story-002-phase-dispatch-pcall-isolation.md` (story-002 unlocked by 001 — phase dispatch loop + pcall isolation + ctx assembly). Per sprint-2 plan, story-002 is the next must-have on critical path.
+
+## Session Extract — /dev-story + /story-done 2026-04-29 (story-002)
+- Verdict: COMPLETE WITH NOTES
+- Story: production/epics/tick-orchestrator/story-002-phase-dispatch-pcall-isolation.md — phase dispatch + pcall isolation + ctx assembly
+- Files:
+  - src/ServerStorage/Source/TickOrchestrator/init.luau (+25 L net) — _registerPhases sort step + _runTick body replacement + LSP pcall callback cast fix
+  - tests/unit/tick-orchestrator/phase_dispatch.spec.luau (339 L, 10 it) — order + ctx + delegate short-circuit + 1000-tick determinism
+  - tests/unit/tick-orchestrator/error_isolation.spec.luau (179 L, 6 it) — pcall + warn + recovery + task.wait survival
+- LSP fix landed: `pcall(phase.callback :: (number, TickContext) -> any, ...)` cast — Luau strict-mode pcall typing quirk (callback returning () → pcall typed as (boolean), breaking 2-value destructure)
+- Test result: 68/0/0 pass headless (16 new + 52 prior). Sprint-2: 2/8 must-have done (TickOrch 2-1 + 2-2 ✓)
+- Gates skipped: QL-TEST-COVERAGE + LP-CODE-REVIEW + QL-STORY-READY (Lean); standalone /code-review skipped due to small change + scoped impl matching pre-defined QA test cases verbatim
+- Tech debt logged: None
+- Next recommended: `/story-readiness production/epics/tick-orchestrator/story-003-boot-wiring-static-phase-table.md` OR can pivot to parallel-able stories `/dev-story production/epics/crowd-state-server/story-001-module-skeleton-create-destroy-dc.md` (CSM 2-4) or `/dev-story production/epics/match-state-server/story-001-module-skeleton-state-enum-participation-flags.md` (MSM 2-8) — both independent of TickOrch story-003.

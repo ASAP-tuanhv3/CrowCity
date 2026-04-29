@@ -23,11 +23,11 @@ stories:
     name: "TickOrch story-002 — phase dispatch + pcall isolation + ctx assembly"
     file: "production/epics/tick-orchestrator/story-002-phase-dispatch-pcall-isolation.md"
     priority: must-have
-    status: ready-for-dev
+    status: done
     owner: ""
     estimate_days: 1.0
     blocker: ""
-    completed: ""
+    completed: "2026-04-29"
 
   - id: "2-3"
     name: "TickOrch story-003 — boot wiring + 9-phase stub registration"

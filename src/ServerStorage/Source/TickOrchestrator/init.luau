@@ -66,16 +66,42 @@ local _tickPeriod: number = 1 / 15
 -- ---------------------------------------------------------------------------
 
 --- Runs one logical tick. If _tickDelegate is set (test mode), calls delegate
---- and returns immediately — phase iteration is bypassed. Phase iteration
---- body is deferred to story-002.
---- ADR-0002 §Architecture _runTick stub (story-001 scope).
+--- and returns immediately — phase iteration is bypassed.
+--- ADR-0002 §Architecture _runTick + §Simultaneity Resolution L180-185.
+--- Implements: story-002 (phase dispatch loop + pcall isolation + ctx assembly)
 local function _runTick(tickCount: number): ()
 	if _tickDelegate ~= nil then
 		_tickDelegate(tickCount)
 		return
 	end
-	-- Phase iteration body deferred to story-002.
-	-- Story-002 will build: ctx, sorted phase dispatch with pcall wrapper.
+
+	-- Per-tick ctx allocated fresh — outPairs/outPeel must NOT bleed across
+	-- ticks (ADR-0002 §Architecture). Phase 1 fills outPairs/outPeel; Phase 9
+	-- consumes outPeel; intermediate phases pass through.
+	local ctx: TickContext = {
+		tickCount = tickCount,
+		outPairs = {},
+		outPeel = {},
+	}
+
+	-- Iterate in ascending phase order (1..9). _phases was sorted at
+	-- _registerPhases time. pcall isolates per-phase exceptions: a failed
+	-- phase logs and lets remaining phases run; next tick recovers.
+	-- ADR-0004 forbids xpcall with traceback in hot loops; plain pcall only.
+	-- Luau strict-mode pcall infers Rets... from callback signature; when the
+	-- callback returns `()`, pcall is typed as `(boolean)` only. Cast the
+	-- callback to `(...) -> any` so pcall destructures `(ok, err)` cleanly.
+	for i = 1, 9 do
+		local phase = _phases[i]
+		local cb = phase.callback :: (number, TickContext) -> any
+		local ok, err = pcall(cb, tickCount, ctx)
+		if not ok then
+			warn(string.format(
+				"TickOrchestrator: Phase %d (%s) errored at tick %d: %s",
+				phase.phase, phase.name, tickCount, tostring(err)
+			))
+		end
+	end
 end
 
 -- ---------------------------------------------------------------------------
@@ -123,6 +149,13 @@ function TickOrchestrator._registerPhases(phases: { TickPhase }): ()
 		)
 		seen[entry.phase] = true
 	end
+
+	-- Sort by phase field once at registration so _runTick iterates in
+	-- ascending phase order with O(1) index access — no per-tick sort cost.
+	-- ADR-0002 §Architecture _runTick: "for each phase in _phases, ordered 1..9"
+	table.sort(phases, function(a, b)
+		return a.phase < b.phase
+	end)
 
 	_phases = phases
 end
