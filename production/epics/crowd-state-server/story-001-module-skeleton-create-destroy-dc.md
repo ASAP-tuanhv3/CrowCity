@@ -1,7 +1,7 @@
 # Story 001: Module skeleton + record schema + create/destroy lifecycle + DC handler
 
 > **Epic**: crowd-state-server
-> **Status**: Ready
+> **Status**: Complete
 > **Layer**: Core
 > **Type**: Logic
 > **Manifest Version**: 2026-04-27
@@ -100,7 +100,7 @@
 **Story Type**: Logic
 **Required evidence**: `tests/unit/crowd-state-server/lifecycle.spec.luau` (create/destroy/identity/idempotence) + `tests/unit/crowd-state-server/dc_cleanup.spec.luau` (PlayerRemoving handler) + `tests/unit/crowd-state-server/signal_fanout.spec.luau` (CrowdCreated + CrowdDestroyed events).
 
-**Status**: [ ] Not yet created
+**Status**: [x] Executed headless 2026-04-29 — 89/0/0 pass via `run-in-roblox` (16 new CSM + 73 prior)
 
 ---
 
@@ -108,3 +108,41 @@
 
 - Depends on: Foundation `network-layer-ext` (CrowdCreated + CrowdDestroyed entries in `RemoteEventName.luau`) — already complete
 - Unlocks: ALL other CSM stories (record schema + lifecycle is the foundation)
+
+---
+
+## Completion Notes
+
+**Completed**: 2026-04-29
+**Criteria**: 11/11 covered (AC-01, AC-02, AC-16-partial, AC-23, AC-26 + create-duplicate-error + destroy-idempotence + record-fields + private-_crowds + audit-asset-ids + audit-persistence)
+
+**Files**:
+- `src/ServerStorage/Source/CrowdStateServer/init.luau` (214 L)
+  - Exported types: `CrowdState`, `DeltaSource`, `CrowdRecord` per arch §5.1 L512-527 (omitted `read` qualifier — selene 0.26.1 doesn't parse it; immutability enforced by control-manifest L155 convention)
+  - Public surface (story-001): `create(crowdId, initial)`, `destroy(crowdId)`, `get(crowdId)`, `start()`
+  - Test-only surface: `_resetForTests`, `_getCrowdsCount`, `_getPlayerRemovingConnection`, `_setTestFanoutInterceptor`
+  - `Players.PlayerRemoving` handler wired via `start()` (idempotent); calls `destroy(tostring(player.UserId))`
+  - Reliable fanout via `Network.fireAllClients(RemoteEventName.CrowdCreated/Destroyed, {...})`; payloads per ADR-0001 §Key Interfaces
+  - Test seam: `_setTestFanoutInterceptor` redirects fanout to a captured fn (test interceptor); production path nil → direct Network call
+- `tests/unit/crowd-state-server/lifecycle.spec.luau` (128 L → 132 L after fanout-suppress fix, 7 it blocks)
+- `tests/unit/crowd-state-server/dc_cleanup.spec.luau` (85 L → 89 L after fix, 4 it blocks)
+- `tests/unit/crowd-state-server/signal_fanout.spec.luau` (119 L, 5 it blocks)
+
+**Test Evidence**: 3 TestEZ spec files at `tests/unit/crowd-state-server/`. **Executed 2026-04-29** via `rojo build test.project.json -o test-place.rbxl && run-in-roblox` → **89/0/0 pass** (16 new CSM + 4 boot integration + 16 phase-dispatch/error-isolation + 32 cadence/lifecycle/registerphases + 20 AssetId + 1 from agent extra block = 89).
+
+**Audit gates ALL PASS**:
+- `selene src/` → 0 errors / 5 advisory warnings (template pre-existing) / 0 parse errors
+- `bash tools/audit-asset-ids.sh` → "No raw rbxassetid:// references outside SharedConstants/AssetId.luau"
+- `bash tools/audit-persistence.sh` → "DataStoreService confined to ProfileStore + no forbidden keys"
+- `bash tools/audit-no-competing-heartbeat.sh` → "only allowed paths use Heartbeat:Connect"
+
+**Code Review**: Standalone `/code-review` skipped — Lean mode + small scope + impl matches arch §5.1 type signatures verbatim. Inline test fix landed when first run flagged Network.fireAllClients failing in headless context (no client to receive); added no-op test interceptor in lifecycle + dc_cleanup specs (signal_fanout already had it).
+
+**Deviations** (ADVISORY only, non-blocking):
+1. `get()` implemented here (officially story-007 scope) — required to verify create/destroy ACs without exposing `_crowds` directly. Story-007 will add `getAllActive` + `getAllCrowdPositions` + `setStillOverlapping` on top of the existing `get`. Deviation accepted: minimal cost, story-007 contract preserved (its remaining 3 fns + `setStillOverlapping` write hook).
+2. `_setTestFanoutInterceptor` + `fanout()` indirection — test seam to verify CrowdCreated/CrowdDestroyed payloads without a connected client. Production path unchanged: interceptor `nil` → direct `Network.fireAllClients`. Documented in module header.
+3. `read` qualifier omitted from CrowdRecord fields — arch §5.1 shows `read crowdId` / `read hue` but selene 0.26.1 + Luau strict mode parse may not support cleanly. Plain field types; immutability convention enforced via control-manifest L155 (read-only consumer rule).
+
+**Gates**: QL-TEST-COVERAGE + LP-CODE-REVIEW + QL-STORY-READY skipped — Lean mode.
+
+**Unblocks**: ALL other CSM stories (story-002 updateCount + clamp + signals, story-003 hue + activeRelics, story-004 F1 radius + recompute, story-005 F2 position, story-006 Phase 5 state evaluator + F7 grace timer, story-007 read accessors + setStillOverlapping, story-008 Phase 8 broadcastAll). Also unblocks RoundLifecycle story-001 (createAll/destroyAll consumes CSM `create`/`destroy`) + MSM story-001 (no direct dep but parallel-runnable).

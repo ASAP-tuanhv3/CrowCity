@@ -43,11 +43,11 @@ stories:
     name: "CSM story-001 — module skeleton + record schema + create/destroy + DC handler"
     file: "production/epics/crowd-state-server/story-001-module-skeleton-create-destroy-dc.md"
     priority: must-have
-    status: ready-for-dev
+    status: done
     owner: ""
     estimate_days: 1.0
     blocker: ""
-    completed: ""
+    completed: "2026-04-29"
 
   - id: "2-5"
     name: "CSM story-002 — updateCount + DeltaSource + F5 clamp + CountChanged + CrowdCountClamped"

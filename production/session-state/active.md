@@ -483,3 +483,27 @@ Recommended next action: `/sprint-plan` to sequence Sprint 2 Vertical Slice Buil
 - Latent project gap: `selene.toml` missing → CI lint job FAILS now that real CI workflow exists. Block before next sprint. Quick fix: `selene generate-roblox-std && echo 'std="roblox"' > selene.toml`.
 - Tech debt logged: None (audit allowlist + selene gap tracked above)
 - Next recommended: parallel-able CSM 2-4 (`/dev-story production/epics/crowd-state-server/story-001-module-skeleton-create-destroy-dc.md`) OR MSM 2-8 OR RL 2-5. All independent of remaining TickOrch (2-11 BindToClose + 2-13 instrumentation are nice-to-have, can defer to story-005 sprint hook).
+
+## Session Extract — 2026-04-29 (selene fix + CSM 2-4)
+
+### Selene config gap closed (commits ad55b85 + a0a0767)
+- Created `selene.toml` with `std = "roblox"` + exclude vendored Dependencies/ + Packages/
+- Generated `roblox.yml` (559 KB) via `selene generate-roblox-std` — checked in for CI
+- Fixed pre-existing parse error in `Network/BufferCodec/CrowdState.luau:110` — Luau backtick-string `{1,2,3}` literal cannot be brace-escaped (`\{` not valid Luau escape); rewrote to `[1,2,3]` square-bracket notation
+- Result: `selene src/` exits 0 errors / 5 advisory warns (template-existing unused-vars). Lint gate now real for CI.
+
+### CSM story-001 COMPLETE (commit pending)
+- Verdict: COMPLETE WITH NOTES
+- Story: production/epics/crowd-state-server/story-001-module-skeleton-create-destroy-dc.md — module skeleton + record schema + create/destroy + DC handler
+- Files (4 created):
+  - src/ServerStorage/Source/CrowdStateServer/init.luau (214 L) — singleton module per ANATOMY §16; exports CrowdState/DeltaSource/CrowdRecord types per arch §5.1; public surface create/destroy/get/start; test-only _resetForTests/_getCrowdsCount/_getPlayerRemovingConnection/_setTestFanoutInterceptor; PlayerRemoving handler in start()
+  - tests/unit/crowd-state-server/lifecycle.spec.luau (132 L, 7 it) — create/destroy/identity/idempotence/duplicate-error/8-player presence/destroy-then-create
+  - tests/unit/crowd-state-server/dc_cleanup.spec.luau (89 L, 4 it) — start() handler wire + idempotent + functional destroy path + absent-userId no-op
+  - tests/unit/crowd-state-server/signal_fanout.spec.luau (119 L, 5 it) — CrowdCreated payload + CrowdDestroyed payload + 8-player fanout + idempotent destroy no-event + duplicate create no-second-event
+- Test fix landed inline: lifecycle + dc_cleanup specs needed `_setTestFanoutInterceptor(noop)` in beforeEach because Network.fireAllClients fails in TestEZ context (no client). signal_fanout already had interceptor.
+- All 4 audit gates PASS: selene + audit-asset-ids + audit-persistence + audit-no-competing-heartbeat
+- Test result: 89/0/0 pass headless (16 new CSM + 73 prior)
+- Sprint-2: 4/8 must-have done (TickOrch 2-1, 2-2, 2-3 ✓ + CSM 2-4 ✓)
+- Deviations: get() implemented here (officially story-007 scope) — required to verify create/destroy ACs; documented in story completion notes. Story-007 still ships getAllActive + getAllCrowdPositions + setStillOverlapping. `read` field qualifiers omitted (selene 0.26.1 doesn't parse) — convention enforced via control-manifest L155.
+- Tech debt logged: None
+- Next recommended: MSM 2-8 (`/dev-story production/epics/match-state-server/story-001-module-skeleton-state-enum-participation-flags.md`) — parallel chain, no CSM dep; OR RL 2-5 (`/dev-story production/epics/round-lifecycle/story-001-module-skeleton-janitor-createall-destroyall.md`) — consumes CSM create/destroy via createAll/destroyAll.
