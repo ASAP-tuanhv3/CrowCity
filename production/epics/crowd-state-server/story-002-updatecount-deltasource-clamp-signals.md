@@ -98,7 +98,7 @@
 ## Test Evidence
 
 **Story Type**: Logic
-**Required evidence**: `tests/unit/crowd-state-server/updatecount_clamp_test.luau` + `tests/unit/crowd-state-server/countchanged_test.luau` + `tests/unit/crowd-state-server/countclamped_test.luau`.
+**Required evidence**: `tests/unit/crowd-state-server/updatecount_clamp.spec.luau` + `tests/unit/crowd-state-server/countchanged.spec.luau` + `tests/unit/crowd-state-server/countclamped.spec.luau`.
 
 **Status**: [ ] Not yet created
 

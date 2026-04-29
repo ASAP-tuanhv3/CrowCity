@@ -113,7 +113,7 @@
 ## Test Evidence
 
 **Story Type**: Logic
-**Required evidence**: `tests/unit/crowd-state-server/state_evaluator_test.luau` (transitions + tie-break + terminal Eliminated) + `tests/unit/crowd-state-server/grace_timer_test.luau` (F7 timer math + simultaneity).
+**Required evidence**: `tests/unit/crowd-state-server/state_evaluator.spec.luau` (transitions + tie-break + terminal Eliminated) + `tests/unit/crowd-state-server/grace_timer.spec.luau` (F7 timer math + simultaneity).
 
 **Status**: [ ] Not yet created
 

@@ -111,7 +111,7 @@
 ## Test Evidence
 
 **Story Type**: Logic
-**Required evidence**: `tests/unit/crowd-state-server/radius_compose_test.luau` (F1 math + range) + `tests/unit/crowd-state-server/recompute_radius_test.luau` (write contract + idempotence + range assert).
+**Required evidence**: `tests/unit/crowd-state-server/radius_compose.spec.luau` (F1 math + range) + `tests/unit/crowd-state-server/recompute_radius.spec.luau` (write contract + idempotence + range assert).
 
 **Status**: [ ] Not yet created
 

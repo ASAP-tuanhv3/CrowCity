@@ -371,7 +371,7 @@ All ACs Logic-tier (TestEZ + mocked CrowdStateServer, NPCSpawner, VFXManager, Au
 
 ---
 
-**Test placement**: `tests/unit/absorb/absorb_system_test.luau` (Logic tier 1-16); `production/qa/evidence/` (Integration tier 17).
+**Test placement**: `tests/unit/absorb/absorb_system.spec.luau` (Logic tier 1-16); `production/qa/evidence/` (Integration tier 17).
 
 **DI requirements**: AbsorbSystem must accept `CrowdStateServer`, `NPCSpawner`, `VFXManager`, `AudioManager`, clock function as injected deps. Otherwise ACs 5, 6, 12, 14, 15, 16 cannot be isolated.
 

@@ -47,7 +47,7 @@ This epic is complete when:
 - `UILayerType` mapping correct: `HUD` → `HeadsUpDisplay`; `RelicDraft` / `MainMenu` / `PauseMenu` → `Menu` ✓
 - `UILayerTypeByLayerId.luau` mapping module created mirroring `UILayerIdByZoneId.luau` precedent ✓
 - Per-layer `setup()` / `teardown()` for each ID is explicitly OUT OF SCOPE — handled in HUD epic, RelicDraft epic, etc. (each consumer Presentation epic self-registers per `UIExampleHud.luau` pattern)
-- Logic story (enum integrity) has passing test file at `tests/unit/ui-handler/layer-id-enum_test.luau` ✓
+- Logic story (enum integrity) has passing test file at `tests/unit/ui-handler/layer-id-enum.spec.luau` ✓
 - ~~Boot-time central registration scaffold~~ — STORY 002 CLOSED OBSOLETE; see EPIC §Story 002 — Closed Obsolete
 
 **Status**: Epic Complete (1/1 effective deliverable shipped 2026-04-27).

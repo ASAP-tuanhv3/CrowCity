@@ -115,7 +115,7 @@
 ## Test Evidence
 
 **Story Type**: Integration
-**Required evidence**: `tests/integration/crowd-state-server/broadcastall_test.luau` (payload size, tick increment, wrap-around, empty path) + `production/qa/evidence/csm-perf-soak-evidence.md` (AC-17, 60-s soak) + `production/qa/evidence/csm-replication-correctness-evidence.md` (AC-18, multi-client) + `production/qa/evidence/csm-eliminated-replication-evidence.md` (AC-20, multi-client).
+**Required evidence**: `tests/integration/crowd-state-server/broadcastall.spec.luau` (payload size, tick increment, wrap-around, empty path) + `production/qa/evidence/csm-perf-soak-evidence.md` (AC-17, 60-s soak) + `production/qa/evidence/csm-replication-correctness-evidence.md` (AC-18, multi-client) + `production/qa/evidence/csm-eliminated-replication-evidence.md` (AC-20, multi-client).
 
 **Status**: [ ] Not yet created
 

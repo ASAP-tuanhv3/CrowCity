@@ -73,7 +73,7 @@
 
 ## Test Evidence
 
-`tests/unit/match-state-server/transition_lobby_ready_test.luau` + `tests/unit/match-state-server/transition_ready_snap_test.luau` + `tests/integration/match-state-server/snap_to_active_call_order_test.luau`.
+`tests/unit/match-state-server/transition_lobby_ready.spec.luau` + `tests/unit/match-state-server/transition_ready_snap.spec.luau` + `tests/integration/match-state-server/snap_to_active_call_order.spec.luau`.
 
 **Status**: [ ] Not yet created
 

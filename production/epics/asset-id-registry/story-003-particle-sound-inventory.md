@@ -102,8 +102,8 @@
 ## Test Evidence
 
 **Story Type**: Logic
-**Required evidence**: `tests/unit/asset-id/particle-sound-inventory_test.luau` — must exist and pass.
-**Status**: [ ] Not yet created
+**Required evidence**: `tests/unit/asset-id/particle-sound-inventory.spec.luau` — must exist and pass.
+**Status**: [x] Executed headless 2026-04-29 — 8/8 pass via `run-in-roblox`
 
 ---
 
@@ -120,7 +120,7 @@
 **Criteria**: 6/6 passing
 **Deviations**:
 - ADVISORY (user-approved Path A scope conflict resolution): `src/ReplicatedStorage/Source/SoundManager.luau` modified — out of stated scope per Out of Scope §"VFXManager + AudioManager wire-up". Story Implementation Notes incorrectly claimed "no production code currently requires Sounds.luau" — SoundManager required it as a `{[name] = {SoundId, Volume, Looped}}` lookup. Migrated to `AssetId.Sound` (string-only contract per ADR-0006); per-cue Volume / Looped defaults now consumer-owned inside SoundManager (`DEFAULT_SFX_VOLUME = 0.7`, `DEFAULT_MUSIC_VOLUME = 0.5`). Functional API surface preserved; rich per-cue config dict dropped (was always-empty template stub).
-**Test Evidence**: Logic story — unit test at `tests/unit/asset-id/particle-sound-inventory_test.luau` (7 test functions, all 6 ACs covered with AC-5/AC-6 marked ADVISORY proxies — full grep + manual review at /story-done passes)
+**Test Evidence**: Logic story — unit test at `tests/unit/asset-id/particle-sound-inventory.spec.luau` (7 test functions, all 6 ACs covered with AC-5/AC-6 marked ADVISORY proxies — full grep + manual review at /story-done passes). **Executed 2026-04-29** via `run-in-roblox` headless — 8/8 pass (test file expanded to 8 `it` blocks during runtime verification).
 **Code Review**: Skipped — Lean mode
 **Gates**: QL-TEST-COVERAGE + LP-CODE-REVIEW skipped — Lean mode
 
@@ -128,7 +128,7 @@
 - `src/ReplicatedStorage/Source/SharedConstants/AssetId.luau` (86 L) — Particle = 12 entries (VFX Manager GDD §V/A names), Sound = 10 entries (*Cue suffix), top-of-file comment cross-refs both source GDDs
 - `src/ReplicatedStorage/Source/SoundManager.luau` (143 L) — **OOS-advisory** migrated from Sounds.luau to AssetId.Sound; introduced `applySound()` helper with consumer-owned Volume / Looped defaults; preserved 7-method public API
 - `src/ReplicatedStorage/Source/SharedConstants/Sounds.luau` — DELETED (was template stub with all entries commented)
-- `tests/unit/asset-id/particle-sound-inventory_test.luau` (136 L, 7 test fns) — TestEZ unit test; AC-1 + AC-2 enforce literal name lists + count assertions; AC-5 + AC-6 marked ADVISORY (file-system / comment introspection not TestEZ-runtime-introspectable; verified at /story-done via Bash grep + manual review)
+- `tests/unit/asset-id/particle-sound-inventory.spec.luau` (136 L, 7 test fns) — TestEZ unit test; AC-1 + AC-2 enforce literal name lists + count assertions; AC-5 + AC-6 marked ADVISORY (file-system / comment introspection not TestEZ-runtime-introspectable; verified at /story-done via Bash grep + manual review)
 
 **Manifest Version**: 2026-04-27 (current ✓ no staleness)
 

@@ -86,7 +86,7 @@
 
 ## Test Evidence
 
-`tests/unit/bandwidth-estimator/compute_test.luau` (AC-4) + `tools/audit-replication-renderedcount.sh` (AC-25) + `tools/audit-csm-write-from-client.sh` (AC-26) + `production/qa/evidence/replication-bandwidth-soak-evidence.md` (AC-14/15 placeholder).
+`tests/unit/bandwidth-estimator/compute.spec.luau` (AC-4) + `tools/audit-replication-renderedcount.sh` (AC-25) + `tools/audit-csm-write-from-client.sh` (AC-26) + `production/qa/evidence/replication-bandwidth-soak-evidence.md` (AC-14/15 placeholder).
 
 **Status**: [ ] Not yet created
 

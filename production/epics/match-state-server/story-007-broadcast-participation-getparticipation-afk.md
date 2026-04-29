@@ -80,7 +80,7 @@
 
 ## Test Evidence
 
-`tests/integration/match-state-server/broadcast_completeness_test.luau` + `tests/unit/match-state-server/getparticipation_test.luau` + `tests/unit/match-state-server/afktoggle_validation_test.luau`.
+`tests/integration/match-state-server/broadcast_completeness.spec.luau` + `tests/unit/match-state-server/getparticipation.spec.luau` + `tests/unit/match-state-server/afktoggle_validation.spec.luau`.
 
 **Status**: [ ] Not yet created
 

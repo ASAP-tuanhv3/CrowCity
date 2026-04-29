@@ -86,7 +86,7 @@
 ## Test Evidence
 
 **Story Type**: Logic
-**Required evidence**: `tests/unit/crowd-state-server/hue_test.luau` + `tests/unit/crowd-state-server/active_relics_cap_test.luau` + `tests/unit/crowd-state-server/relic_changed_signal_test.luau`.
+**Required evidence**: `tests/unit/crowd-state-server/hue.spec.luau` + `tests/unit/crowd-state-server/active_relics_cap.spec.luau` + `tests/unit/crowd-state-server/relic_changed_signal.spec.luau`.
 
 **Status**: [ ] Not yet created
 

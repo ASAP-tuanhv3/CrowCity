@@ -74,7 +74,7 @@ Production — Foundation epics Complete (4/4). Core layer epics Ready (5/5) wit
 - [x] `/create-stories ui-handler-layer-reg` 2026-04-27 — 2 stories authored (lean). 001 UILayerId enum + UILayerType mapping for HUD/RelicDraft/MainMenu/PauseMenu (Logic, ADR-0006), 002 boot-time registration scaffold with no-op setup/teardown stubs in `start.server.luau` per two-entry-point invariant (Integration, ADR-0006 + ANATOMY §8). Nameplate + Chest Billboard explicitly NOT registered as UI layers (BillboardGui-attached components per arch §3.4 + ANATOMY §9). Consumer Presentation epics replace no-op stubs at their own time. Linear order 001 → 002.
 - Foundation story authoring COMPLETE — 14 stories total across 4 epics (4 + 5 + 3 + 2).
 - [x] `/story-readiness all` 2026-04-27 — All 14 Foundation stories READY. Estimates added to all 14 stories (post-NEEDS-WORK fix). All ADR refs Accepted (0001/0006/0011); Manifest v2026-04-27 current; ≥3 testable ACs each; Out-of-Scope + Test Evidence + Dependencies declared.
-- [x] `/dev-story story-001-asset-id-skeleton` 2026-04-27 — Implemented. Files: `src/ReplicatedStorage/Source/SharedConstants/AssetId.luau` (24 L, 4 cats × Skin 5 entries) + `tests/unit/asset-id/skeleton_test.luau` (88 L, 6 test fns covering AC-1..6). Tabs indent, --!strict, AssetIdValue type exported, Skin populated `FollowerDefault/City1/City2/Neon/Event1` all `rbxassetid://0` placeholders, Mesh/Particle/Sound left `{}` per out-of-scope. Routed to gameplay-programmer (Roblox engine, no engine specialist per technical-preferences).
+- [x] `/dev-story story-001-asset-id-skeleton` 2026-04-27 — Implemented. Files: `src/ReplicatedStorage/Source/SharedConstants/AssetId.luau` (24 L, 4 cats × Skin 5 entries) + `tests/unit/asset-id/skeleton.spec.luau` (88 L, 6 test fns covering AC-1..6). Tabs indent, --!strict, AssetIdValue type exported, Skin populated `FollowerDefault/City1/City2/Neon/Event1` all `rbxassetid://0` placeholders, Mesh/Particle/Sound left `{}` per out-of-scope. Routed to gameplay-programmer (Roblox engine, no engine specialist per technical-preferences).
 - [x] `/code-review` 2026-04-27 — APPROVED. lead-programmer CLEAN (style suggestion only: pairs() over generalized iter); qa-tester GAPS: 1 real fix (count assertion for "exactly 4 categories" — patched inline) + 3 compile-time/cross-context limitations annotated as ADVISORY (--!strict / cross-context require / type-export). Verdict: APPROVED.
 - [x] `/story-done story-001-asset-id-skeleton` 2026-04-27 — COMPLETE WITH NOTES. 6/6 ACs passing. Test execution DEFERRED — no headless TestEZ runner configured (Production-phase task). LSP flags `describe`/`it`/`expect` as undefined globals (TestEZ runtime injection — known, not a bug). Story file Status: Complete + Completion Notes appended. Unblocks story 002 (Mesh inventory), 003 (Particle+Sound inventory).
 
@@ -291,7 +291,7 @@ Task: **`/gate-check pre-production` 2026-04-27 verdict FAIL.** Director panel: 
 - Verdict: COMPLETE WITH NOTES (1 ADVISORY: SoundManager.luau OOS edit, user-approved Path A)
 - Story: production/epics/asset-id-registry/story-003-particle-sound-inventory.md — Particle + Sound inventory + Sounds.luau retirement
 - Tech debt logged: None (SoundManager OOS edit documented in completion notes; full AudioManager rewrite owned by VS+ epic)
-- Files: AssetId.luau (86L final, +Particle/+Sound), SoundManager.luau (143L migrated), Sounds.luau (deleted), particle-sound-inventory_test.luau (136L/7fns)
+- Files: AssetId.luau (86L final, +Particle/+Sound), SoundManager.luau (143L migrated), Sounds.luau (deleted), particle-sound-inventory.spec.luau (136L/7fns)
 - Next recommended: Story 004 (Static-audit grep gate) — final story in asset-id-registry epic
 
 ## Session Extract — /story-done 2026-04-27 (story-004)
@@ -307,7 +307,7 @@ Task: **`/gate-check pre-production` 2026-04-27 verdict FAIL.** Director panel: 
 - Verdict: COMPLETE WITH NOTES (2 ADVISORY: AC-6 EnumType template-idiom + AC-3 no-op verification)
 - Story: production/epics/ui-handler-layer-reg/story-001-ui-layer-id-enum.md — UILayerId enum + UILayerType mapping
 - Tech debt logged: None
-- Files: UILayerId.luau (32L, +4 entries), UILayerTypeByLayerId.luau (NEW 27L), layer-id-enum_test.luau (NEW 105L/10fns)
+- Files: UILayerId.luau (32L, +4 entries), UILayerTypeByLayerId.luau (NEW 27L), layer-id-enum.spec.luau (NEW 105L/10fns)
 - Audit: tools/audit-asset-ids.sh exit 0 — no asset-id leak introduced
 - Next recommended: ui-handler-layer-reg story-002 (boot-time registration scaffold)
 
@@ -323,7 +323,7 @@ Task: **`/gate-check pre-production` 2026-04-27 verdict FAIL.** Director panel: 
 - Story: production/epics/player-data-schema/story-001-mvp-schema-lock.md — MVP 7-key PlayerDataKey schema (was 6; Inventory added per amendment)
 - Concurrent ADR amendment: ADR-0011 Amendment 1 — Inventory added as 7th MVP key (cosmetic). Reconciles ADR with shipped template's Market system. Path B selected by user.
 - Tech debt logged: None
-- Files: PlayerDataKey.luau (51L, +4 keys), DefaultPlayerData.luau (38L, +5 entries incl _schemaVersion), schema-lock_test.luau (NEW 197L/12fns), adr-0011-persistence-schema.md (+12 edits, +Amendment Log)
+- Files: PlayerDataKey.luau (51L, +4 keys), DefaultPlayerData.luau (38L, +5 entries incl _schemaVersion), schema-lock.spec.luau (NEW 197L/12fns), adr-0011-persistence-schema.md (+12 edits, +Amendment Log)
 - Audit: tools/audit-asset-ids.sh exit 0 — no asset-id leak introduced
 - Next recommended: player-data-schema story-002 (migration scaffold)
 

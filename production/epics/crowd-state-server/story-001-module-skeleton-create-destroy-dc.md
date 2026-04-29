@@ -98,7 +98,7 @@
 ## Test Evidence
 
 **Story Type**: Logic
-**Required evidence**: `tests/unit/crowd-state-server/lifecycle_test.luau` (create/destroy/identity/idempotence) + `tests/unit/crowd-state-server/dc_cleanup_test.luau` (PlayerRemoving handler) + `tests/unit/crowd-state-server/signal_fanout_test.luau` (CrowdCreated + CrowdDestroyed events).
+**Required evidence**: `tests/unit/crowd-state-server/lifecycle.spec.luau` (create/destroy/identity/idempotence) + `tests/unit/crowd-state-server/dc_cleanup.spec.luau` (PlayerRemoving handler) + `tests/unit/crowd-state-server/signal_fanout.spec.luau` (CrowdCreated + CrowdDestroyed events).
 
 **Status**: [ ] Not yet created
 

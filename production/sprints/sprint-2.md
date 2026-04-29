@@ -22,14 +22,14 @@ Stand up the Core gameplay spine end-to-end: TickOrchestrator + CrowdStateServer
 
 | ID | Task | Agent/Owner | Est. Days | Dependencies | Acceptance Criteria |
 |----|------|-------------|-----------|-------------|--------------------|
-| 2-1 | TickOrch story-001 — module skeleton + accumulator + cadence + start/stop API | gameplay-programmer | 1.0 | none (epic dep-root) | story-001 ACs all pass; `tests/unit/tick-orchestrator/cadence_test.luau` + `lifecycle_test.luau` + `registerphases_test.luau` pass |
-| 2-2 | TickOrch story-002 — phase dispatch + pcall isolation + ctx assembly | gameplay-programmer | 1.0 | 2-1 | story-002 ACs pass; `tests/unit/tick-orchestrator/phase_dispatch_test.luau` + `error_isolation_test.luau` pass |
-| 2-3 | TickOrch story-003 — boot wiring + 9-phase stub registration in `start.server.luau` | gameplay-programmer | 1.0 | 2-1, 2-2 | story-003 ACs pass; `tests/integration/tick-orchestrator/boot_wiring_test.luau` pass; 9 stub modules under `_PhaseStubs/` |
-| 2-4 | CSM story-001 — module skeleton + record schema + create/destroy + DC handler | gameplay-programmer | 1.0 | 2-3 | story-001 ACs (AC-1/2/16/23/26) pass; `tests/unit/crowd-state-server/lifecycle_test.luau` + `dc_cleanup_test.luau` + `signal_fanout_test.luau` pass |
+| 2-1 | TickOrch story-001 — module skeleton + accumulator + cadence + start/stop API | gameplay-programmer | 1.0 | none (epic dep-root) | story-001 ACs all pass; `tests/unit/tick-orchestrator/cadence.spec.luau` + `lifecycle.spec.luau` + `registerphases.spec.luau` pass |
+| 2-2 | TickOrch story-002 — phase dispatch + pcall isolation + ctx assembly | gameplay-programmer | 1.0 | 2-1 | story-002 ACs pass; `tests/unit/tick-orchestrator/phase_dispatch.spec.luau` + `error_isolation.spec.luau` pass |
+| 2-3 | TickOrch story-003 — boot wiring + 9-phase stub registration in `start.server.luau` | gameplay-programmer | 1.0 | 2-1, 2-2 | story-003 ACs pass; `tests/integration/tick-orchestrator/boot_wiring.spec.luau` pass; 9 stub modules under `_PhaseStubs/` |
+| 2-4 | CSM story-001 — module skeleton + record schema + create/destroy + DC handler | gameplay-programmer | 1.0 | 2-3 | story-001 ACs (AC-1/2/16/23/26) pass; `tests/unit/crowd-state-server/lifecycle.spec.luau` + `dc_cleanup.spec.luau` + `signal_fanout.spec.luau` pass |
 | 2-5 | CSM story-002 — updateCount + DeltaSource + F5 clamp + CountChanged + CrowdCountClamped | gameplay-programmer | 1.0 | 2-4 | story-002 ACs (AC-3/4/15/24/25) pass; corresponding unit tests pass; manifest L71 4-caller rule code-review enforced |
-| 2-6 | CSM story-007 — read accessors + setStillOverlapping + Eliminated exclusion | gameplay-programmer | 0.5 | 2-4 | story-007 ACs (AC-27/28) pass; `tests/unit/crowd-state-server/read_accessors_test.luau` pass |
-| 2-7 | RL story-001 — module skeleton + Janitor + createAll + destroyAll | gameplay-programmer | 1.0 | 2-4 | story-001 ACs (AC-1/2/3/4) pass; `tests/unit/round-lifecycle/createall_test.luau` + `destroyall_test.luau` + `double_createall_assert_test.luau` pass |
-| 2-8 | MSM story-001 — module skeleton + 7-state enum + Lobby boot + participation flags + Snap freeze | gameplay-programmer | 0.5 | 2-3 | story-001 ACs (AC-1/2/3) pass; `tests/unit/match-state-server/skeleton_test.luau` + `participation_flag_test.luau` + `snap_freeze_test.luau` pass |
+| 2-6 | CSM story-007 — read accessors + setStillOverlapping + Eliminated exclusion | gameplay-programmer | 0.5 | 2-4 | story-007 ACs (AC-27/28) pass; `tests/unit/crowd-state-server/read_accessors.spec.luau` pass |
+| 2-7 | RL story-001 — module skeleton + Janitor + createAll + destroyAll | gameplay-programmer | 1.0 | 2-4 | story-001 ACs (AC-1/2/3/4) pass; `tests/unit/round-lifecycle/createall.spec.luau` + `destroyall.spec.luau` + `double_createall_assert.spec.luau` pass |
+| 2-8 | MSM story-001 — module skeleton + 7-state enum + Lobby boot + participation flags + Snap freeze | gameplay-programmer | 0.5 | 2-3 | story-001 ACs (AC-1/2/3) pass; `tests/unit/match-state-server/skeleton.spec.luau` + `participation_flag.spec.luau` + `snap_freeze.spec.luau` pass |
 
 **Must Have total: 7.0 days**
 

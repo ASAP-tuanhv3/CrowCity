@@ -123,7 +123,7 @@
 ## Test Evidence
 
 **Story Type**: Logic
-**Required evidence**: `tests/unit/tick-orchestrator/phase_dispatch_test.luau` (iteration order, ctx propagation, deterministic 1000-tick fixture) + `tests/unit/tick-orchestrator/error_isolation_test.luau` (pcall + error + log + recovery).
+**Required evidence**: `tests/unit/tick-orchestrator/phase_dispatch.spec.luau` (iteration order, ctx propagation, deterministic 1000-tick fixture) + `tests/unit/tick-orchestrator/error_isolation.spec.luau` (pcall + error + log + recovery).
 
 **Status**: [ ] Not yet created
 

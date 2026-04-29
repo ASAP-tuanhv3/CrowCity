@@ -134,7 +134,7 @@
 ## Test Evidence
 
 **Story Type**: Logic
-**Required evidence**: `tests/unit/remote-validator/guards_test.luau` — must exist and pass via TestEZ.
+**Required evidence**: `tests/unit/remote-validator/guards.spec.luau` — must exist and pass via TestEZ.
 **Status**: [ ] Not yet created
 
 ---
@@ -159,14 +159,14 @@
 - ADVISORY: AC-7 (short-circuit) verified by documentation block at top of init.luau showing canonical idiom; runtime guard would require AOP not available in Luau. Code-review-driven enforcement per ADR-0010 §L2.
 - ADVISORY: AC-8 (silent rejection) — test verifies guard rejection paths do not throw via `expect(...).never.to.throw()`. All log lines prefixed `[RemoteValidator]` with `userId` + `remoteName` + reason.
 
-**Test Evidence**: Logic story — unit test at `tests/unit/remote-validator/guards_test.luau` (29 test functions across 7 describe blocks; all 10 ACs covered with rate-limit tests gracefully skipping in headless harness).
+**Test Evidence**: Logic story — unit test at `tests/unit/remote-validator/guards.spec.luau` (29 test functions across 7 describe blocks; all 10 ACs covered with rate-limit tests gracefully skipping in headless harness).
 
 **Code Review**: Skipped — Lean mode
 **Gates**: QL-TEST-COVERAGE + LP-CODE-REVIEW skipped — Lean mode
 
 **Files**:
 - `src/ServerStorage/Source/RemoteValidator/init.luau` (NEW, 218 L) — folder-as-module per ADR-0010 §Decision; exposes `checkIdentity`, `checkState`, `checkParameters`, `checkRate`, `checkPayloadSize` + `_resetForTest` helper. Token-bucket state under `_buckets[player][remoteName]`. PlayerRemoving connection wipes departed players. Logging prefixed `[RemoteValidator]` with userId + remoteName + reason.
-- `tests/unit/remote-validator/guards_test.luau` (NEW, 217 L, 29 test fns)
+- `tests/unit/remote-validator/guards.spec.luau` (NEW, 217 L, 29 test fns)
 
 **Manifest Version**: 2026-04-27 (current ✓ no staleness).
 

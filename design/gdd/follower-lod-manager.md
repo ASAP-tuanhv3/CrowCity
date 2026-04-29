@@ -423,6 +423,6 @@ All ACs are **Logic** tier (BLOCKING) — TestEZ unit tests with mocked `Followe
 
 ---
 
-**Test file**: `tests/unit/follower-lod-manager/follower_lod_manager_test.luau`
+**Test file**: `tests/unit/follower-lod-manager/follower_lod_manager.spec.luau`
 
 **Required mocks**: `FollowerEntity` (setLOD/setPoolSize/getPeelingCount stubs — record call order for AC-LOD-18), `CrowdStateClient.get`, `CrowdManagerClient.getAllCrowdIds`, `workspace.CurrentCamera`, `UserInputService.{TouchEnabled, GamepadEnabled}`, `CrowdEliminated` RemoteEvent (fire mock event directly on the module under test for AC-LOD-16), `setInterval` replaced with synchronous stepper for deterministic tests.

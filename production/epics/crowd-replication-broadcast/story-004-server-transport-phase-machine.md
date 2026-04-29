@@ -83,7 +83,7 @@
 
 ## Test Evidence
 
-`tests/integration/crowd-replication-broadcast/transport_phase_machine_test.luau` (AC-8/9/10) — multi-system integration test.
+`tests/integration/crowd-replication-broadcast/transport_phase_machine.spec.luau` (AC-8/9/10) — multi-system integration test.
 
 **Status**: [ ] Not yet created
 

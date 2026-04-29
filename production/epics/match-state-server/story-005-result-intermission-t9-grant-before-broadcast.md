@@ -97,7 +97,7 @@
 
 ## Test Evidence
 
-`tests/integration/match-state-server/t9_ordering_test.luau` + `tests/integration/match-state-server/grant_before_broadcast_test.luau` + `tests/integration/match-state-server/t10_flag_reset_test.luau`.
+`tests/integration/match-state-server/t9_ordering.spec.luau` + `tests/integration/match-state-server/grant_before_broadcast.spec.luau` + `tests/integration/match-state-server/t10_flag_reset.spec.luau`.
 
 **Status**: [ ] Not yet created
 

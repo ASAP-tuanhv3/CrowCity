@@ -75,7 +75,7 @@
 
 ## Test Evidence
 
-`tests/unit/crowd-state-client/reliable_subscribers_test.luau` (5 reliable handlers) + `tests/unit/crowd-state-client/cross_channel_ordering_test.luau` (AC-13/19) + `tests/integration/crowd-state-client/exactly_once_loopback_test.luau` (AC-21).
+`tests/unit/crowd-state-client/reliable_subscribers.spec.luau` (5 reliable handlers) + `tests/unit/crowd-state-client/cross_channel_ordering.spec.luau` (AC-13/19) + `tests/integration/crowd-state-client/exactly_once_loopback.spec.luau` (AC-21).
 
 **Status**: [ ] Not yet created
 

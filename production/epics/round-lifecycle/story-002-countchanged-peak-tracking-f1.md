@@ -80,7 +80,7 @@
 
 ## Test Evidence
 
-`tests/unit/round-lifecycle/peak_tracking_f1_test.luau` (AC-5/6/7) + `tests/unit/round-lifecycle/signal_guard_test.luau` (AC-8) + `tests/unit/round-lifecycle/subscription_lifecycle_test.luau`.
+`tests/unit/round-lifecycle/peak_tracking_f1.spec.luau` (AC-5/6/7) + `tests/unit/round-lifecycle/signal_guard.spec.luau` (AC-8) + `tests/unit/round-lifecycle/subscription_lifecycle.spec.luau`.
 
 **Status**: [ ] Not yet created
 

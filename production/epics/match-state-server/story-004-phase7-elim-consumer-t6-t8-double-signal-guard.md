@@ -78,7 +78,7 @@
 
 ## Test Evidence
 
-`tests/unit/match-state-server/elim_consumer_t6_test.luau` + `tests/unit/match-state-server/double_signal_guard_test.luau` + `tests/integration/match-state-server/t8_instant_win_test.luau`.
+`tests/unit/match-state-server/elim_consumer_t6.spec.luau` + `tests/unit/match-state-server/double_signal_guard.spec.luau` + `tests/integration/match-state-server/t8_instant_win.spec.luau`.
 
 **Status**: [ ] Not yet created
 

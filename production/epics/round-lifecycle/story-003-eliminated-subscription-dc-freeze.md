@@ -91,7 +91,7 @@
 
 ## Test Evidence
 
-`tests/unit/round-lifecycle/eliminated_subscription_test.luau` + `tests/unit/round-lifecycle/dc_freeze_test.luau`.
+`tests/unit/round-lifecycle/eliminated_subscription.spec.luau` + `tests/unit/round-lifecycle/dc_freeze.spec.luau`.
 
 **Status**: [ ] Not yet created
 

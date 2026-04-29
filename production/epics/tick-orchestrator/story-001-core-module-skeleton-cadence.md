@@ -134,7 +134,7 @@
 ## Test Evidence
 
 **Story Type**: Logic
-**Required evidence**: `tests/unit/tick-orchestrator/cadence_test.luau` AND `tests/unit/tick-orchestrator/registerphases_test.luau` AND `tests/unit/tick-orchestrator/lifecycle_test.luau` — must exist and pass via TestEZ runner.
+**Required evidence**: `tests/unit/tick-orchestrator/cadence.spec.luau` AND `tests/unit/tick-orchestrator/registerphases.spec.luau` AND `tests/unit/tick-orchestrator/lifecycle.spec.luau` — must exist and pass via TestEZ runner.
 
 **Status**: [ ] Not yet created
 

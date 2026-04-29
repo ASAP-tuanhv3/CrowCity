@@ -367,7 +367,7 @@ GIVEN NPC `npcId` respawning at T0 with `NPC_RESPAWN_FADE_SEC = 0.3s`, WHEN twee
 GIVEN server with 300 NPCs active, WHEN 15 Hz broadcast runs for 60 seconds, THEN `NpcStateBroadcast` fires exactly 900 times (±5 for accumulator slop); payload byte-size per broadcast averages < 600 bytes (delta-compressed); no client receives `Part.CFrame` via native replication (native Part replication disabled via `Anchored = true` + no `.CFrame` changes replicated — verify via server→client packet capture). Evidence: `production/qa/evidence/npc-spawner-replication-[date].md`.
 
 **Test placement**:
-- Logic tier (AC-01, 02, 03, 04, 05, 06, 07, 08, 09, 10, 12, 13, 14, 15, 16, 17, 18): `tests/unit/npc-spawner/npc_spawner_test.luau`
+- Logic tier (AC-01, 02, 03, 04, 05, 06, 07, 08, 09, 10, 12, 13, 14, 15, 16, 17, 18): `tests/unit/npc-spawner/npc_spawner.spec.luau`
 - Integration tier (AC-11, 17b, 19): `tests/integration/npc-spawner/` + `production/qa/evidence/`
 
 **DI requirements**: NpcSpawner must accept injected dependencies:
@@ -388,7 +388,7 @@ Without all eight injectables, ACs 03, 05, 07, 09, 10, 14, 15, 16, 17, 18 cannot
 
 1. ~~**AC-15 test hook**~~ **RESOLVED** — `_testRespawnNow(npcId)` exposed as a method on the module, guarded by `__DEV__` compile-time check. Cancels pending respawn timer, invokes shared internal `_respawnNow(npcId)` synchronously, invalidates `_cachedSnapshot`. Production builds strip via `RunService:IsStudio() or _G.__DEV__` guard. Documented in AC-15.
 
-2. ~~**AC-16 shared constant**~~ **RESOLVED** — `NPC_WALK_SPEED`, `NPC_POOL_SIZE`, all F2/F3 constants live in `SharedConstants/NpcConfig.luau`. Imported by both `npc_spawner_test.luau` and `absorb_system_test.luau`. Cross-GDD guard works by comparing the imported constant against the F2 table baseline. Matches `SharedConstants/CrowdConfig.luau` convention from CSM.
+2. ~~**AC-16 shared constant**~~ **RESOLVED** — `NPC_WALK_SPEED`, `NPC_POOL_SIZE`, all F2/F3 constants live in `SharedConstants/NpcConfig.luau`. Imported by both `npc_spawner.spec.luau` and `absorb_system.spec.luau`. Cross-GDD guard works by comparing the imported constant against the F2 table baseline. Matches `SharedConstants/CrowdConfig.luau` convention from CSM.
 
 ### Cross-GDD patches — resolved 2026-04-24
 

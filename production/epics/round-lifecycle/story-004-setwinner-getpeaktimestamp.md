@@ -85,7 +85,7 @@
 
 ## Test Evidence
 
-`tests/unit/round-lifecycle/setwinner_test.luau` + `tests/unit/round-lifecycle/getpeaktimestamp_test.luau`.
+`tests/unit/round-lifecycle/setwinner.spec.luau` + `tests/unit/round-lifecycle/getpeaktimestamp.spec.luau`.
 
 **Status**: [ ] Not yet created
 

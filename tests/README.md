@@ -61,13 +61,13 @@ Selene must pass before commit (matches CI gate).
 
 ## Test Naming Convention
 
-- **Files**: `[system]_[feature]_test.luau`
+- **Files**: `[system]_[feature].spec.luau`
 - **`describe` block**: name the system under test (`describe("CrowdStateServer.updateCount", ...)`)
 - **`it` block**: state the scenario + expected outcome (`it("clamps positive delta at 300 ceiling", ...)`)
 - **Examples**:
-  - `tests/unit/crowd-state-server/updatecount_clamp_test.luau`
-  - `tests/unit/tick-orchestrator/cadence_test.luau`
-  - `tests/integration/match-state-server/snap_to_active_call_order_test.luau`
+  - `tests/unit/crowd-state-server/updatecount_clamp.spec.luau`
+  - `tests/unit/tick-orchestrator/cadence.spec.luau`
+  - `tests/integration/match-state-server/snap_to_active_call_order.spec.luau`
 
 ## Story Type → Test Evidence
 
@@ -100,7 +100,7 @@ A failed test suite blocks merging. The CI also runs `selene src/` as a parallel
 ## Authoring a New Test
 
 1. Identify the system + feature: e.g. CSM updateCount F5 clamp
-2. File path: `tests/unit/crowd-state-server/updatecount_clamp_test.luau`
+2. File path: `tests/unit/crowd-state-server/updatecount_clamp.spec.luau`
 3. Skeleton:
    ```lua
    --!strict

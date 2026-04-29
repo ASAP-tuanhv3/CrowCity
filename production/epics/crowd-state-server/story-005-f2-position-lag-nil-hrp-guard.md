@@ -98,7 +98,7 @@
 ## Test Evidence
 
 **Story Type**: Logic
-**Required evidence**: `tests/unit/crowd-state-server/position_lag_test.luau` (F2 math + nil HRP guard + iteration).
+**Required evidence**: `tests/unit/crowd-state-server/position_lag.spec.luau` (F2 math + nil HRP guard + iteration).
 
 **Status**: [ ] Not yet created
 

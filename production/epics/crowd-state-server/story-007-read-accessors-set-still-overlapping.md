@@ -121,7 +121,7 @@
 ## Test Evidence
 
 **Story Type**: Logic
-**Required evidence**: `tests/unit/crowd-state-server/read_accessors_test.luau` (get/getAllActive/getAllCrowdPositions) + `tests/unit/crowd-state-server/set_still_overlapping_test.luau`.
+**Required evidence**: `tests/unit/crowd-state-server/read_accessors.spec.luau` (get/getAllActive/getAllCrowdPositions) + `tests/unit/crowd-state-server/set_still_overlapping.spec.luau`.
 
 **Status**: [ ] Not yet created
 

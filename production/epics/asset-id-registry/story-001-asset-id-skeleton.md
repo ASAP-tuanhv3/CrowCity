@@ -115,8 +115,8 @@ return AssetId
 ## Test Evidence
 
 **Story Type**: Logic
-**Required evidence**: `tests/unit/asset-id/skeleton_test.luau` — must exist and pass via TestEZ.
-**Status**: [ ] Not yet created
+**Required evidence**: `tests/unit/asset-id/skeleton.spec.luau` — must exist and pass via TestEZ.
+**Status**: [x] Executed headless 2026-04-29 — 6/6 pass via `run-in-roblox`
 
 ---
 
@@ -133,9 +133,9 @@ return AssetId
 **Criteria**: 6/6 passing (AC-1, AC-2, AC-3, AC-4, AC-5, AC-6 all covered by test functions)
 **Files**:
 - `src/ReplicatedStorage/Source/SharedConstants/AssetId.luau` (24 L) — 4-category enum, Skin populated with 5 MVP slots (`FollowerDefault` / `FollowerCity1` / `FollowerCity2` / `FollowerNeon` / `FollowerEvent1`) all `rbxassetid://0` placeholders; `Mesh` / `Particle` / `Sound` left `{}` per out-of-scope contract
-- `tests/unit/asset-id/skeleton_test.luau` (88 L, 6 test fns)
+- `tests/unit/asset-id/skeleton.spec.luau` (88 L, 6 test fns)
 
-**Test Evidence**: `tests/unit/asset-id/skeleton_test.luau` — TestEZ unit test, all 6 ACs mapped with explicit AC-N citations. **Execution deferred** — project lacks headless TestEZ runner (Production-phase task). Tests must be run in Roblox Studio TestRunner before sprint close-out.
+**Test Evidence**: `tests/unit/asset-id/skeleton.spec.luau` — TestEZ unit test, all 6 ACs mapped with explicit AC-N citations. **Executed 2026-04-29** via `rojo build test.project.json -o test-place.rbxl && run-in-roblox --place test-place.rbxl --script tests/runner.server.luau` → 6/6 pass (AC-1..AC-6). Required `aftman.toml` pin fix `run-in-roblox@0.4.0 → 0.3.0` and TestEZ convention rename `_test.luau → .spec.luau` (TestBootstrap discovery filter matches `.spec` suffix only).
 
 **Deviations** (ADVISORY only, no BLOCKING):
 - AC-1 `--!strict` directive verification deferred to Selene CI gate (compile-time directive; not TestEZ-runtime-introspectable). Inline comment documents the proxy.
@@ -143,7 +143,7 @@ return AssetId
 - AC-6 `export type AssetIdValue = string` runtime check is a proxy (`type(id) == "string"`); real gate is Luau LSP under `--!strict` on consumer modules. Inline comment documents the proxy.
 - Roblox LSP flags `describe` / `it` / `expect` as undefined globals — known TestEZ runtime-injection pattern, not a defect.
 
-**Code Review**: APPROVED (lead-programmer + qa-tester) per /code-review 2026-04-27. QA gap on "exactly 4 categories" count assertion fixed inline (skeleton_test.luau:30-34); 3 compile-time/cross-context limitations annotated as ADVISORY.
+**Code Review**: APPROVED (lead-programmer + qa-tester) per /code-review 2026-04-27. QA gap on "exactly 4 categories" count assertion fixed inline (skeleton.spec.luau:30-34); 3 compile-time/cross-context limitations annotated as ADVISORY.
 
 **Gates**: QL-TEST-COVERAGE + LP-CODE-REVIEW skipped — Lean mode.
 

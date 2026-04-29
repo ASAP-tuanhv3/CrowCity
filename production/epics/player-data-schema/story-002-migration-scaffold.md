@@ -117,7 +117,7 @@
 ## Test Evidence
 
 **Story Type**: Logic
-**Required evidence**: `tests/unit/player-data/migration-roundtrip_test.luau` — must exist and pass via TestEZ.
+**Required evidence**: `tests/unit/player-data/migration-roundtrip.spec.luau` — must exist and pass via TestEZ.
 **Status**: [ ] Not yet created
 
 ---

@@ -126,7 +126,7 @@
 
 ## Test Evidence
 
-`tests/unit/round-lifecycle/getplacements_f3_sort_test.luau` (AC-11/13 + 5-key) + `tests/unit/round-lifecycle/empty_participants_t5_test.luau` (AC-12) + `tests/unit/round-lifecycle/broadcast_schema_strip_test.luau` (AC-15) + `tests/unit/round-lifecycle/idempotence_perf_test.luau` (AC-16).
+`tests/unit/round-lifecycle/getplacements_f3_sort.spec.luau` (AC-11/13 + 5-key) + `tests/unit/round-lifecycle/empty_participants_t5.spec.luau` (AC-12) + `tests/unit/round-lifecycle/broadcast_schema_strip.spec.luau` (AC-15) + `tests/unit/round-lifecycle/idempotence_perf.spec.luau` (AC-16).
 
 **Status**: [ ] Not yet created
 

@@ -1,5 +1,5 @@
 --!strict
--- TestEZ headless runner. Discovers all `*_test.luau` modules under
+-- TestEZ headless runner. Discovers all `*.spec.luau` modules under
 -- ServerStorage.Tests (mapped from tests/ via Rojo) and runs them.
 -- RunContext: Server. Auto-runs on play.
 -- Exit codes (when invoked via run-in-roblox): 0 success, 1 failure.

@@ -94,7 +94,7 @@
 ## Test Evidence
 
 **Story Type**: Logic
-**Required evidence**: `tests/unit/network/remote-name-enum_test.luau` — must exist and pass.
+**Required evidence**: `tests/unit/network/remote-name-enum.spec.luau` — must exist and pass.
 **Status**: [ ] Not yet created
 
 ---
@@ -113,7 +113,7 @@
 
 **Deviations**: None (AC-3 + AC-4 + AC-6 + AC-7 marked ADVISORY proxies as architectural pattern — boot-time instance creation + compile-time directives + grep gate are not TestEZ-runtime-introspectable; verified out-of-band).
 
-**Test Evidence**: Logic story — unit test at `tests/unit/network/remote-name-enum_test.luau` (12 test functions across 5 describe blocks; AC-3 + AC-4 use `Network._remoteFolder` introspection that gracefully skips pre-boot in TestEZ).
+**Test Evidence**: Logic story — unit test at `tests/unit/network/remote-name-enum.spec.luau` (12 test functions across 5 describe blocks; AC-3 + AC-4 use `Network._remoteFolder` introspection that gracefully skips pre-boot in TestEZ).
 
 **Code Review**: Skipped — Lean mode
 **Gates**: QL-TEST-COVERAGE + LP-CODE-REVIEW skipped — Lean mode
@@ -121,7 +121,7 @@
 **Files**:
 - `src/ReplicatedStorage/Source/Network/RemoteName/RemoteEventName.luau` (modified, 88 L) — `EnumType` union extended from 4 → 26 entries (template's 4 preserved + 22 architecture.md §5.7 entries grouped by system: MSM, CSM, Chest, Absorb/Collision, Relic, Player/NPC); per-system header comments for reviewer clarity per Implementation Notes guidance
 - `src/ReplicatedStorage/Source/Network/RemoteName/RemoteFunctionName.luau` (modified, 18 L) — added `GetParticipation` per AC-2; preserved template's `RequestItemPurchase`
-- `tests/unit/network/remote-name-enum_test.luau` (NEW, 168 L, 12 test fns) — covers all 7 ACs; AC-1 enforces literal 22-name list + 26 total count; AC-5 uniqueness across both enums; AC-3/AC-4 boot-folder shape introspection (graceful skip if Network not started)
+- `tests/unit/network/remote-name-enum.spec.luau` (NEW, 168 L, 12 test fns) — covers all 7 ACs; AC-1 enforces literal 22-name list + 26 total count; AC-5 uniqueness across both enums; AC-3/AC-4 boot-folder shape introspection (graceful skip if Network not started)
 
 **Manifest Version**: 2026-04-27 (current ✓ no staleness).
 

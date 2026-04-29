@@ -118,7 +118,7 @@
 ## Test Evidence
 
 **Story Type**: Logic
-**Required evidence**: `tests/unit/player-data/schema-lock_test.luau` — must exist and pass via TestEZ.
+**Required evidence**: `tests/unit/player-data/schema-lock.spec.luau` — must exist and pass via TestEZ.
 **Status**: [ ] Not yet created
 
 ---
@@ -140,7 +140,7 @@
 **Deviations**:
 - ADVISORY: AC-5 implemented as `export type EnumType = "Coins" | "OwnedSkins" | ...` string-union per template precedent (UILayerId.luau, UILayerType.luau, ZoneIdTag.luau all use `EnumType` string-union pattern). Story spec wording was `PlayerDataKeyValue = string` plain alias. String-union is strictly stronger typing — gives consumers compile-time narrowing on assignment. Same advisory pattern applied in ui-handler-layer-reg story-001.
 
-**Test Evidence**: Logic story — unit test at `tests/unit/player-data/schema-lock_test.luau` (12 test functions across 5 describe blocks; AC-4 + AC-5 marked ADVISORY proxies — top-of-file comment introspection + compile-time type-check are not TestEZ-runtime-introspectable, verified at /story-done via manual review + Selene CI).
+**Test Evidence**: Logic story — unit test at `tests/unit/player-data/schema-lock.spec.luau` (12 test functions across 5 describe blocks; AC-4 + AC-5 marked ADVISORY proxies — top-of-file comment introspection + compile-time type-check are not TestEZ-runtime-introspectable, verified at /story-done via manual review + Selene CI).
 
 **Code Review**: Skipped — Lean mode
 **Gates**: QL-TEST-COVERAGE + LP-CODE-REVIEW skipped — Lean mode
@@ -148,7 +148,7 @@
 **Files**:
 - `src/ReplicatedStorage/Source/SharedConstants/PlayerDataKey.luau` (51 L) — added `OwnedSkins`, `SelectedSkin`, `LifetimeAbsorbs`, `LifetimeWins` to existing `Coins` / `FtueStage` / `Inventory`. EnumType string-union expanded to 7 entries. Top-of-file comment block lists Pillar 4 category per key + deferred VS+ / Alpha+ keys with bump path.
 - `src/ServerStorage/Source/DefaultPlayerData.luau` (38 L) — added `_schemaVersion = 1`, `OwnedSkins = {}`, `SelectedSkin = "Default"`, `LifetimeAbsorbs = 0`, `LifetimeWins = 0`. Preserved existing Coins=0, FtueStage=Stage1, Inventory={} with type annotation.
-- `tests/unit/player-data/schema-lock_test.luau` (NEW, 197 L, 12 test fns) — TestEZ unit test covering AC-1 (key count + presence), AC-2 (defaults integrity + Coins=0 anti-P2W), AC-3 (32-fragment forbidden-class scan, case-insensitive substring), AC-6 (bidirectional consistency, _schemaVersion exempted), AC-7 (deferred-keys absence, both enum + defaults).
+- `tests/unit/player-data/schema-lock.spec.luau` (NEW, 197 L, 12 test fns) — TestEZ unit test covering AC-1 (key count + presence), AC-2 (defaults integrity + Coins=0 anti-P2W), AC-3 (32-fragment forbidden-class scan, case-insensitive substring), AC-6 (bidirectional consistency, _schemaVersion exempted), AC-7 (deferred-keys absence, both enum + defaults).
 - `docs/architecture/adr-0011-persistence-schema.md` (388 L final, +12 edits) — Amendment 1 applied across 9 sections (Status header, Status history, Constraints, Requirements, Decision narrative, MVP Schema table, Migration Plan, Validation Criteria, Alternatives Considered) + new §Amendment Log section.
 
 **Manifest Version**: 2026-04-27 (current ✓ no staleness — manifest does not reference key count, no edit required).

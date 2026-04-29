@@ -141,7 +141,7 @@
 ## Test Evidence
 
 **Story Type**: Logic
-**Required evidence**: `tests/unit/tick-orchestrator/instrumentation_test.luau` (default-disabled, populates-when-enabled, table-reuse, jitter formula, rate-limit warn) + `tests/unit/tick-orchestrator/instrumentation_overhead_benchmark_test.luau` (≤0.05 ms disabled, ≤0.20 ms enabled).
+**Required evidence**: `tests/unit/tick-orchestrator/instrumentation.spec.luau` (default-disabled, populates-when-enabled, table-reuse, jitter formula, rate-limit warn) + `tests/unit/tick-orchestrator/instrumentation_overhead_benchmark.spec.luau` (≤0.05 ms disabled, ≤0.20 ms enabled).
 
 **Status**: [ ] Not yet created
 

@@ -79,7 +79,7 @@
 
 ## Test Evidence
 
-`tests/unit/match-state-server/perf_budget_test.luau` + `production/qa/evidence/msm-perf-budget-evidence.md`.
+`tests/unit/match-state-server/perf_budget.spec.luau` + `production/qa/evidence/msm-perf-budget-evidence.md`.
 
 **Status**: [ ] Not yet created
 

@@ -86,7 +86,7 @@
 
 ## Test Evidence
 
-`tests/unit/match-state-server/timer_check_t7_test.luau` + `tests/unit/match-state-server/f4_tiebreak_test.luau` + `tests/integration/match-state-server/phase6_phase7_simultaneity_test.luau`.
+`tests/unit/match-state-server/timer_check_t7.spec.luau` + `tests/unit/match-state-server/f4_tiebreak.spec.luau` + `tests/integration/match-state-server/phase6_phase7_simultaneity.spec.luau`.
 
 **Status**: [ ] Not yet created
 

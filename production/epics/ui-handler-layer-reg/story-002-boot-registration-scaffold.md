@@ -39,7 +39,7 @@
 - [ ] AC-7: `UIHandler.openLayer(UILayerId.PauseMenu)` while RelicDraft is open: RelicDraft auto-closes (single-Menu rule); PauseMenu opens
 - [ ] AC-8: `UIHandler.closeLayer(UILayerId.PauseMenu)`: PauseMenu's no-op teardown runs; UIHandler reverts to no-active-Menu state
 - [ ] AC-9: `--!strict` type checks pass on all modified files. Two-entry-point invariant holds (no new RunContext-bearing scripts added per ADR-0006)
-- [ ] AC-10: Integration test `tests/integration/ui-handler/boot-registration_test.luau` exercises AC-4 through AC-8 end-to-end via TestEZ in-Studio harness
+- [ ] AC-10: Integration test `tests/integration/ui-handler/boot-registration.spec.luau` exercises AC-4 through AC-8 end-to-end via TestEZ in-Studio harness
 
 ---
 
@@ -121,7 +121,7 @@
 
 - **AC-10**: integration coverage
   - Given: TestEZ in-Studio harness
-  - When: run `boot-registration_test.luau`
+  - When: run `boot-registration.spec.luau`
   - Then: all of AC-4..AC-8 verified end-to-end in one test run
   - Edge cases: harness not yet set up via `/test-setup` → ADVISORY at this story; manual verification documented in evidence doc
 
@@ -130,7 +130,7 @@
 ## Test Evidence
 
 **Story Type**: Integration
-**Required evidence**: `tests/integration/ui-handler/boot-registration_test.luau` — must exist and pass via TestEZ in-Studio harness. If full harness not yet available, manual walkthrough doc at `production/qa/evidence/ui-handler-boot-registration-evidence.md` documenting Studio play-test of AC-4..AC-8 acceptable as fallback per CLAUDE.md Testing Standards.
+**Required evidence**: `tests/integration/ui-handler/boot-registration.spec.luau` — must exist and pass via TestEZ in-Studio harness. If full harness not yet available, manual walkthrough doc at `production/qa/evidence/ui-handler-boot-registration-evidence.md` documenting Studio play-test of AC-4..AC-8 acceptable as fallback per CLAUDE.md Testing Standards.
 **Status**: [ ] Not yet created
 
 ---

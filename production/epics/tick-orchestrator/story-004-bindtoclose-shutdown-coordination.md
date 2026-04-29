@@ -119,7 +119,7 @@
 ## Test Evidence
 
 **Story Type**: Integration
-**Required evidence**: `tests/integration/tick-orchestrator/bindtoclose_shutdown_test.luau` (chain order, no-phase-post-stop, 5s budget, single broadcast) + `tests/integration/tick-orchestrator/audit_no_currency_in_shutdown.sh` (grep audit script) — both must pass.
+**Required evidence**: `tests/integration/tick-orchestrator/bindtoclose_shutdown.spec.luau` (chain order, no-phase-post-stop, 5s budget, single broadcast) + `tests/integration/tick-orchestrator/audit_no_currency_in_shutdown.sh` (grep audit script) — both must pass.
 
 **Status**: [ ] Not yet created
 

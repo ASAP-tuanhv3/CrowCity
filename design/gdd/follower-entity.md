@@ -599,6 +599,6 @@ De-duplication is mandatory at 80+ followers per crowd.
 
 ---
 
-**Test placement**: `tests/unit/crowd/follower_entity_test.luau` for ACs 1-16, 19-26 (TestEZ + mocked `CrowdStateClient` via dependency injection). ACs 17-18 are integration-tier — evidence in `production/qa/evidence/`.
+**Test placement**: `tests/unit/crowd/follower_entity.spec.luau` for ACs 1-16, 19-26 (TestEZ + mocked `CrowdStateClient` via dependency injection). ACs 17-18 are integration-tier — evidence in `production/qa/evidence/`.
 
 **Blocking gates before story Done**: ACs 1-16, 19-26 require passing TestEZ run. AC-17 requires Micro Profiler evidence file (80-follower baseline) present and within 2.5ms p99. AC-18 requires folder instance-count equality before/after LOD swap confirmation.

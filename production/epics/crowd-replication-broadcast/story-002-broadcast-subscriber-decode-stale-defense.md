@@ -115,7 +115,7 @@
 
 ## Test Evidence
 
-`tests/unit/crowd-state-client/broadcast_subscriber_test.luau` (decode + idempotent + multi-record) + `tests/unit/crowd-state-client/eliminated_terminal_test.luau` (AC-11) + `tests/unit/crowd-state-client/stale_freeze_test.luau` (AC-5/17 + clockFn DI).
+`tests/unit/crowd-state-client/broadcast_subscriber.spec.luau` (decode + idempotent + multi-record) + `tests/unit/crowd-state-client/eliminated_terminal.spec.luau` (AC-11) + `tests/unit/crowd-state-client/stale_freeze.spec.luau` (AC-5/17 + clockFn DI).
 
 **Status**: [ ] Not yet created
 

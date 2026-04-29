@@ -94,7 +94,7 @@
 
 ## Test Evidence
 
-`tests/unit/crowd-state-client/tick_is_newer_f4_test.luau` + `tests/unit/crowd-state-client/get_lookup_test.luau` + `tests/unit/crowd-state-client/crowdid_uniqueness_test.luau`.
+`tests/unit/crowd-state-client/tick_is_newer_f4.spec.luau` + `tests/unit/crowd-state-client/get_lookup.spec.luau` + `tests/unit/crowd-state-client/crowdid_uniqueness.spec.luau`.
 
 **Status**: [ ] Not yet created
 

@@ -124,7 +124,7 @@
 ## Test Evidence
 
 **Story Type**: Logic
-**Required evidence**: `tests/unit/network/crowd-state-codec_test.luau` — must exist and pass via TestEZ. Performance number reported in test output OR `production/qa/evidence/crowd-state-codec-perf-advisory.md`.
+**Required evidence**: `tests/unit/network/crowd-state-codec.spec.luau` — must exist and pass via TestEZ. Performance number reported in test output OR `production/qa/evidence/crowd-state-codec-perf-advisory.md`.
 **Status**: [ ] Not yet created
 
 ---
@@ -146,14 +146,14 @@
 - ADVISORY: AC-6 added 3rd validation gate (hue ∈ [0, 255]) beyond story spec's count + state checks — hue is u8 by schema, out-of-range value would silently truncate without the guard. Same silent-rejection pattern (warn + skip) applied. Net behaviour aligns with spec intent.
 - ADVISORY: AC-8 perf threshold relaxed to <1 ms per encode+decode pass (vs spec's 0.05 ms each = 0.1 ms total). ADR-0003 hard target locked at MVP-Integration-1 sprint per story spec. Test asserts the loose threshold to avoid flakiness on shared hardware while still catching catastrophic regressions.
 
-**Test Evidence**: Logic story — unit test at `tests/unit/network/crowd-state-codec_test.luau` (16 test functions across 6 describe blocks; AC-3 verifies all 8 byte-offset positions individually with hand-constructed records; AC-5 round-trip preservation verified across single-record + 12-record samples with cycling state values).
+**Test Evidence**: Logic story — unit test at `tests/unit/network/crowd-state-codec.spec.luau` (16 test functions across 6 describe blocks; AC-3 verifies all 8 byte-offset positions individually with hand-constructed records; AC-5 round-trip preservation verified across single-record + 12-record samples with cycling state values).
 
 **Code Review**: Skipped — Lean mode
 **Gates**: QL-TEST-COVERAGE + LP-CODE-REVIEW skipped — Lean mode
 
 **Files**:
 - `src/ReplicatedStorage/Source/Network/BufferCodec/CrowdState.luau` (NEW, 158 L) — codec module per ADR-0001 Rule 10 (buffer-encoding mandate). Exports `encode(records) → buffer`, `decode(buf) → {CrowdRecord}`, `recordSize() → 30`, type `CrowdRecord`. Schema constants block (RECORD_SIZE + 8 OFFSET_* + STATE_*) at top for auditability. `splitU64` / `joinU64` helpers handle 64-bit crowdId encoding via paired u32 reads/writes.
-- `tests/unit/network/crowd-state-codec_test.luau` (NEW, 247 L, 16 test fns)
+- `tests/unit/network/crowd-state-codec.spec.luau` (NEW, 247 L, 16 test fns)
 
 **Manifest Version**: 2026-04-27 (current ✓ no staleness).
 

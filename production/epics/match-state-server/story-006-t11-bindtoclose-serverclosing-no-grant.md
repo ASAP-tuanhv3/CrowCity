@@ -73,7 +73,7 @@
 
 ## Test Evidence
 
-`tests/integration/match-state-server/bindtoclose_test.luau` (broadcast within 2s, no second broadcast, no grant) + `tests/unit/match-state-server/serverclosing_inert_test.luau` (Phase 6/7 no-op).
+`tests/integration/match-state-server/bindtoclose.spec.luau` (broadcast within 2s, no second broadcast, no grant) + `tests/unit/match-state-server/serverclosing_inert.spec.luau` (Phase 6/7 no-op).
 
 **Status**: [ ] Not yet created
 

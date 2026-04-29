@@ -105,7 +105,7 @@
 ## Test Evidence
 
 **Story Type**: Logic
-**Required evidence**: `tests/unit/network/unreliable-wrapper_test.luau` — must exist and pass via TestEZ. Round-trip smoke (AC-4) may also produce manual evidence at `production/qa/evidence/unreliable-wrapper-evidence.md` if multi-client harness unavailable.
+**Required evidence**: `tests/unit/network/unreliable-wrapper.spec.luau` — must exist and pass via TestEZ. Round-trip smoke (AC-4) may also produce manual evidence at `production/qa/evidence/unreliable-wrapper-evidence.md` if multi-client harness unavailable.
 **Status**: [ ] Not yet created
 
 ---
@@ -128,7 +128,7 @@
 - ADVISORY: AC-5 (unknown-name guard) — `_getUnreliableRemoteEvent` asserts on the lookup table; pre-boot path asserts on `_remoteFolder` first. Test verifies post-boot path raises with the offending name in the error message.
 - ADVISORY: AC-6 + AC-7 are compile-time + grep-time gates (TestEZ runtime-introspectable). Grep gate verified via Bash at /story-done time: `grep -rn "UnreliableRemoteEvent" src/ --exclude-dir=Dependencies | grep -v "src/ReplicatedStorage/Source/Network/" | grep -v "src/ReplicatedStorage/Source/Utility/Network/"` returns zero matches. `--!strict` enforced by Selene CI + Luau LSP.
 
-**Test Evidence**: Logic story — unit test at `tests/unit/network/unreliable-wrapper_test.luau` (16 test functions across 6 describe blocks; all 7 ACs covered with ADVISORY annotations on harness limitations for AC-3 / AC-4 / AC-5 / AC-6 / AC-7).
+**Test Evidence**: Logic story — unit test at `tests/unit/network/unreliable-wrapper.spec.luau` (16 test functions across 6 describe blocks; all 7 ACs covered with ADVISORY annotations on harness limitations for AC-3 / AC-4 / AC-5 / AC-6 / AC-7).
 
 **Code Review**: Skipped — Lean mode
 **Gates**: QL-TEST-COVERAGE + LP-CODE-REVIEW skipped — Lean mode
@@ -139,7 +139,7 @@
 - `src/ReplicatedStorage/Source/Utility/Network/createRemotesFolders.luau` (modified) — boot path extended: 3rd sub-folder + walks `UnreliableRemoteEventName` calling `Instance.new("UnreliableRemoteEvent")` per entry
 - `src/ReplicatedStorage/Source/Utility/Network/waitForAllRemotesAsync.luau` (modified) — client-side wait extended to verify unreliable remotes replicated
 - `src/ReplicatedStorage/Source/Network/init.luau` (modified) — `Network.UnreliableRemoteEvents` enum exposed; 3 new public functions added: `connectUnreliableEvent`, `fireAllClientsUnreliable`, `fireClientUnreliable`; private helper `_getUnreliableRemoteEvent` with unknown-name assertion
-- `tests/unit/network/unreliable-wrapper_test.luau` (NEW, 145 L, 16 test fns)
+- `tests/unit/network/unreliable-wrapper.spec.luau` (NEW, 145 L, 16 test fns)
 
 **Manifest Version**: 2026-04-27 (current ✓ no staleness).
 

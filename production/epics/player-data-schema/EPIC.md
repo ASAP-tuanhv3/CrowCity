@@ -59,7 +59,7 @@ This epic is complete when:
 - ~~`PlayerDataServer/MigrationHandlers/` directory exists~~ — STORY 002 CLOSED OBSOLETE; template's `profile:Reconcile()` covers v0 → v1 default-fill natively. Migration seam to land alongside FIRST real schema bump (VS+ Daily Quest epic).
 - ~~`PlayerDataServer.OnProfileVersionUpgrade` wired~~ — same; deferred to first-bump story.
 - Pillar 3 forbidden-keys grep gate green (no round-state keys present in schema or default template) ✓ (story 003 audit script + smoke evidence)
-- Logic stories (schema validation) have passing test file at `tests/unit/player-data/schema-lock_test.luau` ✓
+- Logic stories (schema validation) have passing test file at `tests/unit/player-data/schema-lock.spec.luau` ✓
 - Config/Data story (audit script) has smoke evidence at `production/qa/evidence/persistence-audit-evidence.md` ✓
 
 **Status**: Epic Complete (2/3 effective deliverables shipped 2026-04-27).

@@ -68,7 +68,7 @@
 
 ## Test Evidence
 
-`tests/unit/match-state-server/skeleton_test.luau` + `tests/unit/match-state-server/participation_flag_test.luau` + `tests/unit/match-state-server/snap_freeze_test.luau`.
+`tests/unit/match-state-server/skeleton.spec.luau` + `tests/unit/match-state-server/participation_flag.spec.luau` + `tests/unit/match-state-server/snap_freeze.spec.luau`.
 
 **Status**: [ ] Not yet created
 

@@ -87,7 +87,7 @@
 
 ## Test Evidence
 
-`tests/unit/round-lifecycle/createall_test.luau` + `tests/unit/round-lifecycle/destroyall_test.luau` + `tests/unit/round-lifecycle/double_createall_assert_test.luau`.
+`tests/unit/round-lifecycle/createall.spec.luau` + `tests/unit/round-lifecycle/destroyall.spec.luau` + `tests/unit/round-lifecycle/double_createall_assert.spec.luau`.
 
 **Status**: [ ] Not yet created
 

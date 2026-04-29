@@ -96,8 +96,8 @@
 ## Test Evidence
 
 **Story Type**: Logic
-**Required evidence**: `tests/unit/asset-id/mesh-inventory_test.luau` — must exist and pass.
-**Status**: [ ] Not yet created
+**Required evidence**: `tests/unit/asset-id/mesh-inventory.spec.luau` — must exist and pass.
+**Status**: [x] Executed headless 2026-04-29 — 6/6 pass via `run-in-roblox`
 
 ---
 
@@ -113,13 +113,13 @@
 **Completed**: 2026-04-27
 **Criteria**: 6/6 passing
 **Deviations**: None
-**Test Evidence**: Logic story — unit test at `tests/unit/asset-id/mesh-inventory_test.luau` (6 test functions, all ACs covered)
+**Test Evidence**: Logic story — unit test at `tests/unit/asset-id/mesh-inventory.spec.luau` (6 test functions, all ACs covered). **Executed 2026-04-29** via `run-in-roblox` headless (TestEZ 0.4.1 + run-in-roblox 0.3.0) — 6/6 pass.
 **Code Review**: Skipped — Lean mode
 **Gates**: QL-TEST-COVERAGE + LP-CODE-REVIEW skipped — Lean mode
 
 **Files**:
 - `src/ReplicatedStorage/Source/SharedConstants/AssetId.luau` (41 L) — Mesh table populated with 11 entries (4 char, 3 prop, 4 env); all placeholder `rbxassetid://0` per MVP timeline
-- `tests/unit/asset-id/mesh-inventory_test.luau` (88 L, 6 test fns) — TestEZ unit test covering AC-1 through AC-6 with advisory annotations on TestEZ limitations
+- `tests/unit/asset-id/mesh-inventory.spec.luau` (88 L, 6 test fns) — TestEZ unit test covering AC-1 through AC-6 with advisory annotations on TestEZ limitations
 
 **Manifest Version**: 2026-04-27 (current ✓ no staleness)
 

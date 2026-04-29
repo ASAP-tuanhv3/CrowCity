@@ -128,7 +128,7 @@ return CollisionResolverStub
 ## Test Evidence
 
 **Story Type**: Integration
-**Required evidence**: `tests/integration/tick-orchestrator/boot_wiring_test.luau` (asserts 9-row table + boot order + 30-tick replay) + `tests/integration/tick-orchestrator/audit_no_competing_heartbeat.sh` (grep audit script) — both must pass.
+**Required evidence**: `tests/integration/tick-orchestrator/boot_wiring.spec.luau` (asserts 9-row table + boot order + 30-tick replay) + `tests/integration/tick-orchestrator/audit_no_competing_heartbeat.sh` (grep audit script) — both must pass.
 
 **Status**: [ ] Not yet created
 
