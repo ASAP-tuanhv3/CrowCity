@@ -6,18 +6,18 @@ goal: "Stand up the Core gameplay spine end-to-end: TickOrchestrator + CrowdStat
 start: "2026-04-29"
 end: "2026-05-12"
 generated: "2026-04-28"
-updated: "2026-04-28"
+updated: "2026-04-29"
 
 stories:
   - id: "2-1"
     name: "TickOrch story-001 — module skeleton + accumulator + cadence + start/stop API"
     file: "production/epics/tick-orchestrator/story-001-core-module-skeleton-cadence.md"
     priority: must-have
-    status: ready-for-dev
+    status: done
     owner: ""
     estimate_days: 1.0
     blocker: ""
-    completed: ""
+    completed: "2026-04-29"
 
   - id: "2-2"
     name: "TickOrch story-002 — phase dispatch + pcall isolation + ctx assembly"

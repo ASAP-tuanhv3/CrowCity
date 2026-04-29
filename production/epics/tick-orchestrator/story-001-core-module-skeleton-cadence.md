@@ -1,7 +1,7 @@
 # Story 001: Core module skeleton + accumulator + cadence + start/stop API
 
 > **Epic**: tick-orchestrator
-> **Status**: Ready
+> **Status**: Complete
 > **Layer**: Core
 > **Type**: Logic
 > **Manifest Version**: 2026-04-27
@@ -136,7 +136,7 @@
 **Story Type**: Logic
 **Required evidence**: `tests/unit/tick-orchestrator/cadence.spec.luau` AND `tests/unit/tick-orchestrator/registerphases.spec.luau` AND `tests/unit/tick-orchestrator/lifecycle.spec.luau` — must exist and pass via TestEZ runner.
 
-**Status**: [ ] Not yet created
+**Status**: [x] Executed headless 2026-04-29 — 52/0/0 pass via `run-in-roblox` (32 TickOrch + 20 prior AssetId)
 
 ---
 
@@ -144,3 +144,37 @@
 
 - Depends on: None (this is the foundation of the epic)
 - Unlocks: story-002 (phase dispatch loop), story-003 (boot wiring), story-004 (BindToClose), story-005 (instrumentation)
+
+---
+
+## Completion Notes
+
+**Completed**: 2026-04-29
+**Criteria**: 13/13 covered (AC-13 real-Heartbeat soak deferred to story-005 + integration sprint per ADR-0002 §Risk 1; 60s math proxy passes)
+
+**Files**:
+- `src/ServerStorage/Source/TickOrchestrator/init.luau` (228 L) — singleton module; sole `RunService.Heartbeat:Connect` accumulator; static 9-phase `_registerPhases` with boot-only invariant guard; `_runTick` stub deferred to story-002
+- `tests/unit/tick-orchestrator/cadence.spec.luau` (97 L, 7 it blocks) — accumulator drain math + 60s ±0.1% proxy + dt=0 boundary
+- `tests/unit/tick-orchestrator/registerphases.spec.luau` (147 L, 13 it blocks) — happy path + 9 failure modes + AC-04 nil registerPhase + boot-only double-call guard + surface-shape contract (AC-01/02)
+- `tests/unit/tick-orchestrator/lifecycle.spec.luau` (143 L, 11 it blocks) — start idempotence, stop clears connection (structural; ≤5ms claim by ADR-0002), tickCount preservation, accumulator reset
+
+**Test Evidence**: 3 TestEZ spec files at `tests/unit/tick-orchestrator/`. **Executed 2026-04-29** via `rojo build test.project.json -o test-place.rbxl && run-in-roblox --place test-place.rbxl --script tests/runner.server.luau` → **52/0/0 pass** (32 TickOrch + 20 prior AssetId).
+
+**Test-only public surface added** (4 fns, all `_`-prefixed + doc-commented "TEST ONLY"):
+- `_tick(dt)` — factored Heartbeat body; live production callback (start() wires it to Heartbeat:Connect) AND test driver
+- `_resetForTests()` — zeros all module state for test isolation
+- `_getHeartbeatConnection()` — identity check for idempotence test
+- `_getAccumulator()` — accumulator visibility for stop() reset + carry-forward verification
+
+**Code Review**: APPROVED (lead-programmer + qa-tester) per `/code-review` 2026-04-29.
+- LP verdict: APPROVED WITH SUGGESTIONS — 3 advisories applied inline (boot-only `_registerPhases` guard, Heartbeat:Connect comment clarifying `_tick` is live callback, test naming convention left as TestEZ prose)
+- QA verdict: GAPS → ADEQUATE after fixes — 4 inline patches (dt=0 boundary test, fractional phase rejection test, surface-shape it block AC-01/02, double-`_registerPhases` rejection test, `stop()` timing assertion → structural-only per `coding-standards.md` §Determinism)
+
+**Deviations** (ADVISORY only, non-blocking):
+- Test naming style — TestEZ prose `it("...")` strings vs project standard `test_[system]_[scenario]_[expected]` (per `.claude/rules/test-standards.md`). TestEZ idiom; defensible. Track as project-level convention decision (Logic stories using TestEZ prose; non-TestEZ engines retain underscore convention).
+
+**Latent project gap surfaced** (NOT introduced by this story): `selene.toml` missing → `selene src/` fails 1386 errors because Roblox globals (`game`, `task`, `typeof`, `RBXScriptConnection`) treated as undefined. Affects template-original code + vendored `ProfileStore.luau`. Fix: create `selene.toml` with `std = "roblox"` + run `selene generate-roblox-std`. Out of scope for story-001; track as test-infra follow-up before next sprint's CI run.
+
+**Gates**: QL-TEST-COVERAGE + LP-CODE-REVIEW skipped — Lean mode.
+
+**Unblocks**: story-002 (Phase dispatch + pcall isolation) — `_runTick` stub body ready for replacement; ctx allocation pattern flagged for scratch-buffer optimization if profiling surfaces it (per LP advisory).

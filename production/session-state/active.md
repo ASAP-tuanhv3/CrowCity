@@ -1,6 +1,6 @@
 # Active Session State
 
-*Last updated: 2026-04-28*
+*Last updated: 2026-04-29*
 
 ## Current Task
 
@@ -424,3 +424,33 @@ Cross-epic contracts surfaced:
 - EPIC.md fix during story creation: tick-orchestrator EPIC's "Exception in any phase callback logs + halts current tick" wording was incorrect per ADR-0002 §Decision L185 (logs + continues remaining phases). Fixed in EPIC.md.
 
 Recommended next action: `/sprint-plan` to sequence Sprint 2 Vertical Slice Build OR `/story-readiness production/epics/tick-orchestrator/story-001-core-module-skeleton-cadence.md` to validate the first dependency-root story.
+
+## Session Extract — /dev-story 2026-04-29
+- Story: production/epics/tick-orchestrator/story-001-core-module-skeleton-cadence.md — Core module skeleton + accumulator + cadence + start/stop API
+- Files changed:
+  - src/ServerStorage/Source/TickOrchestrator/init.luau (220 L, singleton module per ANATOMY §16; mirrors Network/init.luau style)
+  - tests/unit/tick-orchestrator/cadence.spec.luau (91 L, 6 it blocks — accumulator drain math + 60s ±0.1% proxy)
+  - tests/unit/tick-orchestrator/registerphases.spec.luau (122 L, 11 it blocks — happy path + 8 failure modes + AC-04 nil registerPhase guard)
+  - tests/unit/tick-orchestrator/lifecycle.spec.luau (142 L, 11 it blocks — start idempotence, stop ≤5ms, tickCount preservation, accumulator reset)
+- Test-only public surface: `_tick(dt)`, `_resetForTests()`, `_getHeartbeatConnection()`, `_getAccumulator()` — all `_`-prefixed + doc-commented "TEST ONLY"
+- Headless verification: `rojo build test.project.json && run-in-roblox` → 48/0/0 pass (28 new TickOrch + 20 existing AssetId)
+- AC coverage: AC-01 through AC-13 all covered by spec functions
+- Deviations: None
+- Blockers: None
+- **Latent project gap surfaced** (NOT introduced by this story): `selene src/` fails 1386 errors because `selene.toml` is missing — Roblox globals (`game`, `task`, `typeof`, `RBXScriptConnection`) treated as undefined. Affects template-original code AND vendored ProfileStore. Fix: create `selene.toml` with `std = "roblox"` + `selene generate-roblox-std`. Out of scope for story-001; track as separate test-infra follow-up.
+
+## Session Extract — /code-review + /story-done 2026-04-29
+- Verdict: COMPLETE WITH NOTES
+- Story: production/epics/tick-orchestrator/story-001-core-module-skeleton-cadence.md — TickOrch core module skeleton + accumulator + cadence + start/stop API
+- Code-review fixes applied inline (5 patches before /story-done):
+  - boot-only `_registerPhases` re-call rejection guard + test
+  - inline comment at `Heartbeat:Connect` clarifying `_tick` is live callback (not test-only)
+  - surface-shape `it` block (AC-01 + AC-02 + QA TC 1 explicit coverage)
+  - fractional phase value (5.5) rejection test
+  - `dt = 0` boundary test
+  - `stop()` ≤5ms wall-timing assertion → structural-only nil check (per coding-standards §Determinism)
+- Final test count: 32 TickOrch + 20 AssetId = 52/0/0 pass headless
+- Gates skipped: QL-TEST-COVERAGE + LP-CODE-REVIEW + QL-STORY-READY (Lean mode); LP code-review subagent + qa-tester subagent ran organically and verdicts applied
+- Sprint-status 2-1 → done; sprint-2 progress: 1/8 must-have done
+- Tech debt logged: None (selene.toml gap tracked above as test-infra follow-up; project-level test-naming convention review tracked in story-001 deviations)
+- Next recommended: `/story-readiness production/epics/tick-orchestrator/story-002-phase-dispatch-pcall-isolation.md` (story-002 unlocked by 001 — phase dispatch loop + pcall isolation + ctx assembly). Per sprint-2 plan, story-002 is the next must-have on critical path.
