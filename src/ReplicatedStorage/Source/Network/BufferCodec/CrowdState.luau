@@ -107,7 +107,7 @@ function CrowdState.encode(records: { CrowdRecord }): buffer
 			continue
 		end
 		if not isValidState(record.state) then
-			warn(`[CrowdState.encode] skipping record crowdId={record.crowdId}: state {record.state} not in {{1,2,3}}`)
+			warn(`[CrowdState.encode] skipping record crowdId={record.crowdId}: state {record.state} not in \{1,2,3\}`)
 			continue
 		end
 		if record.hue < 0 or record.hue > U8_MAX then

@@ -1,0 +1,8 @@
+std = "roblox"
+exclude = [
+    "src/ReplicatedStorage/Dependencies/**/*.luau",
+    "Packages/**/*.luau",
+]
+
+[lints]
+unscoped_variables = "warn"
