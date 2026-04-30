@@ -545,3 +545,23 @@ Recommended next action: `/sprint-plan` to sequence Sprint 2 Vertical Slice Buil
 - Deviations: AFKToggle wiring deferred to story-007 (Network.connectEvent requires Network.startServer; ADR-0010 4-check guard needed before handler accepts traffic). Field + getter scaffolding present; inline TODO(story-007) documents swap.
 - Tech debt logged: None (AFKToggle defer is intentional, tracked in story-007)
 - Next recommended: CSM 2-6 (`/dev-story production/epics/crowd-state-server/story-007-read-accessors-set-still-overlapping.md`) — final Sprint-2 must-have. Small scope (~0.5d): adds getAllActive, getAllCrowdPositions, setStillOverlapping on top of existing get + records.
+
+## Session Extract — /dev-story + /story-done 2026-04-30 (CSM 2-6)
+- Verdict: COMPLETE — Sprint 2 must-have set CLOSED (8/8)
+- Story: production/epics/crowd-state-server/story-007-read-accessors-set-still-overlapping.md
+- Files (1 modified, 2 created):
+  - src/ServerStorage/Source/CrowdStateServer/init.luau (+57 L) — getAllActive (Eliminated-excluded), getAllCrowdPositions (snapshot map), setStillOverlapping (CCR-only writer + absent no-op + unconditional state)
+  - tests/unit/crowd-state-server/read_accessors.spec.luau (93 L, 7 it) — get nil + AC-27 includes Active/GraceWindow + empty-when-all-eliminated + fresh-array contract + getAllCrowdPositions snapshot + Eliminated exclusion + fresh-map contract
+  - tests/unit/crowd-state-server/set_still_overlapping.spec.luau (75 L, 5 it) — AC-28 write true/false + absent no-op + last-write-wins + write-on-Eliminated unconditional
+- Test result: 149/0/0 pass headless (12 new + 137 prior). All 4 audit gates PASS.
+- **Sprint-2 must-have set COMPLETE: 8/8 done in ~7.5 days of 8 budgeted.**
+  - TickOrch 2-1 ✓ (skeleton + cadence)
+  - TickOrch 2-2 ✓ (phase dispatch + pcall)
+  - TickOrch 2-3 ✓ (boot wiring + 9 stubs)
+  - CSM 2-4 ✓ (skeleton + create/destroy + DC)
+  - CSM 2-5 ✓ (updateCount + clamp + signals)
+  - CSM 2-6 ✓ (read accessors + setStillOverlapping)
+  - RL 2-7 ✓ (Janitor + createAll/destroyAll)
+  - MSM 2-8 ✓ (skeleton + state enum + Snap freeze)
+- Tech debt logged: AFKToggle wiring (story-007 of MSM, deferred from MSM 2-8 per security-gap rationale)
+- Next recommended: Sprint-2 close-out — `/smoke-check sprint` then `/team-qa sprint` for QA sign-off, then `/gate-check` for stage advance. Should-have stories (2-9 / 2-10 / 2-11) optional pull-ins if days remain. Nice-to-have stories (2-12 TickOrch BindToClose / 2-13 instrumentation) deferable.

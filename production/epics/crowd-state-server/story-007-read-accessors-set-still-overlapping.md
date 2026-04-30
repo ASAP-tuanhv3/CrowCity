@@ -1,7 +1,7 @@
 # Story 007: Read accessors + setStillOverlapping + getAllActive Eliminated exclusion
 
 > **Epic**: crowd-state-server
-> **Status**: Ready
+> **Status**: Complete
 > **Layer**: Core
 > **Type**: Logic
 > **Manifest Version**: 2026-04-27
@@ -123,7 +123,7 @@
 **Story Type**: Logic
 **Required evidence**: `tests/unit/crowd-state-server/read_accessors.spec.luau` (get/getAllActive/getAllCrowdPositions) + `tests/unit/crowd-state-server/set_still_overlapping.spec.luau`.
 
-**Status**: [ ] Not yet created
+**Status**: [x] Executed headless 2026-04-30 — 149/0/0 pass via `run-in-roblox` (12 new + 137 prior)
 
 ---
 
@@ -131,3 +131,33 @@
 
 - Depends on: story-001 (record schema), story-006 (state field "Eliminated" used for filtering)
 - Unlocks: CCR epic (Phase 1 reads getAllActive); NPCSpawner epic (getAllCrowdPositions); story-006 reads stillOverlapping
+
+---
+
+## Completion Notes
+
+**Completed**: 2026-04-30
+**Criteria**: 9/9 covered (AC-27 + AC-28 + get-nil + getAllCrowdPositions excludes Eliminated + fresh-array contract for getAllActive + fresh-map contract for getAllCrowdPositions + last-write-wins + absent-no-op + write-on-Eliminated unconditional)
+
+**Files**:
+- `src/ServerStorage/Source/CrowdStateServer/init.luau` (+~57 L)
+  - Added: `getAllActive(): { CrowdRecord }` — Active + GraceWindow only; fresh array per call
+  - Added: `getAllCrowdPositions(): { [string]: Vector3 }` — snapshot map; excludes Eliminated; fresh map per call
+  - Added: `setStillOverlapping(crowdId, flag): ()` — CCR-only writer; last-write-wins; absent no-op; unconditional on state (CCR is responsible for filtering Eliminated via `getAllActive`)
+  - Doc header: story-007 scope paragraph + 3 new public API entries + 3 new caller restrictions
+- `tests/unit/crowd-state-server/read_accessors.spec.luau` (93 L, 7 it blocks)
+- `tests/unit/crowd-state-server/set_still_overlapping.spec.luau` (75 L, 5 it blocks)
+
+**Test Evidence**: 2 TestEZ spec files. **Executed 2026-04-30** via `run-in-roblox` → **149/0/0 pass** (12 new + 137 prior).
+
+**Audit gates ALL PASS**: selene + audit-asset-ids + audit-persistence + audit-no-competing-heartbeat.
+
+**Code Review**: Standalone `/code-review` skipped — Lean mode + impl matches spec verbatim. Implementation note: `pairs(_crowds)` from spec replaced with Luau-modern generic `for _ in _crowds do` to match existing codebase style (already established in `_getCrowdsCount`); behavior identical.
+
+**Deviations**: None.
+
+**Gates**: QL-TEST-COVERAGE + LP-CODE-REVIEW + QL-STORY-READY skipped — Lean mode.
+
+**Sprint 2 must-have set: COMPLETE.** 8/8 done — Sprint 2 closes here pending QA pass.
+
+**Unblocks**: CCR epic (Phase 1 hot-path `getAllActive` consumer for pair-overlap iteration), NPCSpawner epic (`getAllCrowdPositions` min-distance gate consumer), CSM story-006 (Phase 5 state evaluator reads `stillOverlapping` for F7 grace-timer tie-break).

@@ -63,11 +63,11 @@ stories:
     name: "CSM story-007 — read accessors + setStillOverlapping + Eliminated exclusion"
     file: "production/epics/crowd-state-server/story-007-read-accessors-set-still-overlapping.md"
     priority: must-have
-    status: ready-for-dev
+    status: done
     owner: ""
     estimate_days: 0.5
     blocker: ""
-    completed: ""
+    completed: "2026-04-30"
 
   - id: "2-7"
     name: "RL story-001 — module skeleton + Janitor + createAll + destroyAll"

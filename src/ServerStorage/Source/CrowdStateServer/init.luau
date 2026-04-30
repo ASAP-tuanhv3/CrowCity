@@ -16,6 +16,9 @@
 	+ F5 clamp + CountChanged BindableEvent + CrowdCountClamped reliable to local
 	player.
 
+	Story-007 scope: getAllActive (Eliminated-excluded) + getAllCrowdPositions (snapshot
+	map) + setStillOverlapping (CCR-only writer, last-write-wins, absent-record no-op).
+
 	Public API (story-001):
 	  create(crowdId, initial) -> CrowdRecord  -- RoundLifecycle-only caller
 	  destroy(crowdId) -> ()                   -- RoundLifecycle-only + DC handler
@@ -26,13 +29,21 @@
 	  updateCount(crowdId, delta, source) -> number  -- 4 callers: Absorb / Collision / Chest / Relic
 	  CountChanged (BindableEvent module field)       -- subscribe: CrowdStateServer.CountChanged.Event:Connect(...)
 
+	Public API (story-007):
+	  getAllActive() -> { CrowdRecord }                  -- excludes Eliminated; fresh array
+	  getAllCrowdPositions() -> { [string]: Vector3 }    -- snapshot; excludes Eliminated
+	  setStillOverlapping(crowdId, flag) -> ()           -- CCR-only writer
+
 	Caller restrictions (ADR-0004 §Write-Access Matrix):
-	  create()       — RoundLifecycle.createAll only
-	  destroy()      — RoundLifecycle (destroyAll + Players.PlayerRemoving handler)
-	  get()          — any server-side system (read-only; caller MUST NOT mutate)
-	  start()        — ServerScriptService/start.server.luau boot only
-	  updateCount()  — AbsorbSystem / CollisionResolver / ChestSystem / RelicEffectHandler ONLY
-	                   (Pillar 4: cosmetic systems FORBIDDEN)
+	  create()                — RoundLifecycle.createAll only
+	  destroy()               — RoundLifecycle (destroyAll + Players.PlayerRemoving handler)
+	  get()                   — any server-side system (read-only; caller MUST NOT mutate)
+	  start()                 — ServerScriptService/start.server.luau boot only
+	  updateCount()           — AbsorbSystem / CollisionResolver / ChestSystem / RelicEffectHandler ONLY
+	                            (Pillar 4: cosmetic systems FORBIDDEN)
+	  getAllActive()           — any server module (CCR Phase 1 hot path)
+	  getAllCrowdPositions()   — NPCSpawner; any server module (read-only)
+	  setStillOverlapping()    — CollisionResolver ONLY (ADR-0004 §Write-Access Matrix)
 
 	Pillar 4 anti-P2W invariant (ADR-0004 §Pillar 4):
 	  Cosmetic systems FORBIDDEN as callers. Skin System, Avatar System, Banner
@@ -206,6 +217,59 @@ end
 --- ADR-0004 §Write-Access Matrix (unrestricted server-side read).
 function CrowdStateServer.get(crowdId: string): CrowdRecord?
 	return _crowds[crowdId]
+end
+
+--- Returns an array of all crowd records EXCEPT those in state "Eliminated".
+--- Iteration order is arbitrary (pairs traversal). Caller MUST NOT mutate
+--- returned records — read-only contract per control-manifest L155 (enforced
+--- by code review; no runtime guard per manifest L137).
+--- Hot path: CollisionResolver.tick (Phase 1) calls per-tick to enumerate
+--- overlap-pair candidates. Returns a FRESH array each call — callers may
+--- discard or hold; no shared mutable state.
+--- ADR-0004 §Read-vs-Write Matrix; arch §5.1 L541; GDD §States table
+--- ("Eliminated" = excluded from active set).
+function CrowdStateServer.getAllActive(): { CrowdRecord }
+	local result: { CrowdRecord } = {}
+	for _, record in _crowds do
+		if record.state ~= "Eliminated" then
+			table.insert(result, record)
+		end
+	end
+	return result
+end
+
+--- Returns a snapshot map of crowdId → position Vector3 for all crowds NOT
+--- in state "Eliminated". Eliminated records' positions are stale per GDD
+--- §Server API L179 — exclude from snapshot. Returns a FRESH table each
+--- call — defensive copy. Acceptable cost given ≤12 crowds (manifest §Performance).
+--- Hot consumer: NPCSpawner min-distance gate.
+--- ADR-0004 §Read-vs-Write Matrix; arch §5.1 L542.
+function CrowdStateServer.getAllCrowdPositions(): { [string]: Vector3 }
+	local result: { [string]: Vector3 } = {}
+	for crowdId, record in _crowds do
+		if record.state ~= "Eliminated" then
+			result[crowdId] = record.position
+		end
+	end
+	return result
+end
+
+--- Sets the per-tick overlap flag on a crowd record. Sole caller:
+--- CollisionResolver. Last-write-wins within a tick (race tolerated — CCR
+--- iterates pairs once per Phase 1 with no internal contention). No-op if
+--- the record is absent (handles the rare race where CCR's snapshot
+--- includes a crowd that destroys mid-tick e.g. via PlayerRemoving).
+--- Writes unconditionally on state — CSM does NOT gate on state="Eliminated"
+--- (CCR is responsible for not calling on Eliminated crowds; if it does,
+--- the write is harmless because Eliminated records are scheduled for
+--- destroy by RoundLifecycle).
+--- ADR-0004 §Write-Access Matrix (CollisionResolver-only writer); arch §5.1 L545.
+function CrowdStateServer.setStillOverlapping(crowdId: string, flag: boolean): ()
+	local record = _crowds[crowdId]
+	if record == nil then
+		return  -- silent no-op per race-tolerance contract
+	end
+	record.stillOverlapping = flag
 end
 
 --- Connects the Players.PlayerRemoving handler. Called once at boot from
