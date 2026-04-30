@@ -535,3 +535,13 @@ Recommended next action: `/sprint-plan` to sequence Sprint 2 Vertical Slice Buil
 - Test seam pattern extended: `_setTestOwnerResolver` joins `_setTestFanoutInterceptor` as reusable DI hooks. Pattern is self-consistent across CSM + RL modules.
 - Tech debt logged: Spec implementation-note doc accuracy (fireClient arg-order)— minor doc-only follow-up; impl follows real Network signature.
 - Next recommended: MSM 2-8 (`/dev-story production/epics/match-state-server/story-001-module-skeleton-state-enum-participation-flags.md`) — opens MSM epic, no CSM dep, parallel chain. After: CSM 2-6 (`/dev-story production/epics/crowd-state-server/story-007-read-accessors-set-still-overlapping.md`) — small ~0.5d, completes Sprint-2 must-have.
+
+## Session Extract — /dev-story + /story-done 2026-04-30 (MSM 2-8)
+- Verdict: COMPLETE WITH NOTES
+- Story: production/epics/match-state-server/story-001-module-skeleton-state-enum-participation-flags.md
+- Files (4 created): MSM init.luau (~210 L) + 3 specs (skeleton/participation_flag/snap_freeze, 16 it total)
+- Test result: 137/0/0 pass headless (16 new MSM + 121 prior). All 4 audit gates PASS.
+- Sprint-2: 7/8 must-have done (TickOrch 2-1/2/3 + CSM 2-4/5 + RL 2-7 + MSM 2-8 ✓ — 87.5%). Days spent ~7 of 8. Only CSM 2-6 read accessors remaining (~0.5d).
+- Deviations: AFKToggle wiring deferred to story-007 (Network.connectEvent requires Network.startServer; ADR-0010 4-check guard needed before handler accepts traffic). Field + getter scaffolding present; inline TODO(story-007) documents swap.
+- Tech debt logged: None (AFKToggle defer is intentional, tracked in story-007)
+- Next recommended: CSM 2-6 (`/dev-story production/epics/crowd-state-server/story-007-read-accessors-set-still-overlapping.md`) — final Sprint-2 must-have. Small scope (~0.5d): adds getAllActive, getAllCrowdPositions, setStillOverlapping on top of existing get + records.

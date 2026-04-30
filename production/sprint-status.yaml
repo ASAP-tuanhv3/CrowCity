@@ -83,11 +83,11 @@ stories:
     name: "MSM story-001 — module skeleton + 7-state enum + Lobby boot + participation flags + Snap freeze"
     file: "production/epics/match-state-server/story-001-module-skeleton-state-enum-participation-flags.md"
     priority: must-have
-    status: ready-for-dev
+    status: done
     owner: ""
     estimate_days: 0.5
     blocker: ""
-    completed: ""
+    completed: "2026-04-30"
 
   - id: "2-9"
     name: "CSM story-003 — hue F6 + activeRelics cap + CrowdRelicChanged"
