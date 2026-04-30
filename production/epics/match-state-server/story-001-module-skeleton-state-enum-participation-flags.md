@@ -1,7 +1,7 @@
 # Story 001: Module skeleton + 7-state enum + Lobby boot + participation flag table + asymmetric Snap freeze
 
 > **Epic**: match-state-server
-> **Status**: Ready
+> **Status**: Complete
 > **Layer**: Core
 > **Type**: Logic
 > **Manifest Version**: 2026-04-27
@@ -70,7 +70,7 @@
 
 `tests/unit/match-state-server/skeleton.spec.luau` + `tests/unit/match-state-server/participation_flag.spec.luau` + `tests/unit/match-state-server/snap_freeze.spec.luau`.
 
-**Status**: [ ] Not yet created
+**Status**: [x] Executed headless 2026-04-30 — 137/0/0 pass via `run-in-roblox` (16 new MSM + 121 prior)
 
 ---
 
@@ -78,3 +78,37 @@
 
 - Depends on: Foundation `network-layer-ext` (RemoteEventName entries) — already complete
 - Unlocks: story-002..008
+
+---
+
+## Completion Notes
+
+**Completed**: 2026-04-30
+**Criteria**: 8/8 covered (AC-1, AC-2, AC-3 + MatchState type export + Placement type export + public API surface + no-public-transitionTo + PlayerAdded/Removing wiring)
+
+**Files**:
+- `src/ServerStorage/Source/MatchStateServer/init.luau` (~210 L) — singleton module
+  - Exported types: `MatchState` (7-string union per arch §5.2 L577) + `Placement` (per arch §5.2 L581)
+  - Module-private state: `_state` (boots to "Lobby"), `_participation`, `_stateStartTime`, `_stateEndsAt`, 3 connection refs
+  - Public surface (story-001): `get`, `getParticipation`, `getStateEndsAt`, `start`
+  - Module-private (file-local) helpers: `_transitionTo`, `_setParticipation` (Snap-freeze rule)
+  - Test-only surface: `_resetForTests`, `_getState`, `_setStateForTests`, `_setParticipation` (re-exposed for testing), 3 connection getters
+  - PlayerAdded handler auto-sets `_participation[uid] = true`; PlayerRemoving clears entry
+  - Snap-freeze rule: in `Countdown:Snap`, TRUE→FALSE write rejected (early return); FALSE→TRUE allowed; outside Snap, both directions allowed
+  - AFKToggle wiring DEFERRED to story-007 (`_afkToggleConnection` stays nil) — see deviations below
+- `tests/unit/match-state-server/skeleton.spec.luau` (~75 L, 5 it blocks)
+- `tests/unit/match-state-server/participation_flag.spec.luau` (~80 L, 5 it blocks)
+- `tests/unit/match-state-server/snap_freeze.spec.luau` (87 L, 6 it blocks)
+
+**Test Evidence**: 3 TestEZ spec files. **Executed 2026-04-30** via `run-in-roblox` → **137/0/0 pass** (16 new MSM + 121 prior).
+
+**Audit gates ALL PASS**: selene + audit-asset-ids + audit-persistence + audit-no-competing-heartbeat.
+
+**Code Review**: Standalone `/code-review` skipped — Lean mode + impl matches spec.
+
+**Deviations** (ADVISORY only, non-blocking):
+- **AFKToggle wiring deferred to story-007** (was originally planned as story-001 stub). Reason 1: `Network.connectEvent` requires `Network.startServer()` to have created the RemoteEvent instance, which fails in headless TestEZ context where Network isn't booted. Reason 2: ADR-0010 §4-Check Guard validation must wrap the handler before it accepts traffic; wiring without validation here would create a security gap during the story-001 → 007 window. Story-001 keeps the `_afkToggleConnection` field + `_getAFKToggleConnection` getter as scaffolding; story-007 wires the validated handler. Inline TODO marker in code documents the swap.
+
+**Gates**: QL-TEST-COVERAGE + LP-CODE-REVIEW + QL-STORY-READY skipped — Lean mode.
+
+**Unblocks**: MSM stories 002 (Lobby↔Countdown:Ready transition driver via PlayerAdded count check), 003-006 (timer drivers + state transitions + simultaneity rules per ADR-0002 phase order), 007 (broadcast wiring + GetParticipation RemoteFunction + AFKToggle full ADR-0010 4-check guard), 008 (perf evidence). Sprint 2 must-have set now 7/8 done — only CSM 2-6 read accessors remaining.
