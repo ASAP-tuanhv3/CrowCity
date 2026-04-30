@@ -521,3 +521,17 @@ Recommended next action: `/sprint-plan` to sequence Sprint 2 Vertical Slice Buil
 - DI seam pattern: RL._setCSMOverride mirrors CSM._setTestFanoutInterceptor. Confirms reusable test seam idiom for cross-module Core dependencies.
 - Tech debt logged: None
 - Next recommended: MSM 2-8 (`/dev-story production/epics/match-state-server/story-001-module-skeleton-state-enum-participation-flags.md`) OR CSM 2-5 (updateCount + clamp + signals; consumes CSM 2-4 contract directly). MSM 2-8 is independent parallel chain — favor for breadth. CSM 2-5 unblocks CSM 003-007 chain.
+
+## Session Extract — /dev-story + /story-done 2026-04-30 (CSM 2-5)
+- Verdict: COMPLETE
+- Story: production/epics/crowd-state-server/story-002-updatecount-deltasource-clamp-signals.md — updateCount + DeltaSource + F5 clamp + CountChanged + CrowdCountClamped
+- Files (1 modified, 3 created):
+  - src/ServerStorage/Source/CrowdStateServer/init.luau (+~130 L) — refactored fanout to support target Player? for fireClient routing; added COUNT_FLOOR/CEILING constants + _countChanged BindableEvent + CrowdStateServer.CountChanged module field + resolveOwner helper + _testOwnerResolver test seam + updateCount(crowdId, delta, source) -> number with F5 clamp + per-call CrowdCountClamped fire on positive overflow + single-fire CountChanged on effective_delta != 0
+  - tests/unit/crowd-state-server/updatecount_clamp.spec.luau (82 L, 7 it) — F5 floor + ceiling + per-bound no-op + return-value + AC-15 call-order + absent-record assert
+  - tests/unit/crowd-state-server/countchanged.spec.luau (107 L, 6 it) — AC-24 payload + delta=0/floor/ceiling no-fire + AC-15 4-sequential-fires + clamp-truncated-still-fires
+  - tests/unit/crowd-state-server/countclamped.spec.luau (129 L, 6 it) — AC-25 payload + per-call repeat + floor-no-fire + in-range-no-fire + target=owner verified + DC-mid-tick owner-nil graceful skip
+- Test result: 121/0/0 pass headless (19 new + 102 prior). All 4 audit gates PASS.
+- Sprint-2: 6/8 must-have done (TickOrch 2-1/2/3 + CSM 2-4 + 2-5 + RL 2-7 ✓ — 75% must-have complete; 2 remaining: CSM 2-6 read accessors + MSM 2-8 skeleton). Days spent ~6 of 8.
+- Test seam pattern extended: `_setTestOwnerResolver` joins `_setTestFanoutInterceptor` as reusable DI hooks. Pattern is self-consistent across CSM + RL modules.
+- Tech debt logged: Spec implementation-note doc accuracy (fireClient arg-order)— minor doc-only follow-up; impl follows real Network signature.
+- Next recommended: MSM 2-8 (`/dev-story production/epics/match-state-server/story-001-module-skeleton-state-enum-participation-flags.md`) — opens MSM epic, no CSM dep, parallel chain. After: CSM 2-6 (`/dev-story production/epics/crowd-state-server/story-007-read-accessors-set-still-overlapping.md`) — small ~0.5d, completes Sprint-2 must-have.

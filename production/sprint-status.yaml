@@ -53,11 +53,11 @@ stories:
     name: "CSM story-002 — updateCount + DeltaSource + F5 clamp + CountChanged + CrowdCountClamped"
     file: "production/epics/crowd-state-server/story-002-updatecount-deltasource-clamp-signals.md"
     priority: must-have
-    status: ready-for-dev
+    status: done
     owner: ""
     estimate_days: 1.0
     blocker: ""
-    completed: ""
+    completed: "2026-04-30"
 
   - id: "2-6"
     name: "CSM story-007 — read accessors + setStillOverlapping + Eliminated exclusion"

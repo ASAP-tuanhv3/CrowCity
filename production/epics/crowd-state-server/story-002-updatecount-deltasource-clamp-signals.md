@@ -1,7 +1,7 @@
 # Story 002: updateCount + DeltaSource enum + F5 clamp + CountChanged + CrowdCountClamped
 
 > **Epic**: crowd-state-server
-> **Status**: Ready
+> **Status**: Complete
 > **Layer**: Core
 > **Type**: Logic
 > **Manifest Version**: 2026-04-27
@@ -100,7 +100,7 @@
 **Story Type**: Logic
 **Required evidence**: `tests/unit/crowd-state-server/updatecount_clamp.spec.luau` + `tests/unit/crowd-state-server/countchanged.spec.luau` + `tests/unit/crowd-state-server/countclamped.spec.luau`.
 
-**Status**: [ ] Not yet created
+**Status**: [x] Executed headless 2026-04-30 — 121/0/0 pass via `run-in-roblox` (19 new CSM 2-5 + 102 prior)
 
 ---
 
@@ -108,3 +108,43 @@
 
 - Depends on: story-001 (record schema + create + destroy)
 - Unlocks: story-006 (Phase 5 state evaluator reads count to detect floor); story-008 (broadcastAll reads count post-clamp); RoundLifecycle peakCount tracking (round-lifecycle epic)
+
+---
+
+## Completion Notes
+
+**Completed**: 2026-04-30
+**Criteria**: 9/9 covered (AC-03 / AC-04 / AC-15-CSM-side / AC-24 / AC-25 + return-post-clamp + DeltaSource-export-already-shipped-in-001 + record-absent-assert + BindableEvent-module-field + single-fire-per-call)
+
+**Files**:
+- `src/ServerStorage/Source/CrowdStateServer/init.luau` (+~130 L net, 214 → ~344 L)
+  - Refactored `fanout` signature: `(eventName, payload, target: Player?)` — nil target → fireAllClients route, non-nil → fireClient route. Existing create/destroy unchanged behaviorally (target=nil)
+  - Added constants: `COUNT_FLOOR = 1`, `COUNT_CEILING = 300` (per ADR-0001 §Key Interfaces)
+  - Added `_countChanged` BindableEvent + public `CrowdStateServer.CountChanged` field per arch §5.1 L552 — server-only, never replicated (manifest L77)
+  - Added `_testOwnerResolver` state + `resolveOwner(crowdId): Player?` helper (production: Players:GetPlayerByUserId; test: override)
+  - Added `updateCount(crowdId, delta, source): number`:
+    - assert record present (caller bug per ADR-0004 §Decision)
+    - F5 clamp via `math.clamp(oldCount + delta, 1, 300)`
+    - CrowdCountClamped reliable fires to OWNER ONLY when `proposed > 300` (ceiling overflow); floor clamp does NOT fire (different scope per GDD L145)
+    - CountChanged BindableEvent fires only when `effective_delta != 0` (post-clamp difference)
+    - Per-call semantic: same-tick repeats at ceiling each fire CrowdCountClamped (HUD-side debounce per GDD)
+    - Returns post-clamp count per arch §5.1 L534
+  - Updated `_resetForTests`: clears `_testOwnerResolver`
+  - Added `_setTestOwnerResolver(fn)` test seam
+
+- `tests/unit/crowd-state-server/updatecount_clamp.spec.luau` (82 L, 7 it blocks)
+- `tests/unit/crowd-state-server/countchanged.spec.luau` (107 L, 6 it blocks)
+- `tests/unit/crowd-state-server/countclamped.spec.luau` (129 L, 6 it blocks)
+
+**Test Evidence**: 3 TestEZ spec files. **Executed 2026-04-30** via `run-in-roblox` → **121/0/0 pass** (19 new + 102 prior).
+
+**Audit gates ALL PASS**: selene + audit-asset-ids + audit-persistence + audit-no-competing-heartbeat.
+
+**Code Review**: Standalone `/code-review` skipped — Lean mode + impl matches spec verbatim except `Network.fireClient` arg-order corrected during impl (project's `fireClient(eventName, player, payload)` vs spec's `fireClient(player, eventName, payload)`; behavior identical, signature follows the actual Network module).
+
+**Deviations** (ADVISORY only, non-blocking):
+- Story spec implementation note wrote `Network.fireClient(player, eventName, payload)` but the project's actual `Network.fireClient` signature is `(eventName, player, ...)`. Impl follows the actual signature. Behavior identical (per-player filtered send). Spec-file follow-up note for documentation accuracy.
+
+**Gates**: QL-TEST-COVERAGE + LP-CODE-REVIEW + QL-STORY-READY skipped — Lean mode.
+
+**Unblocks**: story-003 (hue F6 + activeRelics — independent of count writes), story-004 (recomputeRadius live re-composition on count change → hooks CountChanged), story-006 (Phase 5 state evaluator reads count for F7 grace-timer trigger), story-008 (broadcastAll consumes post-clamp count + BindableEvent for delta-snapshots), RoundLifecycle story-002 (peakCount tracking subscribes CountChanged BindableEvent), HUD count-pop animation (subscribes CrowdCountClamped reliable on client side).
