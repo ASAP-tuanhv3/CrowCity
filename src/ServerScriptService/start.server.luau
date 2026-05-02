@@ -80,6 +80,31 @@ TickOrchestrator._registerPhases({
 TickOrchestrator.start()
 -- ---------------------------------------------------------------------------
 
+-- ---------------------------------------------------------------------------
+-- BindToClose shutdown coordination (architecture.md §4.5 Scenario E)
+--
+-- ADR-0002 §Migration L4 + ADR-0005 §BindToClose ownership + ADR-0011 §Grace.
+-- Chain order at server shutdown:
+--   1. TickOrchestrator.stop()                — halt gameplay tick
+--   2. MatchStateServer.requestServerClosing()— broadcast MatchStateChanged
+--   3. ProfileStore session-release           — runs in ProfileStore's own
+--                                               internal BindToClose handler
+--                                               (vendored library; not invoked
+--                                               from this script).
+--
+-- NO currency grant during shutdown — manifest L106 + L142; ADR-0011.
+-- MSM epic replaces MatchStateServerStub with the real MatchStateServer
+-- module via in-place edit of the require + register({...}) deps below.
+-- ---------------------------------------------------------------------------
+local ShutdownCoordinator = require(ServerStorage.Source.ShutdownCoordinator)
+local MatchStateServerStub = require(ServerStorage.Source._PhaseStubs.MatchStateServerStub)
+
+ShutdownCoordinator.register({
+	tickOrchestrator = TickOrchestrator,
+	matchStateServer = MatchStateServerStub,
+})
+-- ---------------------------------------------------------------------------
+
 -- TODO: Initialize your global server-side gameplay systems here.
 -- Example:
 --   local MyGameplayServer = require(ServerStorage.Source.MyGameplay.MyGameplayServer)
