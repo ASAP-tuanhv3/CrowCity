@@ -1,7 +1,7 @@
 # Story 004: BindToClose stop() coordination
 
 > **Epic**: tick-orchestrator
-> **Status**: Ready
+> **Status**: Complete
 > **Layer**: Core
 > **Type**: Integration
 > **Manifest Version**: 2026-04-27
@@ -129,3 +129,29 @@
 
 - Depends on: story-001 (`stop()` API + idempotence), story-003 (boot wiring + stub directory pattern)
 - Unlocks: MSM epic story replacing `MatchStateServerStub.requestServerClosing` with real `MatchStateServer.requestServerClosing`
+
+---
+
+## Completion Notes
+
+**Completed**: 2026-05-02
+**Criteria**: 8/8 covered (all auto-verified via integration spec + 2 audit scripts; 0 deferred, 0 untested)
+
+**Files**:
+- `src/ServerStorage/Source/ShutdownCoordinator/init.luau` (NEW, ~115 L) — owns `runShutdown(deps)` chain body + `register(deps)` BindToClose wiring; idempotent `_bindToCloseRegistered` + `_shutdownTriggered` flags; `pcall` around `stop()` (chain halts on failure with warn) and around MSM broadcast (warn but record triggered)
+- `src/ServerStorage/Source/_PhaseStubs/MatchStateServerStub.luau` (NEW, ~70 L) — fires `Network.fireAllClients(MatchStateChanged, "ServerClosing")`; `_invocationCount` + `_lastBroadcastState` test hooks
+- `src/ServerScriptService/start.server.luau` (modified, +24 L) — BindToClose block AFTER `TickOrchestrator.start()`; requires ShutdownCoordinator + MatchStateServerStub; calls `register({tickOrchestrator, matchStateServer})`; ADR-0002/0005/0011 cites in marker comment
+- `tests/integration/tick-orchestrator/bindtoclose_shutdown.spec.luau` (NEW, ~270 L, 10 it blocks across 6 describe groups)
+- `tools/audit-no-currency-in-shutdown.sh` (NEW, executable) — greps `Currency.`/`grantCoins`/`grantMatchRewards` across 4 reachable files; PASS
+
+**Test Evidence**: Integration spec at `tests/integration/tick-orchestrator/bindtoclose_shutdown.spec.luau`. **Executed 2026-05-02** via `rojo build test.project.json -o test-place.rbxl && run-in-roblox --place test-place.rbxl --script tests/runner.server.luau` → **159/0/0 pass** (149 Sprint-2 baseline + 10 new). Audit `tools/audit-no-currency-in-shutdown.sh` → PASS. Audit `tools/audit-no-competing-heartbeat.sh` → PASS (no regression).
+
+**Deviations** (ADVISORY only, non-blocking):
+- ShutdownCoordinator module factor-out — Story did not explicitly name this module. Necessary because `start.server.luau` is a Script (not requirable by tests). Body semantically identical to an inlined callback. Aligned with project pattern (`Network/init.luau`, `PlayerData/Server.luau`, etc.).
+- Audit script path — Placed at `tools/audit-no-currency-in-shutdown.sh` instead of story's `tests/integration/tick-orchestrator/audit_no_currency_in_shutdown.sh`. Consistent with sibling `tools/audit-no-competing-heartbeat.sh` (story-003), `tools/audit-asset-ids.sh`, `tools/audit-persistence.sh`. Functionally equivalent.
+
+**Code Review**: Skipped standalone `/code-review` spawn — Lean mode + small mechanical scope (1 module + 1 stub + 1 boot block insert + integration test mirroring existing TestEZ patterns). selene `src/` clean (0 errors).
+
+**Gates**: QL-TEST-COVERAGE + LP-CODE-REVIEW skipped — Lean mode.
+
+**Unblocks**: When MSM epic ships its real `MatchStateServer.requestServerClosing` entry, replace `MatchStateServerStub` require + register call deps in `start.server.luau` (single-line edits per the boot block comment). Stub file then deletable.

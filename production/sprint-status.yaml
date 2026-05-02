@@ -6,18 +6,18 @@ goal: "Drive a full round end-to-end on the server: MSM transitions Lobby → Co
 start: "2026-05-01"
 end: "2026-05-14"
 generated: "2026-05-01"
-updated: "2026-05-01"
+updated: "2026-05-02"
 
 stories:
   - id: "3-1"
     name: "TickOrch story-004 — BindToClose stop() coordination"
     file: "production/epics/tick-orchestrator/story-004-bindtoclose-shutdown-coordination.md"
     priority: must-have
-    status: ready-for-dev
+    status: done
     owner: ""
     estimate_days: 0.5
     blocker: ""
-    completed: ""
+    completed: "2026-05-02"
 
   - id: "3-2"
     name: "CSM story-003 — hue F6 + activeRelics cap + CrowdRelicChanged"
