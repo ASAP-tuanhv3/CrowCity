@@ -1,7 +1,7 @@
 # Story 003: Hue F6 + activeRelics cap
 
 > **Epic**: crowd-state-server
-> **Status**: Ready
+> **Status**: Complete
 > **Layer**: Core
 > **Type**: Logic
 > **Manifest Version**: 2026-04-27
@@ -88,7 +88,7 @@
 **Story Type**: Logic
 **Required evidence**: `tests/unit/crowd-state-server/hue.spec.luau` + `tests/unit/crowd-state-server/active_relics_cap.spec.luau` + `tests/unit/crowd-state-server/relic_changed_signal.spec.luau`.
 
-**Status**: [ ] Not yet created
+**Status**: [x] Created + passing 2026-05-02 (187/0/0 headless)
 
 ---
 
@@ -96,3 +96,14 @@
 
 - Depends on: story-001 (create + record schema)
 - Unlocks: story-006 (state evaluator reads `activeRelics` for relic-active info — actually no, state machine doesn't read relics; this is a self-contained API surface); RelicSystem epic (consumes `addActiveRelic` / `removeActiveRelic`); RoundLifecycle (composes `initial.hue` via F6 + joinIndex)
+
+---
+
+## Completion Notes
+**Completed**: 2026-05-02
+**Criteria**: 8/8 passing (0 deferred)
+**Test result**: 187/0/0 headless (run-in-roblox; up from 159 baseline = +28 new)
+**Deviations**: ADVISORY — ADR-0004 amended in same scope (Write-Access Matrix +2 rows for addActiveRelic/removeActiveRelic; Pillar 4 forbidden-list extended; Read-vs-Write `activeRelics` row updated). Closes doc gap surfaced by /code-review; no semantic change.
+**Test Evidence**: Logic — `tests/unit/crowd-state-server/hue.spec.luau` + `active_relics_cap.spec.luau` + `relic_changed_signal.spec.luau` all PASS.
+**Code Review**: Complete (lean mode — manual review). Verdict APPROVED WITH SUGGESTIONS; both suggestions applied (MAX_RELIC_SLOTS constant + ADR-0004 amendment).
+**Lint**: selene 0/0 on modified module. audit-no-currency-in-shutdown PASS.

@@ -1,7 +1,7 @@
 # Story 002: CountChanged subscription + peakCount/peakTimestamp/finalCount tracking (F1) + signal guard
 
 > **Epic**: round-lifecycle
-> **Status**: Ready
+> **Status**: Complete
 > **Layer**: Core
 > **Type**: Logic
 > **Manifest Version**: 2026-04-27
@@ -90,3 +90,14 @@
 
 - Depends on: story-001 (createAll Janitor + `_crowds` aux); CSM story-002 (CountChanged BindableEvent fires from updateCount)
 - Unlocks: story-005 (getPlacements consumes peakCount/peakTimestamp)
+
+---
+
+## Completion Notes
+**Completed**: 2026-05-02
+**Criteria**: AC-5 (strict > peak update), AC-6 (equal no-op), AC-7 (below peak preserves; final tracks), AC-8 (silent guard non-record), subscription cleanup post-destroyAll, multi-record isolation. 6 it blocks.
+**Test result**: 278/0/0 headless (+6 from 3-10)
+**Files modified**: src/ServerStorage/Source/RoundLifecycle/init.luau (+CountChanged in CSMDependency type + forward-declared _onCountChanged + Janitor-tracked CountChanged subscription in createAll + F1 strict > peak update + finalCount-always-tracks).
+**Test files created**: tests/unit/round-lifecycle/peak_tracking_f1.spec.luau
+**Deviations**: None.
+**Lint**: selene 0/0

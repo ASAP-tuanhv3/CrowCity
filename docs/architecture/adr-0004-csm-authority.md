@@ -8,6 +8,7 @@ Status history:
 - 2026-04-25 — Proposed (initial)
 - 2026-04-26 — D1 fix: §Module Placement Firewall narrative reworded to remove "depends on ADR-0006 codification" phrasing per `/architecture-review` D1 finding; formal Depends On table (0001/0002/0003) unchanged
 - **2026-04-26 — ACCEPTED** (batch flip with ADR-0001/0002/0003/0006)
+- 2026-05-02 — amended per CSM story-003 implementation: §Write-Access Matrix appended `addActiveRelic` + `removeActiveRelic` rows (RelicEffectHandler-only callers); §Pillar 4 invariant explicit-forbidden-call list extended; §Read-vs-Write Split `activeRelics` row updated from "delegated through Relic-specific methods, NOT a direct CSM write API" to direct API contract (cap+dup enforcement inside CSM). No semantic change — caller restriction was always RelicEffectHandler-only; this amendment promotes the relic-mutation contract from implicit to explicit and aligns ADR with shipped code surface.
 
 ## Date
 
@@ -78,6 +79,8 @@ But these constraints currently live only in a GDD. No ADR locks them. Implicati
 | `updateCount(crowdId, delta, source)` | AbsorbSystem (`source="Absorb"`), CollisionResolver (`source="Collision"`), ChestSystem (`source="Chest"`), RelicEffectHandler (`source="Relic"`) — exactly these 4 | All other systems including: HUD, Nameplate, FollowerEntity, FollowerLODManager, VFXManager, Skin System (VS+), Daily Quest System (Alpha+), Shop System (Alpha+) |
 | `recomputeRadius(crowdId, newMultiplier)` | RelicEffectHandler (sole caller) | All other systems |
 | `setStillOverlapping(crowdId, flag)` | CollisionResolver (sole caller) | All other systems |
+| `addActiveRelic(crowdId, specId)` | RelicEffectHandler (relic-grant path; sole caller) | All other systems including all cosmetic systems (Pillar 4 forbidden) |
+| `removeActiveRelic(crowdId, specId)` | RelicEffectHandler (relic-expiry path; sole caller) | All other systems |
 | `stateEvaluate(tickCount)` | TickOrchestrator (Phase 5 dispatch only) | All other systems |
 | `broadcastAll(tickCount)` | TickOrchestrator (Phase 8 dispatch only) | All other systems |
 | `get(crowdId)` | Any server-side system (read-only) | — (no caller restriction) |
@@ -89,7 +92,7 @@ But these constraints currently live only in a GDD. No ADR locks them. Implicati
 
 ### Pillar 4 Anti-P2W Invariant (LOCKED — architectural rule, cannot be amended without superseding this ADR)
 
-**Cosmetic systems (Skin System, Avatar System, Banner System, Trail System, any future visual-identity system) MUST NOT appear in any CSM write caller set. They MUST NOT call `updateCount`, `recomputeRadius`, `setStillOverlapping`, `create`, or `destroy`. They MUST NOT subscribe to `CountChanged` to gate any visual decision that affects gameplay (count display via `CrowdStateClient` is presentation-only and acceptable).**
+**Cosmetic systems (Skin System, Avatar System, Banner System, Trail System, any future visual-identity system) MUST NOT appear in any CSM write caller set. They MUST NOT call `updateCount`, `recomputeRadius`, `setStillOverlapping`, `create`, `destroy`, `addActiveRelic`, or `removeActiveRelic`. They MUST NOT subscribe to `CountChanged` to gate any visual decision that affects gameplay (count display via `CrowdStateClient` is presentation-only and acceptable).**
 
 **Why architectural-level**: Pillar 4 (Cosmetic Expression) + Pillar 3 (5-Min Clean Rounds) + the explicit anti-pillar "NOT pay-to-win" in `design/gdd/game-concept.md:179` make this a project-identity constraint, not a per-system implementation detail. Any GDD or ADR proposing to add a cosmetic system as a CSM caller is a design conflict that supersedes this ADR or compromises Pillar 4.
 
@@ -132,7 +135,7 @@ src/ReplicatedStorage/Source/CrowdStateClient/
 | `stillOverlapping` | `get(crowdId).stillOverlapping` (read) | `setStillOverlapping(id, flag)` | CollisionResolver only |
 | `timer_start` | internal | internal Phase 5 transition only | None |
 | `hue` | `get(crowdId).hue`, broadcast | `create` only — immutable post-create | RoundLifecycle only (via `create`) |
-| `activeRelics` | `get(crowdId).activeRelics`, reliable `CrowdRelicChanged` event | mutated implicitly via RelicEffectHandler `grant`/`expire` | RelicEffectHandler only (delegated through Relic-specific methods, NOT a direct CSM write API) |
+| `activeRelics` | `get(crowdId).activeRelics`, reliable `CrowdRelicChanged` event | `addActiveRelic(id, specId)` / `removeActiveRelic(id, specId)` (added by CSM story-003 — direct write APIs, max 4 cap + dup-rejection enforced inside CSM) | RelicEffectHandler only |
 | `crowdId` | `get(crowdId).crowdId`, broadcast | `create` only — immutable | RoundLifecycle only |
 
 ### Defense-in-depth enforcement layers

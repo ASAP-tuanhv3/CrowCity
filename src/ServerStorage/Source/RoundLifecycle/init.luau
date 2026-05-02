@@ -82,7 +82,12 @@ export type InternalAuxRecord = {
 type CSMDependency = {
 	create: (crowdId: string, initial: any) -> any,
 	destroy: (crowdId: string) -> (),
+	-- CountChanged BindableEvent — story-002 subscribes via .Event:Connect.
+	CountChanged: BindableEvent?,
 }
+
+-- Forward declaration — defined after createAll, used inside it.
+local _onCountChanged: (crowdId: string, newCount: number) -> ()
 
 -- ---------------------------------------------------------------------------
 -- Module-level state (all private)
@@ -185,6 +190,42 @@ function RoundLifecycle.createAll(participatingPlayers: { Player }): ()
 		}
 		table.insert(_participants, player)
 	end
+
+	-- Story-002: subscribe to CSM.CountChanged for F1 peak tracking. Janitor-
+	-- managed so destroyAll auto-disconnects. Real CSM exposes the BindableEvent
+	-- as a module field (CSM story-001 line 191). Test mocks may omit it — guard
+	-- nil-safely.
+	local countChanged = (csm :: any).CountChanged
+	if countChanged ~= nil then
+		_janitor:Add(
+			countChanged.Event:Connect(function(
+				crowdId: string,
+				_oldCount: number,
+				newCount: number,
+				_deltaSource: string
+			): ()
+				_onCountChanged(crowdId, newCount)
+			end),
+			"Disconnect"
+		)
+	end
+end
+
+--- F1 peak tracking handler. Strict `>` rule per manifest L102: equal counts
+--- do NOT update peakTimestamp (preserves earliest-peak wins F4 tiebreak).
+--- Always tracks `finalCount` regardless of peak comparison (used by getPlacements).
+--- Silent guard for non-record crowdIds (post-destroy race tolerance per AC-8).
+--- ADR-0005 §F1; CSM story-002 BindableEvent contract.
+_onCountChanged = function(crowdId: string, newCount: number): ()
+	local record = _crowds[crowdId]
+	if record == nil then
+		return  -- AC-8 silent guard
+	end
+	if newCount > record.peakCount then
+		record.peakCount = newCount
+		record.peakTimestamp = os.clock()
+	end
+	record.finalCount = newCount
 end
 
 --- Tears down the round: Janitor destroyed FIRST (disconnects all subscribers
@@ -264,6 +305,118 @@ end
 --- Injects a mock CSM dependency. Pass nil to clear (also cleared by
 --- _resetForTests). Mirrors the _setTestFanoutInterceptor DI seam pattern
 --- established by CrowdStateServer story-001.
+--- Returns the `peakTimestamp` for the given crowdId, or nil if no aux record
+--- exists. Used by MSM F4 tiebreak (story-003 of MSM epic) — earliest peak
+--- timestamp wins on count tie.
+--- ADR-0005 §F4 tiebreak; arch §5.3 L638 nil treated as math.huge by caller.
+function RoundLifecycle.getPeakTimestamp(crowdId: string): number?
+	local record = _crowds[crowdId]
+	if record == nil then
+		return nil
+	end
+	return record.peakTimestamp
+end
+
+--- Marks the given crowdId as the round winner. Sole caller: MSM Result
+--- entry (`_handleResultEntry` per ADR-0005 §Result-entry ordering invariant).
+--- nil winnerId allowed (zero-participant Result + empty-elimination edge).
+--- Asserts loud if crowdId set but record absent (caller bug).
+--- ADR-0005 §Decision; arch §5.3.
+function RoundLifecycle.setWinner(crowdId: string?): ()
+	_winnerId = crowdId
+	if crowdId ~= nil then
+		assert(
+			_crowds[crowdId] ~= nil,
+			"RoundLifecycle.setWinner: record absent for crowdId=" .. crowdId
+		)
+	end
+end
+
+--- Placement record returned by getPlacements. Includes per-crowd round
+--- summary used by Currency.grantMatchRewards + Result broadcast meta.
+--- Internal fields (peakCount, isWinner, wasEliminated) are STRIPPED before
+--- broadcast per manifest L100 InternalPlacement strip rule — stripping is
+--- MSM's job in `_stripInternalPlacements`. RoundLifecycle returns the full
+--- record; caller filters.
+export type Placement = {
+	crowdId: string,
+	userId: number,
+	placement: number,
+	crowdCount: number,
+	eliminationTime: number?,
+	-- Internal fields — strip before broadcast.
+	peakCount: number,
+	isWinner: boolean,
+	wasEliminated: boolean,
+}
+
+--- Returns the per-crowd placement array for the round. Sole caller: MSM
+--- `_handleResultEntry` (after `setWinner`). Sort: winner first, then survivors
+--- by finalCount desc, then eliminated by eliminationTime desc (most recent
+--- first). Placement field assigned by sort position (1 = winner).
+---
+--- Asserts that `setWinner` was called first (when participants non-empty)
+--- per ADR-0005 §Result-entry ordering invariant.
+--- ADR-0005 §Decision; arch §5.3 L630.
+function RoundLifecycle.getPlacements(): { Placement }
+	-- Empty participants → empty placements (zero-participant Result edge).
+	local recordCount = 0
+	for _ in _crowds do
+		recordCount += 1
+	end
+	if recordCount == 0 then
+		return {}
+	end
+
+	assert(
+		_winnerId ~= nil or recordCount == 0,
+		"RoundLifecycle.getPlacements: setWinner must be called before getPlacements when participants are non-empty"
+	)
+
+	local placements: { Placement } = {}
+	for _, record in _crowds do
+		table.insert(placements, {
+			crowdId = record.crowdId,
+			userId = record.userId,
+			placement = 0,  -- assigned post-sort
+			crowdCount = record.finalCount,
+			eliminationTime = record.eliminationTime,
+			peakCount = record.peakCount,
+			isWinner = (record.crowdId == _winnerId),
+			wasEliminated = (not record.survived),
+		})
+	end
+
+	table.sort(placements, function(a, b)
+		-- Winner first.
+		if a.isWinner ~= b.isWinner then
+			return a.isWinner
+		end
+		-- Among non-winners: survivors before eliminated.
+		if a.wasEliminated ~= b.wasEliminated then
+			return not a.wasEliminated
+		end
+		-- Survivors: highest finalCount first.
+		if not a.wasEliminated and not b.wasEliminated then
+			return a.crowdCount > b.crowdCount
+		end
+		-- Eliminated: most-recently-eliminated first.
+		local ta = a.eliminationTime or -math.huge
+		local tb = b.eliminationTime or -math.huge
+		if ta ~= tb then
+			return ta > tb
+		end
+		-- Final tiebreak: argmin(userId) for determinism.
+		return a.userId < b.userId
+	end)
+
+	for i, p in placements do
+		p.placement = i
+	end
+
+	return placements
+end
+
 function RoundLifecycle._setCSMOverride(csm: CSMDependency?): ()
 	_csmOverride = csm
 end

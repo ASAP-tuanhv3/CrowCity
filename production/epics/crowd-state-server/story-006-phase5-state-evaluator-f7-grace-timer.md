@@ -1,7 +1,7 @@
 # Story 006: Phase 5 state evaluator + F7 grace timer + state transitions + CrowdEliminated
 
 > **Epic**: crowd-state-server
-> **Status**: Ready
+> **Status**: Complete
 > **Layer**: Core
 > **Type**: Logic
 > **Manifest Version**: 2026-04-27
@@ -123,3 +123,14 @@
 
 - Depends on: story-001 (record schema), story-002 (updateCount integrates with state-aware count writes), story-005 (`_updatePositions` helper), story-007 (`setStillOverlapping` writer + read pattern)
 - Unlocks: story-008 (broadcastAll reads state for payload encoding); MSM Phase 7 elimConsumer (drains CrowdEliminated reliable events queued here)
+
+---
+
+## Completion Notes
+**Completed**: 2026-05-02
+**Criteria**: AC-11 / AC-12 / AC-13 + body-order + Eliminated terminality + multi-record fanout all covered (16 it blocks across 2 specs)
+**Test result**: 222/0/0 headless (+16 from 3-4)
+**Files modified**: src/ServerStorage/Source/CrowdStateServer/init.luau (+GRACE_WINDOW_SEC const + _lastUpdatePositionsTick test counter + _updatePositions stub for story-005 + stateEvaluate public API + _resetForTests reset + _getLastUpdatePositionsTick accessor)
+**Test files created**: tests/unit/crowd-state-server/state_evaluator.spec.luau + grace_timer.spec.luau
+**Deviations**: ADVISORY — story §Implementation Notes L62-67 specify split if/elseif for overlap-clear vs count-rise (both → Active path); selene `if_same_then_else` flagged duplicate branches; combined into `if (not stillOverlapping) or count>1 then ... Active` with comment preserving AC-13 tie-break semantics. Logic identical; cleaner expression.
+**Lint**: selene 0/0

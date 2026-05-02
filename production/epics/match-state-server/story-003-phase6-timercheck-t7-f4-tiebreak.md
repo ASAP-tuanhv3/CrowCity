@@ -1,7 +1,7 @@
 # Story 003: Phase 6 timerCheck + T7 timer-expiry → Result + F4 winner tiebreak
 
 > **Epic**: match-state-server
-> **Status**: Ready
+> **Status**: Complete
 > **Layer**: Core
 > **Type**: Logic
 > **Manifest Version**: 2026-04-27
@@ -96,3 +96,14 @@
 
 - Depends on: story-001 (state field), story-002 (`_transitionTo` driver + Phase 6 hook), tick-orchestrator story-002 (Phase iteration)
 - Unlocks: story-004 (Phase 7 cooperates with Phase 6 ordering); story-007 (broadcast)
+
+---
+
+## Completion Notes
+**Completed**: 2026-05-02
+**Criteria**: AC-10 (F4 tiebreak count→peakTimestamp→UserId determinism, 10-run repeat) + T7 (Active→Result on expiry) covered (10 it blocks across 2 specs). AC-12/AC-21 simultaneity test deferred to 3-8 (Phase 7 elim consumer story owns the same-tick guard interplay).
+**Test result**: 255/0/0 headless (+10 from 3-7)
+**Files modified**: src/ServerStorage/Source/MatchStateServer/init.luau (+CrowdStateServer import + _winnerId field + CSMDependency type + _csmOverride + _f4Less predicate + _resolveWinnerF4 helper + T7 branch in timerCheck + getWinnerId + _setCSMOverride/_setWinnerIdForTests test hooks); src/ServerStorage/Source/RoundLifecycle/init.luau (+getPeakTimestamp public API).
+**Test files created**: tests/unit/match-state-server/timer_check_t7.spec.luau + f4_tiebreak.spec.luau
+**Deviations**: ADVISORY — RoundLifecycle.getPeakTimestamp added as part of this story (story §Implementation Notes L63 hinted at stub; cleaner to add the real RL accessor since RL `_crowds[id].peakTimestamp` already populated in Sprint 2 createAll). Out-of-scope by-letter but in-scope by-spirit (cross-story API needed).
+**Lint**: pre-existing 2 selene warnings on Network/RemoteEventName imports (unchanged from 3-6 baseline).

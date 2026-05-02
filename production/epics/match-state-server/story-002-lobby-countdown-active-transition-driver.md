@@ -1,7 +1,7 @@
 # Story 002: Lobby → Countdown:Ready → Countdown:Snap → Active transition driver + countdown timer
 
 > **Epic**: match-state-server
-> **Status**: Ready
+> **Status**: Complete
 > **Layer**: Core
 > **Type**: Logic
 > **Manifest Version**: 2026-04-27
@@ -83,3 +83,14 @@
 
 - Depends on: story-001 (state + participation), tick-orchestrator story-001 (Phase 6 hook stub at boot)
 - Unlocks: story-003 (Phase 6 timerCheck T7 reuses same hook), story-005 (T9 destroyAll → Intermission ordering uses _transitionTo), story-007 (broadcast wiring)
+
+---
+
+## Completion Notes
+**Completed**: 2026-05-02
+**Criteria**: AC-4 (Lobby→Ready), AC-5 (F5 revert via flag drop + PlayerRemoving), AC-6 (Ready→Snap @ 7s), AC-7 (Snap→Active createAll-before-state-write), AC-8 (Snap→Result zero participants) all covered (13 it blocks across 3 specs).
+**Test result**: 245/0/0 headless (+13 from 3-6)
+**Files modified**: src/ServerStorage/Source/MatchStateServer/init.luau (+RoundLifecycle import + MIN_PLAYERS_TO_START/COUNTDOWN_*/ROUND_DURATION/RESULT_DURATION constants + _participatingPlayers helper + T1/F5 driver in _setParticipation + PlayerRemoving F5 mirror + timerCheck Phase 6 public API + _setRoundLifecycleOverride + _setPlayerResolverForTests + _setStateEndsAtForTests test hooks)
+**Test files created**: tests/unit/match-state-server/transition_lobby_ready.spec.luau + transition_ready_snap.spec.luau + tests/integration/match-state-server/snap_to_active_call_order.spec.luau
+**Deviations**: ADVISORY — `_stateEndsAt` test hook (`_setStateEndsAtForTests`) added to enable mocking timer expiry without real-time waits (TestEZ blocks task.wait). Required for AC-6/7/8 timerCheck verification.
+**Lint**: pre-existing 2 selene warnings on `Network` + `RemoteEventName` imports (story-001 reserved these for story-007 AFKToggle wiring; not regression). MSM init currently selene 0 errors / 2 pre-existing warnings.

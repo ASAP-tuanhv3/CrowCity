@@ -23,91 +23,91 @@ stories:
     name: "CSM story-003 — hue F6 + activeRelics cap + CrowdRelicChanged"
     file: "production/epics/crowd-state-server/story-003-hue-f6-active-relics-cap.md"
     priority: must-have
-    status: ready-for-dev
+    status: done
     owner: ""
     estimate_days: 0.5
     blocker: ""
-    completed: ""
+    completed: "2026-05-02"
 
   - id: "3-3"
     name: "CSM story-004 — F1 composed radius + recomputeRadius write contract"
     file: "production/epics/crowd-state-server/story-004-f1-composed-radius-recompute.md"
     priority: must-have
-    status: ready-for-dev
+    status: done
     owner: ""
     estimate_days: 0.5
     blocker: ""
-    completed: ""
+    completed: "2026-05-02"
 
   - id: "3-4"
     name: "CSM story-006 — Phase 5 state evaluator + F7 grace timer"
     file: "production/epics/crowd-state-server/story-006-phase5-state-evaluator-f7-grace-timer.md"
     priority: must-have
-    status: ready-for-dev
+    status: done
     owner: ""
     estimate_days: 1.0
     blocker: ""
-    completed: ""
+    completed: "2026-05-02"
 
   - id: "3-5"
     name: "CSM story-008 — Phase 8 broadcastAll + perf + Eliminated broadcast"
     file: "production/epics/crowd-state-server/story-008-phase8-broadcastall-perf-eliminated-broadcast.md"
     priority: must-have
-    status: ready-for-dev
+    status: done
     owner: ""
     estimate_days: 1.0
     blocker: ""
-    completed: ""
+    completed: "2026-05-02"
 
   - id: "3-6"
     name: "MSM story-002 — Lobby→Countdown→Active driver + 5s/3-2-1 ladder"
     file: "production/epics/match-state-server/story-002-lobby-countdown-active-transition-driver.md"
     priority: must-have
-    status: ready-for-dev
+    status: done
     owner: ""
     estimate_days: 1.0
     blocker: ""
-    completed: ""
+    completed: "2026-05-02"
 
   - id: "3-7"
     name: "MSM story-003 — Phase 6 timercheck + T7 + F4 tiebreak"
     file: "production/epics/match-state-server/story-003-phase6-timercheck-t7-f4-tiebreak.md"
     priority: must-have
-    status: ready-for-dev
+    status: done
     owner: ""
     estimate_days: 0.5
     blocker: ""
-    completed: ""
+    completed: "2026-05-02"
 
   - id: "3-8"
     name: "MSM story-004 — Phase 7 elim consumer + T6/T8 + double-signal guard"
     file: "production/epics/match-state-server/story-004-phase7-elim-consumer-t6-t8-double-signal-guard.md"
     priority: must-have
-    status: ready-for-dev
+    status: done
     owner: ""
     estimate_days: 1.0
     blocker: ""
-    completed: ""
+    completed: "2026-05-02"
 
   - id: "3-9"
     name: "MSM story-005 — Result + Intermission + T9 grant-before-broadcast"
     file: "production/epics/match-state-server/story-005-result-intermission-t9-grant-before-broadcast.md"
     priority: must-have
-    status: ready-for-dev
+    status: done
     owner: ""
     estimate_days: 0.5
     blocker: ""
-    completed: ""
+    completed: "2026-05-02"
 
   - id: "3-10"
     name: "RL story-002 — CountChanged subscription + peak tracking F1"
     file: "production/epics/round-lifecycle/story-002-countchanged-peak-tracking-f1.md"
     priority: must-have
-    status: ready-for-dev
+    status: done
     owner: ""
     estimate_days: 0.5
     blocker: ""
-    completed: ""
+    completed: "2026-05-02"
 
   - id: "3-11"
     name: "CRB story-001 — CrowdStateClient mirror + tickIsNewer F4"

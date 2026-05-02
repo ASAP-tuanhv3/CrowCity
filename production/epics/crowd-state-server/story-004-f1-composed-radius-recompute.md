@@ -1,7 +1,7 @@
 # Story 004: F1 composed radius + recomputeRadius write contract
 
 > **Epic**: crowd-state-server
-> **Status**: Ready
+> **Status**: Complete
 > **Layer**: Core
 > **Type**: Logic
 > **Manifest Version**: 2026-04-27
@@ -121,3 +121,14 @@
 
 - Depends on: story-001 (record schema + create), story-002 (updateCount integration with _recomposeRadius)
 - Unlocks: story-008 (broadcastAll reads composed radius); RelicSystem epic (Wingspan / TollBreaker / Surge relic specs)
+
+---
+
+## Completion Notes
+**Completed**: 2026-05-02
+**Criteria**: 8/8 passing
+**Test result**: 206/0/0 headless (+19 from 3-3)
+**Files modified**: src/ServerStorage/Source/CrowdStateServer/init.luau (+RADIUS_BASE_OFFSET/SCALE + RADIUS_MULTIPLIER_MIN/MAX constants + _recomposeRadius private helper + recomputeRadius public API + wire into create + updateCount)
+**Test files created**: tests/unit/crowd-state-server/radius_compose.spec.luau + recompute_radius.spec.luau
+**Deviations**: None
+**Lint**: selene 0/0

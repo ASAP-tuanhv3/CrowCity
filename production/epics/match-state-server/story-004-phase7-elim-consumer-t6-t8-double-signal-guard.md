@@ -1,7 +1,7 @@
 # Story 004: Phase 7 eliminationConsumer + T6 last-standing + double-signal guard + T8 instant win
 
 > **Epic**: match-state-server
-> **Status**: Ready
+> **Status**: Complete
 > **Layer**: Core
 > **Type**: Logic
 > **Manifest Version**: 2026-04-27
@@ -88,3 +88,14 @@
 
 - Depends on: story-001..003; CSM story-006 (CrowdEliminatedServer BindableEvent contract); RoundLifecycle epic stub (`destroyAll`/`getPeakTimestamp`)
 - Unlocks: story-005 (Result transition body uses `_winnerId` set here)
+
+---
+
+## Completion Notes
+**Completed**: 2026-05-02
+**Criteria**: AC-9 (last-crowd → Result via T6), AC-11 (double-signal guard — Phase 6 first OR two simultaneous elims), AC-13 T8 PlayerRemoving sole-survivor detection. Code path covered by 10 it blocks across 2 specs. AC-13 PlayerRemoving full T8 path tested via state inspection (handler-spawn integration test deferred — no real Players service in TestEZ).
+**Test result**: 265/0/0 headless (+10 from 3-8)
+**Files modified**: src/ServerStorage/Source/CrowdStateServer/init.luau (+CrowdEliminatedServer BindableEvent fired in tandem with CrowdEliminated reliable RemoteEvent in stateEvaluate elim loop); src/ServerStorage/Source/MatchStateServer/init.luau (+_pendingElims queue + _crowdEliminatedConnection + eliminationConsumer Phase 7 public API + T8 detection in PlayerRemoving handler + CSM.CrowdEliminatedServer subscription in start + _pushPendingElimForTests/_getPendingElimsCount test hooks).
+**Test files created**: tests/unit/match-state-server/elim_consumer_t6.spec.luau + double_signal_guard.spec.luau
+**Deviations**: ADVISORY — CSM.CrowdEliminatedServer BindableEvent retrofitted into CSM (story-008 §Implementation Notes L52-53 documented the contract requirement; story-006 closure didn't add it). Same pattern as CountChanged — server-only signal alongside client-facing reliable RemoteEvent. CSM tests still pass (state_evaluator.spec uses fanout interceptor; CrowdEliminatedServer.Fire is no-op-equivalent in test context with no subscriber).
+**Lint**: pre-existing 2 selene warnings on Network/RemoteEventName imports (unchanged).

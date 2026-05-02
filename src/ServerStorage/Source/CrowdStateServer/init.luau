@@ -19,6 +19,26 @@
 	Story-007 scope: getAllActive (Eliminated-excluded) + getAllCrowdPositions (snapshot
 	map) + setStillOverlapping (CCR-only writer, last-write-wins, absent-record no-op).
 
+	Story-003 scope: hue ∈ [1, 12] range assertion in create (immutable post-create)
+	+ addActiveRelic / removeActiveRelic (RelicEffectHandler/RelicSystem-only callers)
+	+ CrowdRelicChanged reliable fanout (full-snapshot, all clients) per GDD L141.
+
+	Story-004 scope: F1 composed radius — `_recomposeRadius` private helper
+	(`(2.5 + sqrt(count) * 0.55) * radiusMultiplier`) wired into create + updateCount;
+	`recomputeRadius(crowdId, newMultiplier)` public API (RelicEffectHandler-only
+	caller; range [0.5, 1.5] gate; idempotent same-value no-op).
+
+	Story-006 scope: Phase 5 `stateEvaluate(tickCount)` callback — TickOrchestrator-
+	only caller; F7 grace timer (`GRACE_WINDOW_SEC = 3.0`); state transitions
+	Active ↔ GraceWindow ↔ Eliminated; CrowdEliminated reliable fanout for
+	Active→Eliminated; tie-break overlap-clear-wins; no revival from Eliminated.
+	Calls `_updatePositions(tickCount)` first per body order (story-005 fills math).
+
+	Story-008 scope: Phase 8 `broadcastAll(tickCount)` callback — TickOrchestrator-
+	only caller; per-record monotonic uint16 tick increment (wraps 65536); buffer-
+	encoded CrowdStateBroadcast UnreliableRemoteEvent fired once per tick to all
+	clients; Eliminated continues broadcasting; empty `_crowds` skips fire entirely.
+
 	Public API (story-001):
 	  create(crowdId, initial) -> CrowdRecord  -- RoundLifecycle-only caller
 	  destroy(crowdId) -> ()                   -- RoundLifecycle-only + DC handler
@@ -34,6 +54,19 @@
 	  getAllCrowdPositions() -> { [string]: Vector3 }    -- snapshot; excludes Eliminated
 	  setStillOverlapping(crowdId, flag) -> ()           -- CCR-only writer
 
+	Public API (story-003):
+	  addActiveRelic(crowdId, specId) -> boolean         -- RelicEffectHandler/RelicSystem only
+	  removeActiveRelic(crowdId, specId) -> boolean      -- RelicEffectHandler relic-expiry only
+
+	Public API (story-004):
+	  recomputeRadius(crowdId, newMultiplier) -> number  -- RelicEffectHandler only; [0.5, 1.5] gate
+
+	Public API (story-006):
+	  stateEvaluate(tickCount) -> ()                     -- TickOrchestrator Phase 5 only
+
+	Public API (story-008):
+	  broadcastAll(tickCount) -> ()                      -- TickOrchestrator Phase 8 only
+
 	Caller restrictions (ADR-0004 §Write-Access Matrix):
 	  create()                — RoundLifecycle.createAll only
 	  destroy()               — RoundLifecycle (destroyAll + Players.PlayerRemoving handler)
@@ -44,6 +77,11 @@
 	  getAllActive()           — any server module (CCR Phase 1 hot path)
 	  getAllCrowdPositions()   — NPCSpawner; any server module (read-only)
 	  setStillOverlapping()    — CollisionResolver ONLY (ADR-0004 §Write-Access Matrix)
+	  addActiveRelic()         — RelicEffectHandler / RelicSystem ONLY (Pillar 4: cosmetics FORBIDDEN)
+	  removeActiveRelic()      — RelicEffectHandler relic-expiry path ONLY
+	  recomputeRadius()        — RelicEffectHandler ONLY (Pillar 4: cosmetics FORBIDDEN)
+	  stateEvaluate()          — TickOrchestrator Phase 5 dispatch ONLY
+	  broadcastAll()           — TickOrchestrator Phase 8 dispatch ONLY
 
 	Pillar 4 anti-P2W invariant (ADR-0004 §Pillar 4):
 	  Cosmetic systems FORBIDDEN as callers. Skin System, Avatar System, Banner
@@ -63,6 +101,8 @@ local ReplicatedStorage = game:GetService("ReplicatedStorage")
 
 local Network = require(ReplicatedStorage.Source.Network)
 local RemoteEventName = require(ReplicatedStorage.Source.Network.RemoteName.RemoteEventName)
+local UnreliableRemoteEventName = require(ReplicatedStorage.Source.Network.RemoteName.UnreliableRemoteEventName)
+local BufferCodecCrowdState = require(ReplicatedStorage.Source.Network.BufferCodec.CrowdState)
 
 -- ---------------------------------------------------------------------------
 -- Exported types (per architecture.md §5.1 L512-527)
@@ -112,6 +152,12 @@ local _testFanoutInterceptor: ((eventName: string, payload: { [string]: any }, t
 --- instead of Players:GetPlayerByUserId. Cleared by _resetForTests().
 local _testOwnerResolver: ((crowdId: string) -> Player?)? = nil
 
+--- Test-only interceptor for the Phase 8 broadcast path. When set, broadcastAll()
+--- routes (eventName, buffer) here instead of Network.fireAllClientsUnreliable.
+--- Required because Network is not started in TestEZ context — the real path
+--- would error. Cleared by _resetForTests.
+local _testUnreliableBroadcastInterceptor: ((eventName: string, payload: buffer) -> ())? = nil
+
 -- ---------------------------------------------------------------------------
 -- Constants
 -- ---------------------------------------------------------------------------
@@ -120,9 +166,64 @@ local _testOwnerResolver: ((crowdId: string) -> Player?)? = nil
 local COUNT_FLOOR = 1
 local COUNT_CEILING = 300
 
+-- Per ADR-0001 §Key Interfaces (max 4) + GDD §activeRelics semantics
+-- (MAX_RELIC_SLOTS named tuning knob). 5th grant rejected by addActiveRelic.
+local MAX_RELIC_SLOTS = 4
+
+-- Per ADR-0001 §Key Interfaces L213 + GDD §F1 + manifest L79.
+-- Composed radius: radius = (RADIUS_BASE_OFFSET + sqrt(count) * RADIUS_BASE_SCALE) * radiusMultiplier.
+-- radiusMultiplier ∈ [RADIUS_MULTIPLIER_MIN, RADIUS_MULTIPLIER_MAX] (registry-locked).
+local RADIUS_BASE_OFFSET = 2.5
+local RADIUS_BASE_SCALE = 0.55
+local RADIUS_MULTIPLIER_MIN = 0.5
+local RADIUS_MULTIPLIER_MAX = 1.5
+
+-- Per GDD §F7 + L309. GraceWindow → Eliminated when timer elapsed AND still
+-- overlapping. Tie-break: overlap-clear evaluated before timer-expiry per AC-13.
+local GRACE_WINDOW_SEC = 3.0
+
+-- Per ADR-0001 §Decision (uint16 tick wrap) + GDD L140.
+local TICK_WRAP = 65536
+
+-- Wire enum mapping per BufferCodec/CrowdState.luau §STATE constants.
+local STATE_TO_ENUM: { [CrowdState]: number } = {
+	Active = 1,
+	GraceWindow = 2,
+	Eliminated = 3,
+}
+
 -- ---------------------------------------------------------------------------
 -- Internal helpers
 -- ---------------------------------------------------------------------------
+
+--- Test-only counter: records the tick at which _updatePositions was last
+--- invoked. Used by state_evaluator.spec.luau to verify Phase 5 ordering
+--- (position update happens BEFORE state-transition evaluation per AC).
+local _lastUpdatePositionsTick: number? = nil
+
+--- Per-tick position lag update — F2 placeholder.
+--- Story-005 (`CSM 005 F2 position lag + nil HRP guard`) fills the actual
+--- math: `position_new = position_old + (char_pos - position_old) * CROWD_POS_LAG`
+--- with nil-HRP guard. Until story-005 ships, this is a no-op shim that exists
+--- so Phase 5 (`stateEvaluate`) can call it in the prescribed order.
+--- ADR-0002 §Phase Sequence; GDD §F2; manifest L62 no-yield invariant.
+local function _updatePositions(tickCount: number): ()
+	_lastUpdatePositionsTick = tickCount
+	-- TODO(story-005): apply F2 position lag for each active record.
+end
+
+--- Recomputes `record.radius` from `record.count` and `record.radiusMultiplier`
+--- per F1: radius = (2.5 + sqrt(count) * 0.55) * radiusMultiplier.
+--- Returns the freshly composed radius. Mutates record in place.
+--- Called from: create (initial composition), updateCount (post-clamp count
+--- changed), recomputeRadius (multiplier changed). NEVER from broadcast path —
+--- broadcast reads record.radius directly per ADR-0001 §Key Interfaces.
+--- ADR-0001 §Key Interfaces L213; GDD §F1; manifest L79.
+local function _recomposeRadius(record: CrowdRecord): number
+	record.radius = (RADIUS_BASE_OFFSET + math.sqrt(record.count) * RADIUS_BASE_SCALE)
+		* record.radiusMultiplier
+	return record.radius
+end
 
 --- Resolves a Player from a crowdId. Production: Players:GetPlayerByUserId(tonumber(crowdId)).
 --- Returns nil if the player has disconnected mid-tick (CrowdCountClamped fire is
@@ -176,6 +277,20 @@ _countChanged.Name = "CrowdStateServer_CountChanged"
 -- Architecture.md §5.1 L552 — exposed as module field.
 CrowdStateServer.CountChanged = _countChanged
 
+--- Server-only BindableEvent fired in tandem with the client-facing
+--- CrowdEliminated reliable RemoteEvent (Phase 5 Active → Eliminated
+--- transition). MSM Phase 7 elimination consumer (MSM story-004) subscribes
+--- here for server-server signaling; clients read via the reliable RemoteEvent.
+--- Payload: (crowdId).
+--- ADR-0001 §Key Interfaces; ADR-0004 §Read-vs-Write Split (server-only
+--- BindableEvent + client reliable RemoteEvent split per CountChanged pattern).
+local _crowdEliminatedServer: BindableEvent = Instance.new("BindableEvent")
+_crowdEliminatedServer.Name = "CrowdStateServer_CrowdEliminatedServer"
+
+-- Public BindableEvent reference. Subscribe via:
+--   CrowdStateServer.CrowdEliminatedServer.Event:Connect(function(crowdId) ... end)
+CrowdStateServer.CrowdEliminatedServer = _crowdEliminatedServer
+
 --- Creates an authoritative crowd record. Sole caller: RoundLifecycle.createAll
 --- (round start). Errors loudly if a record already exists for crowdId (per GDD
 --- §Server API "Fails if record exists"). Fires CrowdCreated reliable event with
@@ -183,10 +298,17 @@ CrowdStateServer.CountChanged = _countChanged
 --- ADR-0004 §Write-Access Matrix; ADR-0001 §Key Interfaces.
 function CrowdStateServer.create(crowdId: string, initial: CrowdRecord): CrowdRecord
 	assert(
+		initial.hue >= 1 and initial.hue <= 12,
+		"CrowdStateServer.create: hue must be in [1, 12], got " .. tostring(initial.hue)
+	)
+	assert(
 		_crowds[crowdId] == nil,
 		"CrowdStateServer.create: record already exists for crowdId=" .. crowdId
 	)
 	_crowds[crowdId] = initial
+	-- F1 initial composition — caller may pass a stale radius; CSM is the
+	-- composition authority. Source: ADR-0001 §Key Interfaces L213 + manifest L79.
+	_recomposeRadius(initial)
 	fanout(RemoteEventName.CrowdCreated, {
 		crowdId = initial.crowdId,
 		hue = initial.hue,
@@ -338,10 +460,259 @@ function CrowdStateServer.updateCount(crowdId: string, delta: number, source: De
 	local effectiveDelta = newCount - oldCount
 	if effectiveDelta ~= 0 then
 		record.count = newCount
+		-- F1 recomposition — count drives radius_base; broadcast (story-008)
+		-- reads record.radius directly. Source: ADR-0001 §Key Interfaces L213.
+		_recomposeRadius(record)
 		_countChanged:Fire(crowdId, oldCount, newCount, source)
 	end
 
 	return newCount
+end
+
+--- Adds `specId` to the crowd's activeRelics list. Sole callers: RelicEffectHandler
+--- / RelicSystem (relic-grant path). Returns `true` on insert, `false` on rejection.
+---
+--- Rejection cases (no event fired, list unchanged):
+---   1. Record absent — `_crowds[crowdId] == nil`. Tolerates the rare race where a
+---      relic grants on a crowd destroyed mid-tick (DC handler races vs RelicSystem).
+---   2. Cap full — `#record.activeRelics >= 4`. MAX_RELIC_SLOTS per GDD §activeRelics
+---      semantics + ADR-0001 §Key Interfaces (max 4). 5th grant rejected.
+---   3. Duplicate — `specId` already in list. Re-roll is upstream at chest per GDD.
+---
+--- On success: `table.insert(record.activeRelics, specId)`, fires CrowdRelicChanged
+--- reliable to ALL CLIENTS with payload `{crowdId, activeRelics={...defensive copy}}`
+--- per GDD L141 (full snapshot, not delta — simplifies client cache).
+---
+--- Pillar 4 anti-P2W invariant: cosmetic systems FORBIDDEN as callers
+--- (control-manifest L135). Skin / Avatar / Banner / Trail systems MUST NOT
+--- call this. Enforced by code review.
+---
+--- ADR-0004 §Write-Access Matrix; ADR-0001 §Key Interfaces (CrowdRelicChanged).
+function CrowdStateServer.addActiveRelic(crowdId: string, specId: string): boolean
+	local record = _crowds[crowdId]
+	if record == nil then
+		return false
+	end
+	if #record.activeRelics >= MAX_RELIC_SLOTS then
+		return false
+	end
+	for _, existing in record.activeRelics do
+		if existing == specId then
+			return false
+		end
+	end
+	table.insert(record.activeRelics, specId)
+	local snapshot: { string } = table.clone(record.activeRelics)
+	fanout(RemoteEventName.CrowdRelicChanged, {
+		crowdId = crowdId,
+		activeRelics = snapshot,
+	}, nil)
+	return true
+end
+
+--- Removes `specId` from the crowd's activeRelics list. Sole caller:
+--- RelicEffectHandler relic-expiry path. Returns `true` if removed, `false`
+--- otherwise (absent crowd or specId not present — no event fired).
+---
+--- On success: `table.remove(record.activeRelics, idx)` then fires
+--- CrowdRelicChanged reliable to all clients with payload `{crowdId,
+--- activeRelics={...defensive copy of post-remove list}}` per GDD L141.
+--- Frees a slot for subsequent addActiveRelic.
+---
+--- ADR-0004 §Write-Access Matrix.
+function CrowdStateServer.removeActiveRelic(crowdId: string, specId: string): boolean
+	local record = _crowds[crowdId]
+	if record == nil then
+		return false
+	end
+	for idx, existing in record.activeRelics do
+		if existing == specId then
+			table.remove(record.activeRelics, idx)
+			local snapshot: { string } = table.clone(record.activeRelics)
+			fanout(RemoteEventName.CrowdRelicChanged, {
+				crowdId = crowdId,
+				activeRelics = snapshot,
+			}, nil)
+			return true
+		end
+	end
+	return false
+end
+
+--- Sets the crowd's `radiusMultiplier` and recomposes `radius` per F1.
+--- Sole caller: RelicEffectHandler (relic-grant/expire path). Returns the
+--- post-composition radius.
+---
+--- Validation:
+---   1. Record absent — `assert` loud-fails (caller bug per ADR-0004 §Decision tone).
+---      Differs from addActiveRelic race-tolerance: relic-radius writes happen
+---      after relic effect application, by which point CSM destroy has already
+---      cleared the record; calling recomputeRadius on absent crowd is a logic bug.
+---   2. `newMultiplier` out of [0.5, 1.5] (RADIUS_MULTIPLIER_MIN/MAX) — `warn`
+---      log + return current radius unchanged. Graceful degrade — relic spec
+---      misconfiguration must not crash CSM; control manifest L72 enforces the
+---      range at the relic-spec authoring level.
+---   3. Same-value idempotence — `record.radiusMultiplier == newMultiplier` →
+---      no-op (no field write). Avoids spurious broadcast dirty in story-008.
+---
+--- On success: writes `record.radiusMultiplier = newMultiplier` then calls
+--- `_recomposeRadius(record)` (which writes `record.radius`).
+---
+--- Pillar 4 anti-P2W invariant: cosmetic systems FORBIDDEN as callers
+--- (control-manifest L135). Skin / Avatar / Banner / Trail systems MUST NOT
+--- call this. Enforced by code review.
+---
+--- ADR-0001 §Key Interfaces L213; ADR-0004 §Write-Access Matrix; manifest L72/L79.
+function CrowdStateServer.recomputeRadius(crowdId: string, newMultiplier: number): number
+	local record = _crowds[crowdId]
+	assert(
+		record ~= nil,
+		"CrowdStateServer.recomputeRadius: record absent for crowdId=" .. crowdId
+	)
+	if newMultiplier < RADIUS_MULTIPLIER_MIN or newMultiplier > RADIUS_MULTIPLIER_MAX then
+		warn(string.format(
+			"CrowdStateServer.recomputeRadius: multiplier %.3f out of [0.5, 1.5] — rejected",
+			newMultiplier
+		))
+		return record.radius
+	end
+	if record.radiusMultiplier == newMultiplier then
+		return record.radius  -- idempotent no-op
+	end
+	record.radiusMultiplier = newMultiplier
+	return _recomposeRadius(record)
+end
+
+--- Phase 5 callback — evaluates state transitions for every record per F7.
+--- Sole caller: TickOrchestrator (Phase 5 dispatch). Must NOT yield.
+---
+--- Body order (per AC-stateEvaluate body order):
+---   1. `_updatePositions(tickCount)` — refresh position lag (story-005 math)
+---      BEFORE state evaluation so any position-dependent transition logic
+---      reads current values.
+---   2. Iterate every record; apply F7 transition rules.
+---   3. Fire CrowdEliminated reliable for any Active→Eliminated transitions
+---      this tick AFTER iteration completes (avoids re-entrancy if a fanout
+---      subscriber synchronously triggers another transition).
+---
+--- Per-record transition logic:
+---   * state == "Eliminated"  → terminal; skip.
+---   * state == "Active":
+---       count == 1 AND stillOverlapping → "GraceWindow", timer_start = os.clock().
+---   * state == "GraceWindow":
+---       a. NOT stillOverlapping → "Active", timer_start = nil. (Tie-break: AC-13
+---          overlap-clear evaluated BEFORE timer-expiry; overlap-clear wins.)
+---       b. count > 1 → "Active", timer_start = nil.
+---       c. (os.clock() - timer_start) >= GRACE_WINDOW_SEC AND stillOverlapping →
+---          "Eliminated"; queue CrowdEliminated fire.
+---
+--- ADR-0001 §Key Interfaces (CrowdEliminated reliable); ADR-0002 §Phase 5;
+--- ADR-0004 §Write-Access Matrix; GDD §States + §F7; manifest L75/L86/L88.
+function CrowdStateServer.stateEvaluate(tickCount: number): ()
+	_updatePositions(tickCount)
+
+	local now = os.clock()
+	local eliminatedThisTick: { string } = {}
+
+	for _, record in _crowds do
+		if record.state == "Eliminated" then
+			continue  -- terminal; no revival in MVP
+		end
+
+		if record.state == "Active" then
+			if record.count == 1 and record.stillOverlapping then
+				record.state = "GraceWindow"
+				record.timer_start = now
+			end
+		elseif record.state == "GraceWindow" then
+			-- AC-13 tie-break: overlap-clear evaluated BEFORE timer-expiry. Combined
+			-- with count>1 exit (both → Active path); selene flags split branches
+			-- as duplicate, so OR'd into one condition. Stillness check runs first
+			-- to preserve overlap-clear-wins semantics.
+			if (not record.stillOverlapping) or record.count > 1 then
+				record.state = "Active"
+				record.timer_start = nil
+			else
+				local timerStart = record.timer_start
+				if timerStart ~= nil and (now - timerStart) >= GRACE_WINDOW_SEC then
+					record.state = "Eliminated"
+					table.insert(eliminatedThisTick, record.crowdId)
+				end
+			end
+		end
+	end
+
+	for _, crowdId in eliminatedThisTick do
+		-- Fire BOTH the server-only BindableEvent (MSM Phase 7 consumer)
+		-- AND the client-facing reliable RemoteEvent (HUD kill feed).
+		_crowdEliminatedServer:Fire(crowdId)
+		fanout(RemoteEventName.CrowdEliminated, { crowdId = crowdId }, nil)
+	end
+end
+
+--- Phase 8 callback — encodes every record into a single buffer payload and
+--- fires CrowdStateBroadcast UnreliableRemoteEvent to all clients. Sole caller:
+--- TickOrchestrator (Phase 8 dispatch). Must NOT yield.
+---
+--- Per-broadcast logic:
+---   1. Walk `_crowds`. Include records in any of {"Active", "GraceWindow",
+---      "Eliminated"} (Eliminated continues until destroy per GDD L139).
+---   2. For each included record, increment `record.tick = (tick + 1) % 65536`
+---      BEFORE encoding so encoded value reflects this broadcast's tick.
+---   3. Map internal record (string crowdId + string state) → wire record (u64
+---      crowdId + u8 state enum) and call `BufferCodec.CrowdState.encode`.
+---   4. Empty `_crowds` → skip fire entirely (Lobby-state bandwidth save).
+---   5. `Network.fireAllClientsUnreliable(CrowdStateBroadcast, buffer)` once.
+---
+--- Test interception: the `_testUnreliableBroadcastInterceptor`, when set,
+--- captures the (eventName, buffer) pair instead of routing to Network.
+--- Production path leaves the interceptor nil.
+---
+--- ADR-0001 §Decision (UREvent + buffer mandate, 30 B/crowd schema, monotonic
+--- uint16 tick); ADR-0002 §Phase 8; ADR-0004 §Write-Access Matrix; manifest L75/L84/L85/L87/L88.
+function CrowdStateServer.broadcastAll(_tickCount: number): ()
+	-- _tickCount is the orchestrator-supplied global tick; broadcast uses
+	-- the per-record monotonic record.tick instead per ADR-0001 §Decision.
+	-- Param accepted for orchestrator signature consistency.
+	local wireRecords: { BufferCodecCrowdState.CrowdRecord } = {}
+
+	for _, record in _crowds do
+		-- All three states broadcast per GDD L139. (No state filter.)
+		record.tick = (record.tick + 1) % TICK_WRAP
+
+		local crowdIdNum = tonumber(record.crowdId)
+		if crowdIdNum == nil then
+			-- Internal id always tostring(player.UserId); guard for completeness.
+			continue
+		end
+		table.insert(wireRecords, {
+			crowdId = crowdIdNum,
+			tick = record.tick,
+			position = record.position,
+			radius = record.radius,
+			count = record.count,
+			hue = record.hue,
+			state = STATE_TO_ENUM[record.state],
+		})
+	end
+
+	if #wireRecords == 0 then
+		return  -- Lobby state — skip fire (no records, no bandwidth)
+	end
+
+	local payload = BufferCodecCrowdState.encode(wireRecords)
+
+	if _testUnreliableBroadcastInterceptor ~= nil then
+		_testUnreliableBroadcastInterceptor(
+			UnreliableRemoteEventName.CrowdStateBroadcast :: string,
+			payload
+		)
+	else
+		Network.fireAllClientsUnreliable(
+			UnreliableRemoteEventName.CrowdStateBroadcast,
+			payload
+		)
+	end
 end
 
 -- ---------------------------------------------------------------------------
@@ -361,6 +732,16 @@ function CrowdStateServer._resetForTests(): ()
 	_crowds = {}
 	_testFanoutInterceptor = nil
 	_testOwnerResolver = nil
+	_testUnreliableBroadcastInterceptor = nil
+	_lastUpdatePositionsTick = nil
+end
+
+--- **TEST ONLY** — never call from production code.
+--- Returns the tick at which `_updatePositions` was last invoked. Used by
+--- state_evaluator.spec.luau to verify Phase 5 calls `_updatePositions(tick)`
+--- before any state-transition logic. nil when never called since reset.
+function CrowdStateServer._getLastUpdatePositionsTick(): number?
+	return _lastUpdatePositionsTick
 end
 
 --- **TEST ONLY** — never call from production code.
@@ -402,6 +783,17 @@ function CrowdStateServer._setTestOwnerResolver(
 	fn: ((crowdId: string) -> Player?)?
 ): ()
 	_testOwnerResolver = fn
+end
+
+--- **TEST ONLY** — never call from production code.
+--- Sets an interceptor for `broadcastAll`'s Phase 8 unreliable broadcast.
+--- Interceptor signature: (eventName: string, payload: buffer) -> ()
+--- Pass nil to clear (also cleared by _resetForTests). Used by
+--- broadcastall.spec.luau to capture the encoded buffer headlessly.
+function CrowdStateServer._setTestUnreliableBroadcastInterceptor(
+	fn: ((eventName: string, payload: buffer) -> ())?
+): ()
+	_testUnreliableBroadcastInterceptor = fn
 end
 
 return CrowdStateServer

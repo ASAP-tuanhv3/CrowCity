@@ -1,7 +1,7 @@
 # Story 005: Result → Intermission (T9) + grant-before-broadcast invariant + flag reset (T10)
 
 > **Epic**: match-state-server
-> **Status**: Ready
+> **Status**: Complete
 > **Layer**: Core
 > **Type**: Integration
 > **Manifest Version**: 2026-04-27
@@ -107,3 +107,19 @@
 
 - Depends on: story-001..004; RoundLifecycle stub (setWinner/getPlacements/destroyAll); RelicSystem stub (clearAll); Currency stub (grantMatchRewards)
 - Unlocks: story-007 (broadcast wire); story-006 (T11 BindToClose path uses `_transitionTo("ServerClosing")`)
+
+---
+
+## Completion Notes
+**Completed**: 2026-05-02
+**Criteria**: AC-14 (T9 destroyAll→clearAll order), AC-15 (T10 flag reset), AC-20 (Result entry [setWinner→getPlacements→grantMatchRewards] order + InternalPlacement strip) covered (7 it blocks across 2 integration specs).
+**Test result**: 272/0/0 headless (+7 from 3-9; net +12 since 3-8 tests gained extra mocks but no count change pre-rerun)
+**Files modified**:
+- src/ServerStorage/Source/_PhaseStubs/RelicSystemStub.luau (+clearAll no-op)
+- src/ServerStorage/Source/_PhaseStubs/CurrencyStub.luau (NEW — grantMatchRewards no-op + Placement type)
+- src/ServerStorage/Source/RoundLifecycle/init.luau (+setWinner public API + getPlacements public API + Placement type with internal+stripped fields)
+- src/ServerStorage/Source/MatchStateServer/init.luau (+CurrencyStub + RelicSystemStub imports + INTERMISSION_DURATION_SEC + CurrencyDependency/RelicSystemDependency types + _currencyOverride/_relicSystemOverride + _stripInternalPlacements helper + _handleResultEntry + _handleIntermissionEntry + _handleLobbyEntryFromIntermission private handlers; T6/T7/T8 paths all route through _handleResultEntry; timerCheck extended for Result→Intermission + Intermission→Lobby branches; _setCurrencyOverride/_setRelicSystemOverride test hooks)
+- tests/unit/match-state-server/timer_check_t7.spec.luau + f4_tiebreak.spec.luau + elim_consumer_t6.spec.luau + double_signal_guard.spec.luau (extended makeRLMock + RL/Currency injection in beforeEach to satisfy new _handleResultEntry call chain)
+**Test files created**: tests/integration/match-state-server/grant_before_broadcast.spec.luau + t9_t10_intermission_lobby.spec.luau
+**Deviations**: ADVISORY — RoundLifecycle.setWinner + getPlacements added in this story (story §Out of Scope L85 listed RL epic real impl as deferred; minimal real impls added since data already populated in Sprint 2 createAll). Currency deferred to stub. Strip rule enforced in MSM `_stripInternalPlacements`.
+**Lint**: pre-existing 2 selene warnings unchanged.

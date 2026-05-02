@@ -1,7 +1,7 @@
 # Story 008: Phase 8 broadcastAll + buffer codec wiring + Eliminated continues broadcasting + perf evidence
 
 > **Epic**: crowd-state-server
-> **Status**: Ready
+> **Status**: Complete
 > **Layer**: Core
 > **Type**: Integration
 > **Manifest Version**: 2026-04-27
@@ -125,3 +125,15 @@
 
 - Depends on: story-001..007 (full CSM module surface); Foundation network-layer-ext story-001 (UREvent wrapper) + story-002 (RemoteEventName extensions) + story-003 (buffer codec)
 - Unlocks: Replication Broadcast epic (CrowdStateClient consumes broadcasts); HUD / Nameplate / Follower Entity client-side reads; gate-check Pre-Production → Production re-evaluation (Core epic deliverable)
+
+---
+
+## Completion Notes
+**Completed**: 2026-05-02
+**Criteria**: Automated portion (payload size + tick increment + uint16 wrap + empty-path skip + Eliminated continues + state inclusion) covered by 10 it blocks. AC-17 60s perf soak + AC-18 multi-client + AC-20 multi-client deferred to Studio manual evidence (per story §QA Test Cases — type Integration; manual evidence required).
+**Test result**: 232/0/0 headless (+10 from 3-5)
+**Files modified**: src/ServerStorage/Source/CrowdStateServer/init.luau (+UnreliableRemoteEventName + BufferCodec.CrowdState requires + TICK_WRAP/STATE_TO_ENUM consts + broadcastAll public API + _testUnreliableBroadcastInterceptor + _setTestUnreliableBroadcastInterceptor)
+**Test files created**: tests/integration/crowd-state-server/broadcastall.spec.luau
+**Deviations**: ADVISORY — `tickCount` param renamed to `_tickCount` (selene unused-var warning); per-record `record.tick` is the monotonic counter per ADR-0001, not the orchestrator-supplied `tickCount`. Comment added explaining param-for-signature-consistency.
+**Manual evidence remaining**: production/qa/evidence/csm-perf-soak-evidence.md (AC-17 60s) + csm-replication-correctness-evidence.md (AC-18) + csm-eliminated-replication-evidence.md (AC-20) — deferred to MVP integration sprint per ADR-0003 §Validation Sprint Plan.
+**Lint**: selene 0/0
