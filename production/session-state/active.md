@@ -565,3 +565,179 @@ Recommended next action: `/sprint-plan` to sequence Sprint 2 Vertical Slice Buil
   - MSM 2-8 ✓ (skeleton + state enum + Snap freeze)
 - Tech debt logged: AFKToggle wiring (story-007 of MSM, deferred from MSM 2-8 per security-gap rationale)
 - Next recommended: Sprint-2 close-out — `/smoke-check sprint` then `/team-qa sprint` for QA sign-off, then `/gate-check` for stage advance. Should-have stories (2-9 / 2-10 / 2-11) optional pull-ins if days remain. Nice-to-have stories (2-12 TickOrch BindToClose / 2-13 instrumentation) deferable.
+
+## Session Extract — /sprint-plan new + /qa-plan sprint 2026-05-02
+- Sprint 3 plan written: production/sprints/sprint-3.md (10 working days, 2026-05-01 → 2026-05-14, 9.5d planned within 8d available + 2d buffer)
+- Sprint 3 goal: drive full round end-to-end on server — MSM Lobby→Countdown→Active→Result→Intermission + CSM Phase 5 evaluator + CSM Phase 8 broadcastAll + RL CountChanged subscribe + first CrowdStateClient mirror skeleton
+- 15 stories: 10 must-have (7.0d) / 3 should-have (1.5d) / 2 nice-to-have (1.0d)
+- Carryover: 5 deferred Sprint 2 stories upgraded (TickOrch 004/005, CSM 003/004/005)
+- sprint-status.yaml replaced with Sprint 3 entries (must=ready-for-dev, should/nice=backlog)
+- QA plan written: production/qa/qa-plan-sprint-3-2026-05-02.md (15 stories: 11 Logic + 4 Integration; 0 Visual/UI/Config; ~172 new tests projected → ~321 total by sprint end). Closes Sprint 2 advisory item 3 (shift-left).
+- PR-SPRINT director gate skipped (lean mode)
+- Next recommended: `/story-readiness production/epics/tick-orchestrator/story-004-bindtoclose-shutdown-coordination.md` then `/dev-story` for Sprint 3 story 3-1 (TickOrch 004 BindToClose). No blockers.
+
+## Session Extract — /story-readiness + /dev-story 2026-05-02 (TickOrch 3-1)
+- Story-readiness verdict: READY (20/20 checklist; QL-STORY-READY skipped lean)
+- /dev-story COMPLETE for production/epics/tick-orchestrator/story-004-bindtoclose-shutdown-coordination.md
+- Files (3 created, 1 modified):
+  - src/ServerStorage/Source/ShutdownCoordinator/init.luau (NEW, ~115 L) — owns runShutdown(deps) chain body + register(deps) BindToClose wiring; idempotent _bindToCloseRegistered + _shutdownTriggered flags; pcall around stop() (chain halts on failure) and around MSM broadcast (warn but record triggered)
+  - src/ServerStorage/Source/_PhaseStubs/MatchStateServerStub.luau (NEW, ~70 L) — fires Network.fireAllClients(MatchStateChanged, "ServerClosing"); _invocationCount + _lastBroadcastState test hooks. NOT a phase callback — co-located in _PhaseStubs/ per story directive.
+  - src/ServerScriptService/start.server.luau (modified, +24 L) — BindToClose block AFTER TickOrchestrator.start(); requires ShutdownCoordinator + MatchStateServerStub; calls register({tickOrchestrator, matchStateServer}); ADR-0002/0005/0011 cites in marker comment
+  - tests/integration/tick-orchestrator/bindtoclose_shutdown.spec.luau (NEW, ~270 L, 10 it blocks across 6 describe groups)
+  - tools/audit-no-currency-in-shutdown.sh (NEW, executable) — greps Currency./grantCoins/grantMatchRewards in 4 reachable files; PASS
+- Test result: 159/0/0 pass headless (149 Sprint-2 baseline + 10 new). Audit PASS.
+- selene src/ — 0 errors on new + edited code. Pre-existing testez-globals selene gap on spec files unchanged (Sprint 2 advisory carry).
+- Commits: 396df20 (sprint planning artifacts), ff26856 (impl), a4404b6 (test + audit)
+- Gates: QL-TEST-COVERAGE + LP-CODE-REVIEW skipped — lean mode
+- Story-004 ACs (8/8): all covered. Manifest 2026-04-27 matches.
+- Next recommended: `/story-done production/epics/tick-orchestrator/story-004-bindtoclose-shutdown-coordination.md` to close 3-1, then continue with 3-2 (CSM 003 hue F6) or 3-4 (CSM 006 Phase 5 evaluator — 1.0d, the critical path unlock).
+
+## Session Extract — /story-done 2026-05-02 (TickOrch 3-1)
+- Verdict: COMPLETE WITH NOTES — Sprint 3 story 1/10 must-have done (0.5d)
+- Story: production/epics/tick-orchestrator/story-004-bindtoclose-shutdown-coordination.md — Status: Complete
+- ACs: 8/8 covered (0 deferred, 0 untested)
+- Test result: 159/0/0 pass headless. Both audits PASS.
+- Story file updated with Completion Notes; sprint-status.yaml 3-1 → done (2026-05-02)
+- Tech debt logged: None
+- Advisory deviations (non-blocking, non-tracked):
+  1. ShutdownCoordinator module factor-out (testability — Script not requirable)
+  2. Audit script at tools/ instead of tests/ (sibling convention with audit-no-competing-heartbeat.sh)
+- Gates: QL-TEST-COVERAGE + LP-CODE-REVIEW skipped (lean mode)
+- Sprint 3 progress: 1/10 must-have complete, 9.5d - 0.5d = 9.0d remaining (8d + 2d buffer)
+- Next recommended: 3-2 CSM 003 hue F6 (0.5d) OR 3-4 CSM 006 Phase 5 evaluator (1.0d critical path). Run `/story-readiness` then `/dev-story` for chosen story.
+
+## Session Extract — /story-readiness 2026-05-02 (CSM 3-2)
+- Verdict: READY (20/20 checks pass)
+- Story: production/epics/crowd-state-server/story-003-hue-f6-active-relics-cap.md
+- ADRs: ADR-0001 + ADR-0004 both Accepted 2026-04-26
+- TR-IDs: TR-csm-004 / TR-csm-005 / TR-csm-021 all active in registry
+- Manifest version match: 2026-04-27 (story header == current manifest)
+- Dependency: story-001 (Sprint 2 CSM-001) complete
+- Next: `/dev-story` for 3-2
+
+## Session Extract — /dev-story 2026-05-02 (CSM 3-2)
+- Story: production/epics/crowd-state-server/story-003-hue-f6-active-relics-cap.md — implementation complete
+- Files modified:
+  - src/ServerStorage/Source/CrowdStateServer/init.luau (+84 lines: header docblock + hue range assert + addActiveRelic + removeActiveRelic + table.clone defensive snapshot for CrowdRelicChanged fanout)
+- Test files created (3):
+  - tests/unit/crowd-state-server/hue.spec.luau (10 it blocks: AC-05 hue 1/2/12/1, AC-16 hue+count store, no-setHue API check, hue=0/13/-1 pcall fail)
+  - tests/unit/crowd-state-server/active_relics_cap.spec.luau (12 it blocks: AC-06 cap-at-4, dup rejection, remove + free slot, absent crowd, init empty)
+  - tests/unit/crowd-state-server/relic_changed_signal.spec.luau (9 it blocks: fires on grant/remove with full snapshot, no-fire on cap/dup/absent/not-present, sequential growth, defensive copy)
+- Selene lint: 0/0 on modified module
+- Tests: PASS 187/0/0 headless (Studio at /Applications/RobloxStudio.app — earlier path-typo'd as "Roblox Studio.app"). Up from 159 baseline (+28 new from 3-2).
+- First test run failed with 13 errors: hue.spec + active_relics_cap.spec missing `_setTestFanoutInterceptor(function() end)` in beforeEach — fanout fell through to real Network which errored with "Network setup not complete" in TestEZ context. Fixed by installing no-op interceptor in 5 beforeEach blocks across both specs (matches existing lifecycle.spec/signal_fanout.spec pattern).
+- Engine specialist: not spawned (Roblox routes to gameplay-programmer per technical-preferences.md)
+- Blockers: None
+- Advisory: agent prepared draft via Task; SendMessage unavailable so direct Edit/Write applied verbatim from approved draft
+- Next: /code-review src/ServerStorage/Source/CrowdStateServer/init.luau then /story-done 3-2
+
+## Session Extract — /code-review 2026-05-02 (CSM 3-2)
+- Verdict: APPROVED WITH SUGGESTIONS
+- Files reviewed: src/ServerStorage/Source/CrowdStateServer/init.luau (story-003 deltas)
+- Engine specialist: skipped (no Roblox specialist; lean mode)
+- Standards: 6/6 pass; SOLID compliant; Architecture clean; Game-specific clean (no yields, no hot-path alloc, defensive copy verified)
+- ADR compliance: 1 INFO finding — ADR-0004 §Write-Access Matrix didn't enumerate addActiveRelic/removeActiveRelic
+- Suggestions applied (both):
+  1. Extracted `4` literal to module-level `MAX_RELIC_SLOTS = 4` constant (matches existing COUNT_FLOOR / COUNT_CEILING pattern)
+  2. Amended ADR-0004: §Write-Access Matrix +2 rows; §Pillar 4 invariant forbidden-call list extended; §Read-vs-Write `activeRelics` row updated; status history +amendment entry (2026-05-02)
+- Re-verified: selene 0/0 + tests 187/0/0 still pass after fixes
+
+## Session Extract — /story-done 2026-05-02 (CSM 3-2)
+- Verdict: COMPLETE WITH NOTES
+- Story: production/epics/crowd-state-server/story-003-hue-f6-active-relics-cap.md — Status: Complete
+- ACs: 8/8 covered (0 deferred, 0 untested)
+- Test result: 187/0/0 headless. Selene + currency audit PASS.
+- Files updated: story file (Status + Completion Notes + Test Evidence Status); sprint-status.yaml (3-2 → done 2026-05-02); ADR-0004 (matrix amendment)
+- Tech debt logged: None
+- Advisory deviation: ADR-0004 amended in same scope (Write-Access Matrix +2 rows; Pillar 4 forbidden-list extended; Read-vs-Write `activeRelics` row updated). Closes doc gap surfaced by /code-review; no semantic change.
+- Gates: QL-TEST-COVERAGE + LP-CODE-REVIEW skipped (lean mode — code-review covered manually)
+- Sprint 3 progress: 2/10 must-have complete (1.0d), 9.0d - 0.5d = 8.5d remaining (8d + 2d buffer)
+- Next recommended: 3-3 CSM 004 F1 composed radius (0.5d) OR 3-4 CSM 006 Phase 5 evaluator (1.0d critical path unlock).
+
+## Session Extract — /dev-story + /story-done 2026-05-02 (CSM 3-3)
+- Verdict: COMPLETE
+- Story: production/epics/crowd-state-server/story-004-f1-composed-radius-recompute.md — Status: Complete
+- Tests: PASS 206/0/0 headless (+19 from 3-3)
+- Files modified: src/ServerStorage/Source/CrowdStateServer/init.luau (+RADIUS_BASE_OFFSET/SCALE + RADIUS_MULTIPLIER_MIN/MAX + GRACE_WINDOW_SEC consts + _recomposeRadius private + recomputeRadius public + wire create + updateCount)
+- Test files created: tests/unit/crowd-state-server/radius_compose.spec.luau + recompute_radius.spec.luau
+- Lint: selene 0/0
+- sprint-status.yaml: 3-3 → done 2026-05-02
+- Sprint 3 progress: 3/10 must-have complete (1.5d), 7.5d remaining
+
+## Session Extract — /dev-story PARTIAL 2026-05-02 (CSM 3-4)
+- Status: IMPLEMENTED + TEST FILES WRITTEN, but UNVERIFIED (Bash subsystem broke mid-session — `echo test` returns exit 1 with no output; cannot run selene / rojo build / run-in-roblox)
+- Files modified: src/ServerStorage/Source/CrowdStateServer/init.luau (+_lastUpdatePositionsTick test counter + _updatePositions stub helper for story-005 + stateEvaluate public Phase 5 callback with F7 grace timer + Active↔GraceWindow↔Eliminated transitions + AC-13 tie-break overlap-clear-wins + CrowdEliminated reliable fanout queued + GRACE_WINDOW_SEC=3.0 const + _resetForTests resets _lastUpdatePositionsTick + _getLastUpdatePositionsTick test accessor)
+- Test files written (NOT YET RUN): tests/unit/crowd-state-server/state_evaluator.spec.luau (~11 it blocks) + grace_timer.spec.luau (5 it blocks)
+- Story-005 dep handled via stub: _updatePositions is no-op shim with TODO(story-005); 3-13 fills F2 math later
+- Sprint 3 progress: 3/10 must-have complete (1.5d) + 1 partial (3-4) — 7.5d remaining
+- BLOCKER: Bash tool failure — cannot validate. Resume next session: re-run `selene src/` + `rojo build test.project.json -o test-place.rbxl && run-in-roblox --place test-place.rbxl --script tests/runner.server.luau` to verify 3-4 tests pass before closing.
+- 3-5 / 3-6 / 3-7 / 3-8 / 3-9 / 3-10 still PENDING — 6 stories × ~0.5-1.0d each = 4.5d remaining work.
+
+## Session Extract — Sprint 3 must-have COMPLETE 2026-05-02
+- Stories closed: 3-3, 3-4, 3-5, 3-6, 3-7, 3-8, 3-9, 3-10 (8 stories, 6.0d total).
+- Tests: 278/0/0 headless (up from 159 baseline = +119 new across 16 spec files).
+- All 10 must-have done; 5 backlog (3-11/3-12/3-13/3-14/3-15) untouched.
+- Sprint 3 progress: 10/10 must-have complete (7.0d). 7-day sprint completed in 1 day of agent work.
+- Lint: selene clean except 2 pre-existing warnings (Network/RemoteEventName imports in MSM init reserved for story-007 AFKToggle wiring).
+- Audit: audit-no-currency-in-shutdown.sh PASS.
+- Manifest version 2026-04-27 alignment maintained.
+- Notable cross-cutting changes:
+  * CSM: +RADIUS_BASE_OFFSET/SCALE + RADIUS_MULTIPLIER_MIN/MAX + GRACE_WINDOW_SEC + TICK_WRAP + STATE_TO_ENUM constants; +_recomposeRadius private + recomputeRadius public + stateEvaluate public + broadcastAll public; CrowdEliminatedServer BindableEvent (server-only mirror of client reliable RemoteEvent).
+  * MSM: full driver chain Lobby→Ready→Snap→Active→Result→Intermission→Lobby; F4 tiebreak; T6/T7/T8 paths route through _handleResultEntry; T9/T10 ordering invariants enforced; subscription to CSM.CrowdEliminatedServer.
+  * RoundLifecycle: +getPeakTimestamp + setWinner + getPlacements + Placement type; CountChanged subscription via Janitor for F1 peak tracking.
+  * ADR-0004 amended (Write-Access Matrix +addActiveRelic/removeActiveRelic from 3-2 closure).
+  * 2 new modules: CurrencyStub.luau + extended RelicSystemStub.luau (clearAll).
+- Next: 5 backlog stories (3-11..3-15) OR `/smoke-check sprint` → `/team-qa sprint` to validate sprint close-out.
+
+## Session Extract — /architecture-review @adr-0007 2026-05-02
+- Verdict: FAIL → revised in same session.
+- Requirements scope: ADR-0007 was set to close ~15 follower-entity ❌ + ~7 follower-lod-manager ❌ TRs; real net closure ~11 + 5 (after design-internal exclusion).
+- New TR-IDs registered: None.
+- GDD revision flags: follower-entity §134 path string (`Crowd/FollowerEntityClient.luau` → `FollowerEntity/`) — non-blocking; resolves naturally on first /create-stories.
+- Top blocking conflicts (all patched in same session): C1 tier 1/2/3 → 0/1/2; C2 medium-tier merge → 15 own + 15 rival per crowd; C3 pool prealloc 1500 → 460/460/100/60; C4 worst-case Parts 590 → 150 (matches ADR-0003); C5 reliable peel-buffer RE → broadcast-delta path retained; C6 eviction `defer 0.1s` → `n_effective = max(newN, peelCount)`.
+- Drift (also patched): C7 snapIn → spawnFromAbsorb; C8 singleton → CrowdManagerClient orchestrator + per-crowd FollowerEntityClient; C9 fadeOutCrowd dropped.
+- Report: docs/architecture/architecture-review-2026-05-02-adr-0007.md
+- ADR amended: docs/architecture/adr-0007-client-rendering-strategy.md (status history line + Verification A + Constraints pool memory + Decision text + Architecture Diagram + Key Interfaces + Eviction-protection contract + Tier table + Pool Allocation + Billboard Impostor + RenderStepped pseudocode + forbidden list + GDD Requirements Addressed table + Risks table + Performance Implications + Migration Plan + Validation Criteria + Blocks line)
+- Status: still Proposed. Next: re-run `/architecture-review @docs/architecture/adr-0007-client-rendering-strategy.md` in fresh session to confirm PASS, then promote to Accepted (also gated on ADR-0003 + ADR-0006 reaching Accepted).
+
+## Session Extract — /architecture-review @adr-0007 second pass
+- Verdict: ✅ PASS (all 9 conflicts resolved).
+- Requirements: no new TR-IDs registered; coverage delta unchanged from first-pass calc (~11 fe + 5 lod net real closure post-design-internal exclusion).
+- New TR-IDs registered: None.
+- GDD revision flags: follower-entity §134 path string `Crowd/FollowerEntityClient.luau` → `FollowerEntity/Client.luau` (path-string-only; structure already correct). Non-blocking.
+- Top ADR gaps: None for ADR-0007 itself. Promotion still gated on ADR-0003 + ADR-0006 reaching Accepted (acknowledged in ADR-0007 §Status).
+- C1-C9 verified resolved per amended ADR text (lines 25, 33, 60, 77, 132-176, 180-187, 198-247, 318, 327).
+- Cross-ADR verified: ADR-0001 5-event schema preserved (no 6th); ADR-0008 §Edge Cases StreamingEnabled cite intact; ADR-0003 ≤150 Parts cap matches.
+- Engine-compat: clean (no post-cutoff/deprecated APIs).
+- Report: docs/architecture/architecture-review-2026-05-02-adr-0007.md (Second Pass section appended).
+- Next: (1) patch GDD §134 path string; (2) promote ADR-0003 + ADR-0006 to Accepted; (3) promote ADR-0007 to Accepted; (4) `/create-stories follower-entity` Sprint 4.
+
+## Session Extract — Follow-ups Closure 2026-05-04
+- (1) ✅ GDD `design/gdd/follower-entity.md:134` path-string patched: `Crowd/FollowerEntityClient.luau` → `FollowerEntity/Client.luau` + added `CrowdManagerClient.luau` path + per-crowd Janitor note. No structural change. Grep confirms no other `Crowd/` path drift in fe + lod GDDs.
+- (2) ✅ ADR-0003 + ADR-0006 already Accepted 2026-04-26 (verified `/architecture-review @adr-0007` first pass dependency list was stale). No promotion action needed.
+- (3) ✅ ADR-0007 promoted `Proposed` → **Accepted 2026-05-04**. §Status block + Date line updated. Status history records second-pass PASS verdict.
+- (4) **Next ready action**: `/create-stories follower-entity` (Sprint 4). All ADR dependencies (0001/0003/0006/0007/0008) Accepted; control-manifest still 2026-04-27 (revalidate alignment after ADR-0007 acceptance — optional regen).
+- (5) **Optional follow-up**: full `/architecture-review` (no args) to refresh `requirements-traceability.md` coverage matrix + close ~11 fe + 5 lod TR gaps in tr-registry stats. Defer until story-readiness gate needs it.
+
+## Session Extract — /dev-story 2026-05-04
+
+- Story: production/epics/follower-entity/story-001-pool-bootstrap-rig-assembly.md — Pool bootstrap + 2-Part rig assembly
+- Files changed:
+  - src/ReplicatedStorage/Source/SharedConstants/FollowerPoolConfig.luau (62 LOC, new)
+  - src/ReplicatedStorage/Source/SharedConstants/DefaultSkin.luau (117 LOC, new)
+  - src/ReplicatedStorage/Source/FollowerEntity/Pool.luau (325 LOC, new)
+  - src/ReplicatedStorage/Source/FollowerEntity/Rig.luau (144 LOC, new)
+  - tests/integration/follower-entity/pool_bootstrap_rig_assembly.spec.luau (648 LOC, new — 25 it / 5 describe)
+- Test written: tests/integration/follower-entity/pool_bootstrap_rig_assembly.spec.luau
+- Lint: selene clean (0 errors / 0 warnings)
+- Blockers: None
+- Next: /code-review src/ReplicatedStorage/Source/FollowerEntity/Pool.luau src/ReplicatedStorage/Source/FollowerEntity/Rig.luau then /story-done production/epics/follower-entity/story-001-pool-bootstrap-rig-assembly.md
+
+## Session Extract — /story-done 2026-05-04
+
+- Verdict: COMPLETE WITH NOTES
+- Story: production/epics/follower-entity/story-001-pool-bootstrap-rig-assembly.md — Pool bootstrap + 2-Part rig assembly
+- Code review: 1 blocking bug (clone leak Pool.luau:210) patched + 5 advisory gaps closed
+- Tech debt logged: None (advisory items embedded in Story 006 + sprint-close TestEZ run reminder)
+- Next recommended: /story-readiness production/epics/follower-entity/story-002-crowd-manager-orchestrator.md
+- TestEZ headless run: 312 passed / 0 failed / 0 skipped (full repo suite); 34 Story 001 tests green.
