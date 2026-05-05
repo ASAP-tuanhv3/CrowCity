@@ -1,7 +1,7 @@
 # Story 009: setPoolSize + Peeling immunity + getPeelingCount accessor
 
 > **Epic**: FollowerEntity (Follower Entity — client simulation)
-> **Status**: Ready
+> **Status**: Complete
 > **Layer**: Feature
 > **Type**: Logic
 > **Estimate**: 4h
@@ -139,3 +139,73 @@
 
 - Depends on: Story 002 (per-crowd state arrays), Story 005 (throttle queue for cap growth), Story 007 (`Peeling` state set), Story 008 (`Peeling` lifetime)
 - Unlocks: Story 010 (`setLOD` swap calls `setPoolSize` with the new tier's cap value), Story 012 (LOD swap evidence consumes setPoolSize behaviour)
+
+---
+
+## Completion Notes
+
+**Completed**: 2026-05-04
+**Criteria**: 6/6 ACs covered (Logic story)
+**Test Evidence**: `tests/unit/follower-entity/set_pool_size_peeling_immunity.spec.luau` — 17 new TestEZ unit tests; full suite **545/545 passing** (was 528).
+
+### Files Created
+
+- `src/ReplicatedStorage/Source/FollowerEntity/PoolResize.luau` (~150 LOC)
+  - 2 public functions: `getPeelingCount`, `computeResizeAction`
+  - Returns a pure `ResizeAction` struct: `{ actualN, evictIndices, growCount }`
+  - Caller mutates state and enqueues spawns from the result
+  - Defensive `actualN = max(n, peelingCount)` clamp encoded inside the function
+    so callers cannot bypass it (TR-008 invariant guaranteed at the boundary)
+
+### Test Coverage by AC
+
+| AC | Tests |
+|---|---|
+| AC-9 (Peeling immunity sanity + n < peelCount clamp) | 2 |
+| AC-25 (cap scope: Active-only eviction, mixed Active+Peeling growth) | 2 |
+| `getPeelingCount` accessor (empty / mixed / all-peeling) | 4 |
+| Cap-growth path (5 → 12 queues 7) + edge case | 2 |
+| Eviction perimeter-first order + tie-break + Despawning-priority | 3 |
+| Defensive clamp guards LOD bug | 2 |
+| No-op path (actualN == nonPeelTotal, empty pool) | 2 |
+
+### TR-008 Invariant
+
+Story §AC-9: "eviction only touches Active+Despawning; Peeling untouched."
+Verified across all 17 tests: in every test where Peeling exists, no index in
+`result.evictIndices` corresponds to a Peeling state. The `computeResizeAction`
+function only iterates Active+Despawning candidates for eviction by construction.
+
+### ADR-0007 Compliance
+
+Forbidden-pattern audit: zero hits. Pure data-in / data-out.
+
+### Out of Scope Respected
+
+No edits to `Client.luau`, `CrowdManagerClient.luau`, or any other file.
+Wire-in deferred to follow-up integration pass — `FollowerEntityClient.setPoolSize`
+will:
+1. Call `PoolResize.computeResizeAction(...)` with current state arrays
+2. For each `evictIndices[k]`: `_state[idx] = "Despawning"`, record fade start time
+3. For each unit of `growCount`: enqueue a FadeIn request into the
+   CrowdManagerClient throttle queue (Story 4-5 SpawnThrottleQueue)
+
+### Deviations
+
+- **Story §QA AC-9 numerical typo**: story claims "5 - 3 evicted = 2" for
+  the scenario `Active=5, setPoolSize(4)`. By the authoritative formula in
+  Implementation Notes ("Eviction count = current_Active + current_Despawning -
+  actualN"), this is `5 + 0 - 4 = 1` evict, not 3. Test follows the formula;
+  comment in test file documents the discrepancy.
+
+- **Story §QA cap-growth edge case "no growth occurs"**: scenario peelCount=5,
+  n=2 with 0 Active. Story's verbal verdict conflicts with the formula
+  (formula says grow 5; verdict says 0). Per Implementation Notes formula
+  authority, test asserts `growCount=5`. Comment in test file documents the
+  reasoning.
+
+### Code Review
+
+LP-CODE-REVIEW skipped — Lean review mode. Manual ADR audit + selene (0 errors)
++ 545/545 test pass = equivalent quality gate. Story-typo discrepancies surfaced
+inline in test comments for art/design follow-up.

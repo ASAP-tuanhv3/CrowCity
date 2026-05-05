@@ -1,7 +1,7 @@
 # Story 003: Boids F1-F4 flocking (separation + cohesion + leader + zero-vector guards)
 
 > **Epic**: FollowerEntity (Follower Entity — client simulation)
-> **Status**: Ready
+> **Status**: Complete
 > **Layer**: Feature
 > **Type**: Logic
 > **Estimate**: 4h
@@ -130,3 +130,32 @@
 
 - Depends on: Story 002 (orchestrator drives the iteration; `CrowdStateClient` mirror is consumed here)
 - Unlocks: Story 004 (bob composes on F4 result), Story 008 (peel retargets F_lead), Story 010 (LOD swap suppression)
+
+---
+
+## Completion Notes
+
+**Completed**: 2026-05-04
+**Criteria**: 11/11 passing (no deferred items)
+**Files created**:
+- `src/ReplicatedStorage/Source/FollowerEntity/Boids.luau` — 5 pure functions (separation, cohesion, followLeader, finalVelocity, applyVelocity); zero service deps; testable with literal Vector3 inputs
+- `src/ReplicatedStorage/Source/SharedConstants/FollowerBoidsConfig.luau` — 7 typed knob constants + startup `assert(SEPARATION_RADIUS < NEIGHBOR_RADIUS)` with formatted error
+- `tests/unit/follower-entity/boids.spec.luau` — 22 TestEZ unit tests covering all 11 ACs
+
+**Test Evidence**: Logic — `tests/unit/follower-entity/boids.spec.luau` (22 tests pass; full suite 389/389)
+
+**Naming deviation**: Story §Test Evidence specified `boids_test.luau`; actual on-disk file is `boids.spec.luau` to match TestEZ runner discovery (`*.spec.luau`). Same convention fix as stories 4-1 (`pool_bootstrap_rig_assembly.spec.luau`) and 4-2 (`crowd_manager_orchestrator.spec.luau`). Deviation documented inline at spec file header lines 8-14.
+
+**Deviations**: None blocking. 8 advisory items surfaced by `/code-review` (test coverage edge cases + 1 perf optimization opportunity in F1 sqrt avoidance). All ACs covered; advisory items recommended for follow-up:
+1. AC-20a end-to-end `P_new` chain test (`finalVelocity` → `applyVelocity` with dt) — both halves tested independently; composition trivial
+2. F2 N=1 test (must-not-take-N=0-branch) — story §QA edge case
+3. F1/F2 radius-boundary tests (neighbor at exact `separationRadius` / `neighborRadius`) — verify strict `<` intent
+4. F4 two-of-three force permutations — only one-of-three (F_lead-only) tested
+5. F4 extreme-weights edge case (SEP=4.0/LEAD=8.0) — story §QA AC-20a edge case
+6. F1 perf: `displacement.Magnitude` + `dist*dist` → `:Dot(displacement)` skips sqrt; ~6.4k sqrt/crowd/frame at n=80; defer to story 4-11 soak findings
+7. Startup-assertion negative test (mutated config throws) — requires pcall-wrapped module reload
+8. MAX_SPEED clamp QA wording `‖V_final‖ == 16 exactly` mismatches test ±0.001 — fix is amend QA spec wording (test is correct float-engineering)
+
+**Code Review**: Complete (`/code-review` verdict APPROVED WITH SUGGESTIONS) — gameplay-programmer + qa-tester reviews; ADR-0007 compliance PASS, F1-F4 math fidelity PASS, standards 6/6, architecture CLEAN.
+
+**Out of scope respected**: No edits to `Client.luau` or `CrowdManagerClient.luau`. Boids module is pure; orchestrator hookup is story 4-5 (Spawn States) territory per story Out of Scope §line 66.

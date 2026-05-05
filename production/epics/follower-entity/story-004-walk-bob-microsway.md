@@ -1,7 +1,7 @@
 # Story 004: Walk bob F8 + standstill freeze + micro-sway F9
 
 > **Epic**: FollowerEntity (Follower Entity — client simulation)
-> **Status**: Ready
+> **Status**: Complete
 > **Layer**: Feature
 > **Type**: Logic
 > **Estimate**: 4h
@@ -122,3 +122,62 @@
 
 - Depends on: Story 002 (orchestrator), Story 003 (F4 produces Root_target)
 - Unlocks: Story 010 (LOD swap path reads `_d` for continuity test), Story 011 (perf soak runs full F1-F4-F8-F9 pipeline)
+
+---
+
+## Completion Notes
+
+**Completed**: 2026-05-04
+**Criteria**: 8/8 acceptance criteria passing (Logic story type)
+**Test Evidence**: `tests/unit/follower-entity/animation_walkbob_microsway.spec.luau` — 33 new TestEZ unit tests; full suite **422/422 passing** (was 389 pre-story).
+
+### Files Created
+
+- `src/ReplicatedStorage/Source/FollowerEntity/Animation.luau` (~155 LOC)
+  - 4 pure functions: `updateD`, `computeWalkBobY`, `computeMicroSwayX`, `composeBodyCFrame`
+  - Zero Roblox service requires; `os.clock()` injected as argument (caller-supplied) for determinism
+  - Header comment enumerates all ADR-0007 forbidden patterns + cites
+- `src/ReplicatedStorage/Source/SharedConstants/FollowerVisualConfig.luau` (~50 LOC)
+  - 5 typed constants: `WALK_FREQ_HZ=1.5`, `WALK_BOB_AMP=0.15`, `STANDSTILL_THRESHOLD=0.01`, `MICRO_SWAY_AMP=0.03`, `MICRO_SWAY_FREQ_HZ=0.4`
+  - Mirrors FollowerBoidsConfig.luau pattern (data-only, doc-commented safe ranges)
+
+### Test Coverage by AC
+
+| AC | Test Group | Tests |
+|---|---|---|
+| AC-2 (Walk bob output) | `computeWalkBobY` + integration | 6 + 1 |
+| AC-3 (Standstill freeze) | `updateD` + integration | 5 + 1 |
+| AC-21 (F9 micro-sway, per-follower phase) | `computeMicroSwayX` + integration | 7 + 1 |
+| AC-26 (Bob/sway suppression LOD 1/2) | `computeMicroSwayX` + `composeBodyCFrame` + integration | 2 + 2 + 1 |
+| `d` continuity across LOD swap | dedicated group | 2 |
+| Composite CFrame | `composeBodyCFrame` | 4 |
+| Constants match story values | dedicated group | 5 |
+
+### Naming Deviation (documented inline + precedent)
+
+Story §Test Evidence specifies `animation_walkbob_microsway_test.luau`; actual filename is
+`animation_walkbob_microsway.spec.luau`. TestEZ runner discovers `*.spec.luau` only;
+renaming would silently exclude the file. Same precedent as stories 4-1, 4-2, 4-3.
+Documented at spec file header lines 8-14.
+
+### ADR-0007 Compliance
+
+Forbidden-pattern audit on function bodies (excluding doc comment header):
+zero hits for `Instance.new`, `WaitForChild`, `:Wait()`, `task.wait`, `Player.Character`,
+`Heartbeat:Connect`, `CrowdStateBroadcast`, `RunService`. Pure math only.
+
+### Out of Scope Respected
+
+No edits to `Client.luau`, `CrowdManagerClient.luau`, `Boids.luau`, `Pool.luau`, or `Rig.luau`.
+Story 005 (spawn path) will initialise `_d[i]` and `_swayPhaseOffset[i]` per follower.
+Story 010 (LOD swap) will read `_d` for continuity verification.
+
+### Deviations
+
+None. All 8 ACs implemented per GDD F8/F9 formulas with explicit constant values.
+
+### Code Review
+
+LP-CODE-REVIEW skipped — Lean review mode (default per `.claude/skills/`).
+Manual ADR-0007 audit + selene lint (0 errors / 0 warnings) + 422/422 test suite pass
+provide equivalent quality gate for this Logic story.

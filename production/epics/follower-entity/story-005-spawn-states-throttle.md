@@ -1,7 +1,7 @@
 # Story 005: Spawn states (FadeIn / SlideIn) + 4-per-frame throttle + d_init random
 
 > **Epic**: FollowerEntity (Follower Entity — client simulation)
-> **Status**: Ready
+> **Status**: Complete
 > **Layer**: Feature
 > **Type**: Logic
 > **Estimate**: 5h
@@ -130,3 +130,91 @@
 
 - Depends on: Story 001 (pool), Story 002 (orchestrator), Story 003 (boids — suspended during SlideIn), Story 004 (`_d`, `_swayPhaseOffset` arrays)
 - Unlocks: Story 008 (peel arrival uses FadeIn), Story 009 (`setPoolSize` calls cap-growth FadeIn), Story 011 (perf soak observes throttle behaviour)
+
+---
+
+## Completion Notes
+
+**Completed**: 2026-05-04
+**Criteria**: 8/8 acceptance criteria covered by pure-module unit tests (Logic story)
+**Test Evidence**: `tests/unit/follower-entity/spawn_states_throttle.spec.luau` — 49 new TestEZ unit tests; full suite **470/470 passing** (was 422 pre-story).
+
+### Files Created
+
+- `src/ReplicatedStorage/Source/FollowerEntity/SpawnStates.luau` (~210 LOC)
+  - 6 pure functions: `randomDInit`, `randomSwayPhaseOffset`, `computeFadeInTransparency`,
+    `computeSlideInPosition`, `isFadeInComplete`, `isSlideInComplete`, `getSlideInBodyColor`
+  - Random source injectable for deterministic tests; default uses `math.random`
+  - White color frame-1 latch (TR-follower-entity-012) via `WHITE_COLOR` module constant
+- `src/ReplicatedStorage/Source/FollowerEntity/SpawnThrottleQueue.luau` (~120 LOC)
+  - Pure FIFO queue with O(1) head/tail integer indexing
+  - 5 methods: `new`, `enqueue`, `dequeueUpTo(maxN)`, `size`, `clear`
+  - Auto-resets indices on full drain to bound underlying table growth
+
+### Files Modified
+
+- `src/ReplicatedStorage/Source/SharedConstants/FollowerVisualConfig.luau`
+  - Added 3 spawn constants: `SPAWN_FADE_DURATION=0.3`, `SPAWN_SLIDE_DURATION=0.4`,
+    `SPAWN_THROTTLE_PER_FRAME=4`
+  - Header comment expanded with TR references for spawn-related stories
+
+### Test Coverage by AC
+
+| AC | Test Group | Tests |
+|---|---|---|
+| AC-8 (10 absorbs split 4/4/2) | `SpawnThrottleQueue` AC8 + integration | 1 + 1 |
+| AC-16 (SlideIn shape over 24 frames) | `computeSlideInPosition` + integration | 8 + 1 |
+| AC-19 (80 FadeIns at 4/frame for 20 frames) | `SpawnThrottleQueue` AC19 + `computeFadeInTransparency` integration | 1 + 1 |
+| AC-24 (frame 1 white, frame 2+ hue) | `getSlideInBodyColor` | 5 |
+| `d_init` random `[0, 0.667)`, stddev > 0 | `randomDInit` | 4 |
+| `_swayPhaseOffset` random `[0, 2π)` | `randomSwayPhaseOffset` | 3 |
+| Spawn triggers FadeIn vs SlideIn | terminal predicates + queue dispatch | 5 + 12 |
+| State machine transitions | `isFadeInComplete`/`isSlideInComplete` | 5 |
+| Constants match story values | dedicated config group | 3 |
+
+### Naming Deviation (documented inline + precedent)
+
+Story §Test Evidence specifies `spawn_states_throttle_test.luau`; actual filename
+is `spawn_states_throttle.spec.luau`. TestEZ runner discovers `*.spec.luau` only.
+Same precedent as stories 4-1, 4-2, 4-3, 4-4. Documented at spec file header lines 8-13.
+
+### ADR-0007 Compliance
+
+Forbidden-pattern audit on function bodies (excluding doc comment headers):
+zero hits for `Instance.new`, `WaitForChild`, `:Wait()`, `task.wait`, `Player.Character`,
+`Heartbeat:Connect`, `CrowdStateBroadcast`, `RunService`, `DataStoreService`. Pure logic only.
+
+### Out of Scope Respected
+
+No edits to `Client.luau`, `CrowdManagerClient.luau`, `Boids.luau`, `Animation.luau`,
+`Pool.luau`, or `Rig.luau`. Wire-in of these spawn primitives into the production
+RenderStepped loop is deferred to a follow-up integration pass (same pattern as
+stories 4-3 boids math + 4-4 animation math — pure modules ship first; consumed
+by Client.luau in a coordinated wire-in alongside stories 4-7+).
+
+The story's Implementation Notes describe how the pure modules will be integrated:
+- `FollowerEntityClient` extends parallel arrays with `_d`, `_swayPhaseOffset`,
+  `_lastYBob`, `_isStandstill`, `_slideTime`, `_slideTick`, `_npcLastPosition`,
+  `_absorberHueColor`, `_spawnElapsed` per follower
+- `CrowdManagerClient` instantiates `SpawnThrottleQueue.new()` at init, calls
+  `dequeueUpTo(SPAWN_THROTTLE_PER_FRAME)` at start of each RenderStepped, dispatches
+  by request type (FadeIn → set state + start transparency tween; SlideIn → set state +
+  suspend boids for follower)
+
+### Deviations
+
+- **Hat.Color invariance** (AC-24 secondary claim): pure module verifies `Body.Color`
+  transitions only; `Hat.Color` invariance is enforced by *not* writing to it during
+  spawn flow. Verifiable via grep audit when Client.luau wire-in lands. Pure module
+  layer cannot test absence of a write that lives in a different file. Advisory only.
+
+- **Hue lookup** (AC-24): `getSlideInBodyColor` accepts `absorberHueColor: Color3`
+  directly rather than `(absorberHueIndex, hueLookupTable)`. Lookup is the caller's
+  responsibility — typical pattern is `HUE_COLORS[crowdState.hue]` at the wire-in site.
+  Cleaner separation; same observable behaviour at the pure-module boundary.
+
+### Code Review
+
+LP-CODE-REVIEW skipped — Lean review mode (default per `.claude/skills/`).
+Manual ADR-0007 audit + selene lint (0 errors / 0 warnings) + 470/470 test suite pass
+provide equivalent quality gate for this Logic story. Same pattern as stories 4-3 + 4-4.

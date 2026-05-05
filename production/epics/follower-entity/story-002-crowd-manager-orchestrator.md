@@ -1,7 +1,7 @@
 # Story 002: CrowdManagerClient orchestrator + per-crowd FollowerEntityClient lifecycle
 
 > **Epic**: FollowerEntity (Follower Entity — client simulation)
-> **Status**: Ready
+> **Status**: Complete
 > **Layer**: Feature
 > **Type**: Integration
 > **Estimate**: 5h
@@ -110,3 +110,40 @@
 
 - Depends on: Story 001 (pool must exist before per-crowd clients can grant Parts)
 - Unlocks: Story 003 (boids math), Story 005 (spawn flows), Story 009 (setPoolSize), Story 010 (LOD swap)
+
+---
+
+## Completion Notes
+
+**Completed**: 2026-05-04
+**Criteria**: 6/6 passing (AC-10, Singleton bootstrap, Per-crowd lifecycle, Single RenderStepped, Read-only contract, Path placement)
+
+**Files created**:
+- `src/ReplicatedStorage/Source/FollowerEntity/CrowdManagerClient.luau` (~260 LOC; singleton orchestrator; init/start/stop/getCrowdClient + `_debugReset/_debugStepRenderFrame` test seams; subscribes to `CrowdStateClient.CrowdCreated/Eliminated`; one RenderStepped loop with per-frame nil-check despawn path)
+- `src/ReplicatedStorage/Source/FollowerEntity/Client.luau` (~272 LOC; `FollowerEntityClient` per-crowd class; parallel arrays for follower state; `_update`/`_markAllDespawning` + `setLOD`/`setPoolSize`/`getPeelingCount`/`startPeel`/`spawnFromAbsorb` stubs for downstream stories; `destroy` via injected Janitor; `_debugSeedActiveFollowers`/`_debugGetFollowerStates` test seams)
+- `tests/integration/follower-entity/crowd_manager_orchestrator.spec.luau` (~615 LOC; 23 tests across 5 describe blocks: Singleton bootstrap [7] + Per-crowd lifecycle [6] + AC-10 nil-crowd [4] + Read-only contract [2] + FollowerEntityClient class guards [4])
+
+**Files modified**:
+- `src/ReplicatedStorage/Source/CrowdStateClient/init.luau` — added `CrowdCreated` + `CrowdEliminated` BindableEvent signal definitions + `_debugFireCrowdCreated`/`_debugFireCrowdEliminated` test seams (CRB epic territory; declared deviation; fire-side wiring deferred to CRB story-003)
+- `src/ReplicatedFirst/Source/start.server.luau` — bootstrap wire-up: `CrowdManagerClient:init()` + `:start()` inside `startClientGameplay()` (satisfies AC §Singleton bootstrap call site)
+
+**Test evidence**: 368/368 PASS via run-in-roblox headless (Sprint 3+4 baseline 345 + 23 new). 0 failures. Selene `src/`: 0 errors / 7 pre-existing warnings. Asset-id audit + persistence audit: PASS.
+
+**Code review**: APPROVED WITH SUGGESTIONS (lead-programmer + qa-tester via `/code-review`). 0 required changes. ADR-0007 / ADR-0001 / ADR-0002 / ADR-0006 fully compliant. Standards 6/6 pass. SOLID compliant.
+
+**Deviations**:
+1. ADVISORY — Added CrowdCreated/CrowdEliminated signal definitions to `CrowdStateClient` (CRB epic territory). Necessary because story 4-2 ACs hard-depend on these signals; CRB story-001 (already closed) deferred them. Fire-side wiring stays CRB story-003 (Sprint 5).
+2. ADVISORY — Test file renamed `_test.luau` → `.spec.luau` for TestEZ runner discovery (matches `pool_bootstrap_rig_assembly.spec.luau` precedent).
+3. ADVISORY — `setLOD(tier: 0|1|2)` literal-union → `tier: number`. Luau type solver does not yet support numeric literal unions in function signatures; constraint preserved in doc comment; story-010 will add runtime assert.
+4. ADVISORY — Added deferred-test marker for AC-10 0.2 s pool return → story-005 (per qa-tester Gap 3).
+
+**Tech debt logged** (non-blocking, follow-up):
+- `_crowdJanitors` map redundancy in `CrowdManagerClient` (lead-programmer)
+- `stop()` reuses disconnected `Connections` instance — harden by recreating in `stop()` itself before story-010 (lead-programmer)
+- BindableEvent fire-synchrony doc note on `_debugFire*` test seams (lead-programmer)
+- `_debugGetConnectionCount` test seam for double-connect regression detection (qa-tester; defer to story-003)
+- `tools/audit-no-fe-server-writes.sh` audit script analogous to `audit-asset-ids.sh` (qa-tester — project tooling tech debt)
+
+**Out of scope respected**: No boids math (story-003), no spawn states (story-005), no hue write (story-006), no peel (story-007/008), no LOD swap mechanics (story-010), no pool grant from `FollowerEntityClient`.
+
+**Unlocks**: Stories 4-3 (boids flocking), 4-4 (walk bob/sway), 4-5 (spawn states throttle), 4-6 (hue tint), 4-7 (peel selection), 4-9 (peeling immunity), 4-10 (LOD tier swap) — all gated on this orchestrator skeleton.

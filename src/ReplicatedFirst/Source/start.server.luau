@@ -27,11 +27,43 @@ local function preGameLoadTasksAsync()
 end
 
 local function startClientGameplay()
-	-- TODO: Initialize your client-side gameplay systems here.
-	-- These run after the player's data is loaded and their character has spawned.
-	-- Example:
-	--   local MyGameplayClient = require(ReplicatedStorage.Source.MyGameplay.MyGameplayClient)
-	--   MyGameplayClient.start(characterLoadedWrapper)
+	-- FollowerEntity client simulation orchestrator (Sprint 4 / Stories 4-2..4-12).
+	-- Singleton: init() subscribes to CrowdStateClient.CrowdCreated/Eliminated;
+	-- start() begins the single RenderStepped loop iterating all active crowds.
+	-- Per ADR-0007 §Three-Module Split + ADR-0002 §audit-no-competing-heartbeat.
+	local CrowdManagerClient = require(ReplicatedStorage.Source.FollowerEntity.CrowdManagerClient)
+	local Pool               = require(ReplicatedStorage.Source.FollowerEntity.Pool)
+	local DefaultSkin        = require(ReplicatedStorage.Source.SharedConstants.DefaultSkin)
+	local FollowerPoolConfig = require(ReplicatedStorage.Source.SharedConstants.FollowerPoolConfig)
+
+	-- Pool folder hosts inactive (parked) follower bundles per ADR-0007 §Pool
+	-- Allocation Strategy. Hidden under workspace; pool grants/returns reparent
+	-- bundles between this folder and the active crowd folder.
+	local poolFolder = workspace:FindFirstChild(FollowerPoolConfig.POOL_FOLDER_NAME)
+	if poolFolder == nil then
+		poolFolder = Instance.new("Folder")
+		poolFolder.Name = FollowerPoolConfig.POOL_FOLDER_NAME
+		poolFolder.Parent = workspace
+	end
+
+	-- Pre-allocate the Pool. initAsync yields task.wait per batch; runs ~25 Parts/frame
+	-- so the load doesn't spike. Skin System (VS-tier) will replace DefaultSkin
+	-- providers — same Pool API, different templateProviders.
+	local pool = Pool.new({
+		bodyCapacity         = FollowerPoolConfig.POOL_PREALLOC_LOD0_BODY,
+		hatCapacity          = FollowerPoolConfig.POOL_PREALLOC_LOD0_HAT,
+		parent               = poolFolder,
+		bodyTemplateProvider = DefaultSkin.getBodyTemplate,
+		hatTemplateProvider  = DefaultSkin.getHatTemplate,
+		headOffsetY          = FollowerPoolConfig.HEAD_OFFSET_Y,
+		batchSize            = FollowerPoolConfig.POOL_BATCH_SIZE,
+		logger               = nil,
+	})
+	pool:initAsync()
+
+	CrowdManagerClient:init()
+	CrowdManagerClient:setPool(pool)
+	CrowdManagerClient:start()
 end
 
 local function startPostLoadingSystem()

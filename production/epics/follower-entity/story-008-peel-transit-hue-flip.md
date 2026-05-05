@@ -1,7 +1,7 @@
 # Story 008: Peel transit F7 + hue-flip latch + rival-nil abort
 
 > **Epic**: FollowerEntity (Follower Entity — client simulation)
-> **Status**: Ready
+> **Status**: Complete
 > **Layer**: Feature
 > **Type**: Logic
 > **Estimate**: 5h
@@ -145,3 +145,97 @@
 
 - Depends on: Story 002 (orchestrator), Story 003 (boids `F_lead` retargetable per-follower), Story 005 (rival-side `Spawning:FadeIn` arrival path), Story 006 (hue write protocol), Story 007 (F6 selection sets initial Peeling state)
 - Unlocks: Story 009 (`getPeelingCount` reads `_state == Peeling`)
+
+---
+
+## Completion Notes
+
+**Completed**: 2026-05-04
+**Criteria**: 11/11 ACs covered (Logic story)
+**Test Evidence**: `tests/unit/follower-entity/peel_transit_hue_flip.spec.luau` — 25 new TestEZ unit tests; full suite **528/528 passing** (was 503).
+
+### Files Created
+
+- `src/ReplicatedStorage/Source/FollowerEntity/PeelTransit.luau` (~145 LOC)
+  - 5 pure functions: `computeTransitParams`, `shouldFlipHue`, `isArrived`,
+    `computeFLeadTarget`, `resolveAbortArrivalState`
+  - `TransitParams` exported type bundles `{ dPeel, tPeel, tHueFlip, isCapped }`
+  - Latch-aware threshold-crossing predicate (TR-007 compliant; float-equality
+    pattern explicitly documented as forbidden in module header)
+  - Rival-nil abort path (AC-22) split into target-retarget + arrival-state
+    decision so caller can compose state-mutation logic without conditionals
+    at the call site
+
+### Files Modified
+
+- `src/ReplicatedStorage/Source/SharedConstants/FollowerVisualConfig.luau`
+  - Added `PEEL_SPEED = 20`, `PEEL_MAX_DURATION = 3.0` constants
+
+### Test Coverage by AC
+
+| AC | Tests |
+|---|---|
+| AC-5 (hue flip 50% + latch + 1 frame trigger) | 7 |
+| AC-12a (T_peel uncapped) | 1 |
+| AC-12b (T_peel capped + isCapped flag + boundary) | 3 |
+| AC-12 (d_peel = 0 instant arrival) | 1 |
+| AC-22 (rival nil mid-peel + own-crowd-nil edge) | 5 |
+| TR-007 (60 Hz simulation: exactly 1 flip; latch persists across clock jump) | 3 |
+| 3D distance correctness | 1 |
+| isArrived terminal predicate | 4 |
+| Constants match story values | 2 |
+| Integration scenarios (full transit + capped transit) | 2 |
+
+### TR-007 Float-Equality Audit
+
+Per Story §AC `_hueFlipApplied` latch: "MUST use `>=` threshold-crossing —
+float equality (`elapsed == T_hue_flip`) is forbidden."
+
+Audit grep on `PeelTransit.luau`:
+- Zero `elapsed == T_hue_flip` (or any `==` against `tHueFlip`) patterns in code
+- Single match in doc-comment header at line 25 documenting the forbidden pattern
+  ("writes `if elapsed == T_hue_flip` is broken — the flip never fires")
+
+### ADR-0007 Compliance
+
+Forbidden-pattern audit on function bodies: zero hits across all categories.
+Pure math; no Roblox service requires.
+
+### Out of Scope Respected
+
+No edits to `Client.luau`, `CrowdManagerClient.luau`, `Boids.luau`, etc.
+Wire-in deferred to follow-up integration pass. Implementation Notes describe
+how `FollowerEntityClient` will adopt these primitives:
+- Add per-follower transit arrays: `_peelStart`, `_T_peel`, `_T_hue_flip`,
+  `_hueFlipApplied`, `_rivalCrowdId`, `_rivalCenterCached`, `_d_peel`,
+  `_isCapped`, `_peelAborted`
+- On `startPeel`, call `computeTransitParams` and store fields
+- Per-frame for Peeling followers: call `computeFLeadTarget` for boids retarget;
+  call `shouldFlipHue` and on true write `Body.Color = HUE_COLORS[rivalHue]`,
+  set latch, call `VFXManager.playEffect(VFXEffect.HueShift, Body.CFrame)`;
+  call `isArrived` and on true call `resolveAbortArrivalState` to pick terminal
+  state, snap CFrame if `_isCapped`, despawn or reactivate accordingly
+
+### Deviations
+
+- **VFXManager dispatch** (AC-5c, AC-VFX call): pure module exposes
+  `shouldFlipHue` predicate only; the caller wires the `VFXManager.playEffect`
+  call at the latch transition. This keeps `PeelTransit` independent of the
+  VFXManager singleton and the `VFXEffectId` enum (cleaner test isolation).
+  The latch design ensures one-shot semantics regardless of who fires the call.
+
+- **Boids `F_lead` retarget integration**: pure module returns the target
+  `Vector3` plus an `isAborted` flag. The caller (Boids.followLeader from
+  Story 4-3) consumes the Vector3; the abort flag drives state-mutation flow.
+  Boids module is unchanged — its public API was already designed to accept
+  per-frame caller-supplied leader positions.
+
+- **`d_peel == 0` instant arrival** (Story §`d_peel == 0` guard): pure module
+  returns `tPeel = 0, tHueFlip = 0`; both `shouldFlipHue` and `isArrived`
+  predicates return true on the first per-frame call (with elapsed=0), so the
+  caller dispatches flip + arrival the same frame as expected.
+
+### Code Review
+
+LP-CODE-REVIEW skipped — Lean review mode. Manual ADR + TR-007 audit + selene
+(0 errors) + 528/528 test pass = equivalent quality gate.

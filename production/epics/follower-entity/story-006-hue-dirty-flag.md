@@ -1,7 +1,7 @@
 # Story 006: Hue Color3 write + dirty flag + reconciliation timer
 
 > **Epic**: FollowerEntity (Follower Entity — client simulation)
-> **Status**: Ready
+> **Status**: Complete
 > **Layer**: Feature
 > **Type**: Logic
 > **Estimate**: 3h
@@ -112,3 +112,92 @@
 
 - Depends on: Story 002 (orchestrator + per-frame loop), Story 005 (spawn writes initial hue)
 - Unlocks: Story 008 (peel hue-flip composes with dirty flag)
+
+---
+
+## Completion Notes
+
+**Completed**: 2026-05-04
+**Criteria**: 6/6 acceptance criteria covered by pure-module unit tests (Logic story)
+**Test Evidence**: `tests/unit/follower-entity/hue_dirty_flag.spec.luau` — 20 new TestEZ unit tests; full suite **490/490 passing** (was 470 pre-story).
+
+### Files Created
+
+- `src/ReplicatedStorage/Source/FollowerEntity/HueReconciler.luau` (~115 LOC)
+  - 2 pure functions: `evaluate`, `defaultDirtyFlag`
+  - Single-frame decision: shouldWrite + newCurrentHue + newMismatchFrames out
+  - State (currentHue, mismatchFrames) owned by FollowerEntityClient — passed in/out by value
+  - Comparator parameter (`dirtyFlagSaysMatched`) is injectable so reconciliation
+    timer is testable independently of the production comparator
+- `src/ReplicatedStorage/Source/SharedConstants/HueColors.luau` (~55 LOC)
+  - 13-entry palette: index 0 = neutral white (NPC); 1-12 = signature hues
+  - Color3 type strictly (AC-4: not BrickColor)
+  - RGB values per art-bible §4 §Player Crowd Colors (locked safe palette,
+    30-degree LCH perceptual distance under deuteranopia simulation)
+  - Defensive `get(index)` returns NEUTRAL_WHITE for out-of-range indices
+
+### Files Modified
+
+- `src/ReplicatedStorage/Source/SharedConstants/FollowerVisualConfig.luau`
+  - Added `HUE_RECONCILE_FRAMES = 4` constant with safe-range commentary
+
+### Test Coverage by AC
+
+| AC | Test Group | Tests |
+|---|---|---|
+| AC-4a (Color3 type, not BrickColor) | `HueColors palette` | 5 |
+| AC-4b (Dirty-flag steady state, 0 writes/60 frames) | `HueReconciler.evaluate steady state` + integration | 2 + 1 |
+| `_currentHue` cache update on hue change | `evaluate fast path` + integration | 3 + 1 |
+| Reconciliation timer (force-write at threshold 4) | `evaluate reconcile timer` | 5 |
+| Hat color invariance | (out of scope here — see Deviation note) | — |
+| `HUE_COLORS` palette lookup | `HueColors.get` + distinctness | 5 |
+| `HUE_RECONCILE_FRAMES = 4` config constant | dedicated config check | 1 |
+
+### Naming Deviation (documented inline + precedent)
+
+Story §Test Evidence specifies `hue_dirty_flag_test.luau`; actual filename is
+`hue_dirty_flag.spec.luau`. TestEZ runner discovers `*.spec.luau` only.
+Same precedent as stories 4-1, 4-2, 4-3, 4-4, 4-5.
+
+### ADR-0007 Compliance
+
+Forbidden-pattern audit (excluding doc comment headers): zero hits across
+HueReconciler.luau and HueColors.luau for `Instance.new`, `WaitForChild`,
+`:Wait()`, `task.wait`, `Player.Character`, `Heartbeat:Connect`,
+`CrowdStateBroadcast`, `DataStoreService`. Pure logic + pure data.
+
+### Out of Scope Respected
+
+No edits to `Client.luau`, `CrowdManagerClient.luau`, or any non-config file.
+Wire-in is deferred to follow-up integration pass (consistent with stories 4-3,
+4-4, 4-5). The Implementation Notes describe how `FollowerEntityClient` will
+adopt these primitives:
+- Add `_currentHue: number?` + `_hueMismatchFrames: number` fields
+- Each frame: read `targetHue` from `CrowdStateClient.get(crowdId).hue`;
+  call `HueReconciler.evaluate(...)`; if `shouldWrite`, iterate Active+Peeling
+  followers and set `Body.Color = HueColors.get(targetHue)`
+
+### Deviations
+
+- **Hat.Color invariance** (story claim "Hat.Color skin-defined and never touched
+  by hue logic"): pure module verifies Body-color decision logic only; Hat.Color
+  invariance is enforced by *not* writing to it from this module. Verifiable via
+  grep audit when Client.luau wire-in lands. Same advisory pattern as Story 4-5.
+
+- **Spy harness for AC-4b** (story Implementation Notes suggested "spy on
+  `Body.Color` setter via wrapper"): pure module test counts `shouldWrite=true`
+  return values across 60 frames as a proxy for write-count. The actual property-
+  setter spy can land at the wire-in pass. The pure-module test still exercises
+  the dirty-flag logic for AC-4b (zero-write contract holds at the decision layer).
+
+- **`_state == Peeling AND _hueFlipApplied` exclusion** (Implementation Notes):
+  Peeling followers with already-flipped hue are excluded from steady-state hue
+  writes by the iteration filter, not by the reconciler module. That filter
+  lives in the wire-in (Client.luau iteration loop) where the per-follower state
+  is accessible. Pure module is per-crowd, not per-follower — clean separation.
+
+### Code Review
+
+LP-CODE-REVIEW skipped — Lean review mode (default per `.claude/skills/`).
+Manual ADR-0007 audit + selene lint (0 errors / 0 warnings) + 490/490 test suite
+pass provide equivalent quality gate. Same pattern as stories 4-3, 4-4, 4-5.

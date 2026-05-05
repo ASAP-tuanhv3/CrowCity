@@ -115,7 +115,7 @@
 - `production/qa/evidence/perf-soak-[YYYY-MM-DD].txt` — must exist with PASS verdict + p99 ≤ 2.5 ms
 - Sign-off: gameplay-programmer + qa-lead in evidence file footer
 
-**Status**: [ ] Not yet created
+**Status**: [PARTIAL] Microbench evidence at `production/qa/evidence/perf-soak-2026-05-04-microbench.md`; Studio Player 60s soak DEFERRED to wire-in pass + manual capture.
 
 ---
 

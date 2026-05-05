@@ -1,7 +1,7 @@
 # Story 007: Peel selection F6 (closest-to-rival) + concurrent dual-rival peel
 
 > **Epic**: FollowerEntity (Follower Entity — client simulation)
-> **Status**: Ready
+> **Status**: Complete
 > **Layer**: Feature
 > **Type**: Logic
 > **Estimate**: 3h
@@ -121,3 +121,62 @@
 
 - Depends on: Story 002 (orchestrator + per-crowd state arrays), Story 003 (Active state established)
 - Unlocks: Story 008 (peel transit consumes selected indices), Story 009 (getPeelingCount reads `_state == Peeling`)
+
+---
+
+## Completion Notes
+
+**Completed**: 2026-05-04
+**Criteria**: 6/6 ACs covered (Logic story)
+**Test Evidence**: `tests/unit/follower-entity/peel_selection_f6.spec.luau` — 13 new TestEZ unit tests; full suite **503/503 passing** (was 490).
+
+### Files Created
+
+- `src/ReplicatedStorage/Source/FollowerEntity/PeelSelection.luau` (~85 LOC)
+  - 1 pure function: `selectClosestToRival(positions, states, rivalCenter, n, activeStateLabel)`
+  - Returns ascending-distance sorted list of selected indices
+  - State filter parameter (`activeStateLabel`) — typically "Active"; tests verify
+    Spawning/Peeling/Despawning are excluded
+  - Squared-distance sort key avoids 80 sqrt calls per peel event (sort-order-preserving)
+
+### Test Coverage by AC
+
+| AC | Tests |
+|---|---|
+| AC-11a (closest-to-rival, NOT farthest-from-own) | 2 |
+| AC-11b (concurrent peel exclusion same rival) | 1 |
+| AC-23 (dual-rival independent sorts, disjoint sets) | 1 |
+| F6 algorithm (ascending sort) | 1 (return-order test) |
+| Degenerate cases (empty, N>active, N=0, N<0, all-peeling) | 5 |
+| State filter (Spawning/Despawning excluded) | 2 |
+| 80-follower scale | 1 |
+
+### ADR-0007 Compliance
+
+Forbidden-pattern audit (function bodies): zero hits across all categories.
+Pure data-in / data-out — no Roblox service requires beyond `Vector3` arithmetic.
+
+### Out of Scope Respected
+
+No edits to `Client.luau`, `CrowdManagerClient.luau`, or any other file.
+Wire-in deferred to follow-up integration pass — `FollowerEntityClient.startPeel`
+will call `PeelSelection.selectClosestToRival(...)`, then mutate `_state[i] = "Peeling"`,
+record `_peelStart[i] = os.clock()`, `_rivalCrowdId[i] = rivalCrowdId`,
+`_rivalCenterAtStart[i] = rivalCenter` for the indices returned.
+
+### Deviations
+
+- **`startPeel` public API on `FollowerEntityClient`** (story Implementation Notes):
+  Stub already exists in `Client.luau` (`function FollowerEntityClient.startPeel`);
+  the real implementation that wires PeelSelection into per-follower state mutation
+  is the wire-in pass. Pure module isolates the F6 selection algorithm from state
+  side effects so this story closes cleanly as Logic.
+
+- **Tie behaviour**: `table.sort` is not stable in Luau — equal-distance candidates
+  receive implementation-defined ordering (story §AC-11a explicitly accepts this).
+  Documented in module header.
+
+### Code Review
+
+LP-CODE-REVIEW skipped — Lean review mode. Manual ADR audit + selene (0 errors)
++ 503/503 test pass = equivalent quality gate. Same pattern as 4-3, 4-4, 4-5, 4-6.

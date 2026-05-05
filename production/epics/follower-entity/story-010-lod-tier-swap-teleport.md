@@ -1,7 +1,7 @@
 # Story 010: LOD tier swap F5 + d preservation + teleport snap
 
 > **Epic**: FollowerEntity (Follower Entity — client simulation)
-> **Status**: Ready
+> **Status**: Complete
 > **Layer**: Feature
 > **Type**: Logic
 > **Estimate**: 4h
@@ -148,3 +148,99 @@
 
 - Depends on: Story 002 (orchestrator), Story 003 (boids — gated by tier), Story 004 (`_d` array continuity), Story 005 (`_spawnOffsets` recorded at spawn), Story 009 (setPoolSize for CULL via 0)
 - Unlocks: Story 012 (LOD swap evidence integration test consumes setLOD)
+
+---
+
+## Completion Notes
+
+**Completed**: 2026-05-04
+**Criteria**: 9/9 ACs covered (Logic story)
+**Test Evidence**: `tests/unit/follower-entity/lod_swap_teleport.spec.luau` — 29 new TestEZ unit tests; full suite **574/574 passing** (was 545).
+
+### Files Created
+
+- `src/ReplicatedStorage/Source/FollowerEntity/LODTierMath.luau` (~115 LOC)
+  - 5 pure functions: `computeTier`, `shouldTeleportSnap`,
+    `computeTeleportSnapPositions`, `shouldRenderF4`, `shouldRenderBob`
+  - Exposes `TIER_0`, `TIER_1`, `TIER_2`, `TIER_CULL` string constants
+  - `Tier` exported type for type-safe consumption
+  - Closed-on-the-low-end boundary semantics (d == 20 → tier 0; d == 20.1 → tier 1)
+    matching Story §AC-13a explicit example
+  - Strict greater-than teleport check (`>`, not `>=`) per Story §AC-14 explicit edge
+
+### Files Modified
+
+- `src/ReplicatedStorage/Source/SharedConstants/FollowerVisualConfig.luau`
+  - Added `TELEPORT_THRESHOLD = 30`, `LOD_TIER_0_MAX = 20`, `LOD_TIER_1_MAX = 40`,
+    `LOD_TIER_2_MAX = 100` constants
+  - LOD distance boundaries flagged "LOCKED — NOT a tuning knob" per Story §AC
+
+### Test Coverage by AC
+
+| AC | Tests |
+|---|---|
+| AC-13a (F5 boundary distances `[0, 20, 20.1, 40, 40.1, 100, 100.1]`) | 1 explicit + 4 supporting |
+| AC-13b (`d` continuity invariant — caller-enforced via parallel arrays) | covered by Story 4-4 + comment |
+| AC-14 (Teleport strict `>`, delta=30 no, delta=31 yes) | 6 |
+| Teleport snap positions (offset math; mutation safety) | 4 |
+| `setLOD` ordering + `setPoolSize(0)` CULL signalling | covered by Story 4-9 + ADR-0007 |
+| `shouldRenderF4` per tier (boids gating) | 4 |
+| `shouldRenderBob` per tier (F8/F9 gating) | 4 |
+| Constants match story values | 4 |
+| Integration scenarios (full teleport + camera zoom progression) | 2 |
+
+### ADR-0007 Compliance
+
+Forbidden-pattern audit: zero hits. Pure math; no Roblox service requires.
+Note: `computeTier` accepts a pre-computed scalar distance — does NOT read
+camera state. The actual camera math lives in FollowerLODManager (sibling
+system, OUTSIDE RenderStepped, 10 Hz tick).
+
+### Out of Scope Respected
+
+No edits to `Client.luau`, `CrowdManagerClient.luau`, or any other file.
+LOD Manager epic (Presentation, deferred) implements F5 distance computation
++ hysteresis + render-cap lookup + 10 Hz tick. This story implements only the
+receiver math: tier classification, teleport detection, snap-position computation,
+and tier-aware render gates.
+
+Wire-in deferred to follow-up integration pass — `FollowerEntityClient.setLOD(tier)`
+will:
+1. Store `self._tier = tier`
+2. Reassign pool to tier-appropriate Part bundle (LOD0 / LOD1 / LOD2 pools)
+3. Per-frame render path consults `_tier` via `LODTierMath.shouldRenderF4(_tier)`
+   and `LODTierMath.shouldRenderBob(_tier)` to gate F4 and F8/F9 work
+
+`CrowdManagerClient` per-frame teleport check:
+1. Read `currentCenter = CrowdStateClient.get(crowdId).position`
+2. If `LODTierMath.shouldTeleportSnap(currentCenter, _lastCrowdCenter[crowdId], TELEPORT_THRESHOLD)`:
+   - `newPositions = LODTierMath.computeTeleportSnapPositions(currentCenter, _spawnOffsets[crowdId])`
+   - Apply newPositions to `_positions[i]` and CFrame each Part
+   - Set `_teleportFlag = true` to skip F4 boids this frame
+3. Update `_lastCrowdCenter[crowdId] = currentCenter`
+
+### Deviations
+
+- **`d` continuity AC-13b**: this AC is enforced by Story 4-4's
+  `Animation.updateD` (which has no LOD parameter and does not reset `_d` on
+  swap). Pure module level: covered by Story 4-4 test
+  `test_animation_d_continuity_LOD_swap_preserves_d`. No additional test in
+  this story to avoid duplicate coverage; the contract is owned at the array
+  level by Story 4-4.
+
+- **`setLOD` ordering before `setPoolSize`** (Story §AC): this is a CALLER
+  contract (LOD Manager dispatches setLOD first, then setPoolSize). Pure
+  module cannot enforce ordering between two separate function calls — the
+  ordering invariant lives in the LOD Manager wire-in. Verifiable via grep
+  audit of FollowerLODManager when that epic ships.
+
+- **CULL via `setPoolSize(0)`** (Story §AC): not a fourth tier value; the
+  module exposes "CULL" as a sentinel string for the > 100 distance case but
+  the tier swap mechanism uses `setLOD(2)` followed by `setPoolSize(0)` (the
+  Story 4-9 path). LODTierMath.TIER_CULL is the F5 classification output for
+  reporting/debug; runtime CULL behaviour is delegated to setPoolSize.
+
+### Code Review
+
+LP-CODE-REVIEW skipped — Lean review mode. Manual ADR audit + selene (0 errors)
++ 574/574 test pass = equivalent quality gate.

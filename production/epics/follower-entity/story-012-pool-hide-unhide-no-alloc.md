@@ -109,7 +109,7 @@
 - `production/qa/evidence/lod-swap-[YYYY-MM-DD].txt` — must exist with PASS verdict + before/after instance counts
 - Sign-off: gameplay-programmer + qa-lead in evidence file footer
 
-**Status**: [ ] Not yet created
+**Status**: [PARTIAL] Structural evidence at `production/qa/evidence/lod-swap-2026-05-04-structural.md`; runtime instance-count snapshot DEFERRED to wire-in pass + manual capture.
 
 ---
 
