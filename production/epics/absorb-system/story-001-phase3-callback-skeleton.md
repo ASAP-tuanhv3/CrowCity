@@ -1,7 +1,7 @@
 # Story 001: AbsorbSystem Phase 3 callback skeleton + DI scaffold
 
 > **Epic**: AbsorbSystem (Absorb System)
-> **Status**: Ready
+> **Status**: Complete
 > **Layer**: Feature
 > **Type**: Logic
 > **Estimate**: 2h
@@ -110,3 +110,10 @@
 
 - Depends on: TickOrchestrator must exist (already implemented Sprint 3); CrowdStateServer + NPCSpawner DI surfaces present.
 - Unlocks: Story 002, 003, 004, 005 (all assume Phase 3 callback skeleton in place).
+
+
+## Completion Notes
+**Completed**: 2026-05-06 (Sprint 5 batch close)
+**Lean mode**: QL-TEST-COVERAGE + LP-CODE-REVIEW gates skipped per production/review-mode.txt
+**Audits**: selene 0/7/0, asset-id PASS, persistence PASS
+**Test Evidence**: see story Test Evidence section — file at expected path

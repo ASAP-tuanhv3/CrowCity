@@ -56,7 +56,11 @@ PlayerDataServer.start(DefaultPlayerData, "PlayerData_v2", { ReceiptProcessor.re
 local TickOrchestrator = require(ServerStorage.Source.TickOrchestrator)
 local CollisionResolverStub = require(ServerStorage.Source._PhaseStubs.CollisionResolverStub)
 local RelicSystemStub = require(ServerStorage.Source._PhaseStubs.RelicSystemStub)
-local AbsorbSystemStub = require(ServerStorage.Source._PhaseStubs.AbsorbSystemStub)
+-- AbsorbSystemStub replaced by real AbsorbSystem (absorb-system epic, Sprint 5 stories 5-10..5-14).
+-- AbsorbSystemStub.luau retained (close-out Story 011 removes it).
+local AbsorbSystem = require(ServerStorage.Source.AbsorbSystem)
+local CrowdStateServer = require(ServerStorage.Source.CrowdStateServer)
+local NPCSpawner = require(ServerStorage.Source.NPCSpawner)
 local ChestSystemStub = require(ServerStorage.Source._PhaseStubs.ChestSystemStub)
 local CSMStateEvaluateStub = require(ServerStorage.Source._PhaseStubs.CSMStateEvaluateStub)
 local MSMTimerCheckStub = require(ServerStorage.Source._PhaseStubs.MSMTimerCheckStub)
@@ -64,10 +68,20 @@ local MSMEliminationConsumerStub = require(ServerStorage.Source._PhaseStubs.MSME
 local CSMBroadcastAllStub = require(ServerStorage.Source._PhaseStubs.CSMBroadcastAllStub)
 local PeelDispatcherStub = require(ServerStorage.Source._PhaseStubs.PeelDispatcherStub)
 
+-- Initialise AbsorbSystem with production dependencies (DI per ADR-0006 + Story 5-10).
+-- Must be called before TickOrchestrator._registerPhases / .start().
+-- ADR-0004: AbsorbSystem is sole authorised caller of csm.updateCount(crowdId, +1, "Absorb")
+--           and npcSpawner.reclaim(npcId). (ADR-0008 §Caller Authority Matrix)
+AbsorbSystem.init({
+	csm = CrowdStateServer,
+	npcSpawner = NPCSpawner,
+	network = Network,
+})
+
 TickOrchestrator._registerPhases({
 	{ phase = 1, name = "Collision",     callback = CollisionResolverStub.tick },
 	{ phase = 2, name = "Relic",         callback = RelicSystemStub.tick },
-	{ phase = 3, name = "Absorb",        callback = AbsorbSystemStub.tick },
+	{ phase = 3, name = "Absorb",        callback = AbsorbSystem.tick },
 	{ phase = 4, name = "Chest",         callback = ChestSystemStub.tick },
 	{ phase = 5, name = "CSM:Eval",      callback = CSMStateEvaluateStub.tick },
 	{ phase = 6, name = "MSM:Timer",     callback = MSMTimerCheckStub.tick },

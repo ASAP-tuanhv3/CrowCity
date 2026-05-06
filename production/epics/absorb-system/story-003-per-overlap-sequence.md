@@ -1,7 +1,7 @@
 # Story 003: Per-overlap sequence + reclaim contract + snapshot atomicity
 
 > **Epic**: AbsorbSystem (Absorb System)
-> **Status**: Ready
+> **Status**: Complete
 > **Layer**: Feature
 > **Type**: Logic
 > **Estimate**: 3h
@@ -106,3 +106,10 @@
 
 - Depends on: Story 001 (skeleton), Story 002 (overlap result feeds sequence).
 - Unlocks: Story 005 (reliable RemoteEvent), Story 006 (V/A consumers).
+
+
+## Completion Notes
+**Completed**: 2026-05-06 (Sprint 5 batch close)
+**Lean mode**: QL-TEST-COVERAGE + LP-CODE-REVIEW gates skipped per production/review-mode.txt
+**Audits**: selene 0/7/0, asset-id PASS, persistence PASS
+**Test Evidence**: see story Test Evidence section — file at expected path

@@ -1,7 +1,7 @@
 # Story 004: State guards — Active / GraceWindow allow, Eliminated skip
 
 > **Epic**: AbsorbSystem (Absorb System)
-> **Status**: Ready
+> **Status**: Complete
 > **Layer**: Feature
 > **Type**: Logic
 > **Estimate**: 2h
@@ -92,3 +92,10 @@
 
 - Depends on: Story 001-003 (skeleton + overlap + sequence).
 - Unlocks: Story 005, 006.
+
+
+## Completion Notes
+**Completed**: 2026-05-06 (Sprint 5 batch close)
+**Lean mode**: QL-TEST-COVERAGE + LP-CODE-REVIEW gates skipped per production/review-mode.txt
+**Audits**: selene 0/7/0, asset-id PASS, persistence PASS
+**Test Evidence**: see story Test Evidence section — file at expected path
