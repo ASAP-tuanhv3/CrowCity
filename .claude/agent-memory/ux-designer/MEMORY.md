@@ -1,0 +1,1 @@
+- [UX Sprint 1 Design-Lock context](project_ux_sprint1_context.md) — HUD + main-menu specs authored 2026-04-27; accessibility doc committed; next UX work is relic-card.md (VS+)

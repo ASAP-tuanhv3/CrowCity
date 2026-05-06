@@ -1,6 +1,6 @@
 # Epics Index
 
-Last Updated: 2026-04-27
+Last Updated: 2026-05-02
 Engine: Roblox (Luau, `--!strict`) — engine reference pinned 2026-04-20
 Manifest Version: 2026-04-27
 
@@ -15,15 +15,29 @@ Manifest Version: 2026-04-27
 | [match-state-server](match-state-server/EPIC.md) | Core | Match State Machine | design/gdd/match-state-machine.md | 8 stories | Ready |
 | [round-lifecycle](round-lifecycle/EPIC.md) | Core | Round Lifecycle | design/gdd/round-lifecycle.md | 5 stories | Ready |
 | [crowd-replication-broadcast](crowd-replication-broadcast/EPIC.md) | Core | Crowd Replication Broadcast Path (bi-layer Core+Presentation) | design/gdd/crowd-replication-strategy.md | 5 stories | Ready |
+| [npc-spawner](npc-spawner/EPIC.md) | Feature | NPC Spawner | design/gdd/npc-spawner.md | Not yet created | Ready |
+| [absorb-system](absorb-system/EPIC.md) | Feature | Absorb System | design/gdd/absorb-system.md | Not yet created | Ready |
+| [crowd-collision-resolution](crowd-collision-resolution/EPIC.md) | Feature | Crowd Collision Resolution | design/gdd/crowd-collision-resolution.md | Not yet created | Ready |
+| [chest-system](chest-system/EPIC.md) | Feature | Chest System | design/gdd/chest-system.md | Not yet created | Ready |
+| [relic-system](relic-system/EPIC.md) | Feature | Relic System | design/gdd/relic-system.md | Not yet created | Ready |
+| [follower-entity](follower-entity/EPIC.md) | Feature | Follower Entity (client) | design/gdd/follower-entity.md | Not yet created | **Ready (ADR-0007 dependency)** |
 
 ## Layer Coverage
 
 | Layer | Epics Created | Notes |
 |-------|---------------|-------|
 | Foundation | 4 / 8 architecture rows | Path A scope: epics created only for systems with significant new work. Currency / Zone / ComponentCreator / Collision Groups deferred — fold into consuming-system stories per architecture §2.1. **Status: Complete.** |
-| Core | 5 / 5 | TickOrchestrator + CSM + MSM + RoundLifecycle + Crowd Replication Broadcast Path. All 5 Ready. |
-| Feature | 0 | Run `/create-epics layer: feature` after Core stories begin landing |
-| Presentation | 0 | Run last |
+| Core | 5 / 5 | TickOrchestrator + CSM + MSM + RoundLifecycle + Crowd Replication Broadcast Path. All 5 Ready; 3-1..3-10 must-have closed Sprint 3. |
+| Feature | **6 / 7** | NPCSpawner + AbsorbSystem + CollisionResolver + ChestSystem + RelicSystem + FollowerEntity (client). FollowerLODManager belongs to Presentation layer per architecture §2.4. All 6 Ready (FollowerEntity stories still Blocked on ADR-0007 Accept; A7 Proposed 2026-05-02 — pending `/architecture-review`). |
+| Presentation | 0 | Run `/create-epics layer: presentation` after Feature stories begin landing |
+
+## Feature Layer ADR Gap
+
+| Gap | Impact | Resolution |
+|-----|--------|-----------|
+| **ADR-0007 Proposed 2026-05-02; Pending Accept** | FollowerEntity epic stories Blocked on A7 Accept. C1 conflict ALREADY resolved in registry (`humanoid_on_followers` canonical 2-Part since 2026-04-22; `follower-entity.md` Overview prose synced 2026-05-02). | Run `/architecture-review` in a fresh session to validate A7 + promote to Accepted, then `/create-stories follower-entity` |
+
+`requirements-traceability.md` is dated 2026-04-26 (pre-A8/A10/A11 acceptance). Run `/architecture-review` after Sprint 4 sequencing to refresh per-system coverage matrix with A8/A10/A11 closure.
 
 ## Core Dependency Order (story implementation)
 
@@ -33,19 +47,24 @@ Manifest Version: 2026-04-27
 4. **round-lifecycle** — depends on CSM (CountChanged subscribe + create/destroy) + MSM (sole caller)
 5. **crowd-replication-broadcast** — depends on Foundation Network + Foundation buffer codec + CSM record schema
 
+## Feature Dependency Order (story implementation)
+
+1. **npc-spawner** — depends on Core RoundLifecycle (`createAll`/`destroyAll` hooks); produces `NPCSpawner.reclaim` contract for Absorb
+2. **absorb-system** — depends on NPCSpawner + CSM `updateCount("Absorb")` + TickOrch Phase 3
+3. **crowd-collision-resolution** — depends on CSM `updateCount("Collision")` + `setStillOverlapping` + TickOrch Phase 1; emits peel buffer for FollowerEntity
+4. **chest-system** — depends on CSM `updateCount("Chest")` + RelicSystem framework + TickOrch Phase 4
+5. **relic-system** — depends on CSM `updateCount("Relic")` + `recomputeRadius` + ChestSystem grant flow
+6. **follower-entity** (client) — depends on CrowdReplicationBroadcast mirror + Collision peel buffer + ADR-0007 (NOT WRITTEN — blocking)
+
 ## Next Steps
 
-All 5 Core epics now have stories drafted (31 stories total).
+Sprint 3 just closed core spine. 10/10 must-have stories landed (`feat(sprint-3): close stories 3-2..3-10` commit `083437d` 2026-05-02).
 
-Story implementation order (per dependency chain):
-- **tick-orchestrator stories** (001 → 002 → 003 → 004+005) — foundation of every Phase callback
-- **crowd-state-server stories** (001 → 002 → 003+004+005 || → 006 → 007 → 008) — Core authority hub
-- **match-state-server stories** (001 → 002 → 003+004 → 005 → 006+007 → 008) — round state machine
-- **round-lifecycle stories** (001 → 002+003+004 → 005) — round-scoped aux + placement sort
-- **crowd-replication-broadcast stories** (001 → 002+003 → 004 → 005) — client mirror + transport phase
-
-Recommended next actions:
-- Run `/story-readiness production/epics/tick-orchestrator/story-001-core-module-skeleton-cadence.md` to validate first story
-- Run `/dev-story production/epics/tick-orchestrator/story-001-core-module-skeleton-cadence.md` to begin implementation (or `/sprint-plan` to sequence Sprint 2 Vertical Slice Build)
-- After all 5 epics' stories begin landing, run `/gate-check pre-production` to re-evaluate the gate verdict
-- Then `/create-epics layer: feature` for Absorb / NPCSpawner / Follower / CCR / Chest / Relic
+Recommended sequence:
+- **Step 1**: `/architecture-decision` for ADR-0007 Client Rendering Strategy (closes C1 conflict + 15 TR gap on FollowerEntity epic)
+- **Step 2**: `/create-stories npc-spawner` — first Feature epic on dependency chain (no ADR gap; A8 fully covers)
+- **Step 3**: `/sprint-plan` for Sprint 4 — sequence NPC + Absorb + RoundLifecycle integration; pull Sprint 3 backlog (3-11..3-15) into nice-to-have if velocity allows
+- **Step 4**: After Sprint 4 lands NPC + Absorb: `/create-stories crowd-collision-resolution` + `/create-stories chest-system` + `/create-stories relic-system`
+- **Step 5**: After ADR-0007 Accepted: `/create-stories follower-entity`
+- **Step 6**: After Feature stories begin landing: `/create-epics layer: presentation` (HUD, Player Nameplate, Chest Billboard, VFX Manager, FollowerLODManager, CrowdStateClient, MatchStateClient)
+- **Step 7**: After Vertical Slice playable end-to-end: re-run `/gate-check production` (forward-looking Production → Polish)
