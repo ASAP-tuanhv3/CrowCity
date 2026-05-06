@@ -115,9 +115,62 @@ function PerfFixture.start(): ()
 	print(string.format(
 		"[perf_fixture] crowd %s seeded with %d followers; patrol path active. "
 			.. "Open Micro Profiler (Ctrl+F6) and capture %d samples (label "
-			.. "'FollowerEntityClient_Update').",
+			.. "'FollowerEntityClient_Update'). "
+			.. "Press [L] for AC-18 LOD-swap instance count snapshot.",
 		crowdId, TARGET_FOLLOWER_COUNT, 60 * 60
 	))
+
+	-- AC-18 LOD-swap instance count harness.
+	-- Bind L key: snapshot BasePart count → setPoolSize(15) → snapshot → setPoolSize(80) → snapshot.
+	-- Outputs counts to Output window so user can paste into evidence MD.
+	local UserInputService = game:GetService("UserInputService")
+
+	local function countDescendantBaseParts(): number
+		local count = 0
+		for _, descendant in Workspace:GetDescendants() do
+			if descendant:IsA("BasePart") then
+				count += 1
+			end
+		end
+		return count
+	end
+
+	UserInputService.InputBegan:Connect(function(input: InputObject, gameProcessed: boolean)
+		if gameProcessed then return end
+		if input.KeyCode ~= Enum.KeyCode.L then return end
+
+		local crowdClient = CrowdManagerClient:getCrowdClient(crowdId)
+		if crowdClient == nil then
+			warn("[perf_fixture] AC-18: crowd client missing")
+			return
+		end
+
+		-- Snapshot 1: baseline (80 followers active)
+		local before = countDescendantBaseParts()
+		print(string.format("[perf_fixture] AC-18 SNAPSHOT BEFORE: %d BaseParts in Workspace", before));
+
+		-- Action 1: shrink to 15 → 65 followers despawn over 0.2 s fade
+		(crowdClient :: any):setPoolSize(15)
+		print("[perf_fixture] AC-18: setPoolSize(15) called — wait ~0.5 s for fade")
+
+		task.wait(0.5)
+		local afterShrink = countDescendantBaseParts()
+		print(string.format("[perf_fixture] AC-18 SNAPSHOT AFTER SHRINK: %d BaseParts (delta %+d)",
+			afterShrink, afterShrink - before));
+
+		-- Action 2: grow back to 80 → 65 cap-grow FadeIn drain at 4/frame ≈ 17 frames ≈ 0.28 s
+		(crowdClient :: any):setPoolSize(80)
+		print("[perf_fixture] AC-18: setPoolSize(80) called — wait ~1 s for cap-grow drain")
+
+		task.wait(1.0)
+		local afterGrow = countDescendantBaseParts()
+		print(string.format("[perf_fixture] AC-18 SNAPSHOT AFTER REGROW: %d BaseParts (delta %+d vs initial)",
+			afterGrow, afterGrow - before))
+
+		print("[perf_fixture] AC-18 INVARIANT: BasePart count should be IDENTICAL across all 3 snapshots "
+			.. "(Pool pre-allocated; no Instance.new on shrink or grow). Paste these counts into "
+			.. "production/qa/evidence/lod-swap-2026-05-04-structural.md.")
+	end)
 
 	-- 3. Patrol path: 15 Hz CrowdState updates with sin-wave motion.
 	--    task.spawn so this loop doesn't block the entry script's continuation.
