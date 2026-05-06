@@ -1,7 +1,7 @@
 # Story 001: CrowdStateClient module skeleton + mirror cache + lastReceivedTick + tick_is_newer (F4)
 
 > **Epic**: crowd-replication-broadcast
-> **Status**: Ready
+> **Status**: Complete
 > **Layer**: Presentation (client-side mirror module)
 > **Type**: Logic
 > **Manifest Version**: 2026-04-27
@@ -83,8 +83,8 @@
 
 ## QA Test Cases
 
-- **AC-7 (F4 happy)**: `tick_is_newer(5, 4) == true`; `tick_is_newer(4, 5) == false`; `tick_is_newer(0, 65535) == true` (wrap); `tick_is_newer(65534, 65535) == false` (older); `tick_is_newer(32767, 0) == false` (half-window stale); `tick_is_newer(N, N) == false`.
-- **AC-7 boundary**: `tick_is_newer(32768, 0) == false` (exactly half — defensive); `tick_is_newer(32767, 65535) == true` (wraps + within half); `tick_is_newer(0, 32768) == false` (other side).
+- **AC-7 (F4 happy)**: `tick_is_newer(5, 4) == true`; `tick_is_newer(4, 5) == false`; `tick_is_newer(0, 65535) == true` (wrap); `tick_is_newer(65534, 65535) == false` (older); `tick_is_newer(32767, 0) == true` (diff=32767, within front-half window); `tick_is_newer(N, N) == false`.
+- **AC-7 boundary**: `tick_is_newer(32768, 0) == false` (exactly half — defensive; diff=32768 NOT < 32768); `tick_is_newer(32767, 65535) == false` (diff=32768 hits half-window boundary; defensive false); `tick_is_newer(0, 32768) == false` (other side; diff=32768).
 - **AC-18**: Empty `_crowds`; `get("999999")` returns nil. `_crowds` populated w/ "u1"; `get("u1") ~= nil`; `get("u2") == nil`.
 - **AC-22**: Inject (via story-002 path mocked) two broadcasts for `crowdId="u1"` w/ different ticks. `_crowds["u1"]` exists w/ exactly one entry. No second entry under `tostring(u1.UserId)` or related key. Edge: 12-player fixture with all 12 ids — `_crowds` size = 12, all keys distinct.
 - **`tick_is_newer` standalone export**: `local f = require(ReplicatedStorage.Source.CrowdStateClient).tick_is_newer; f(5, 4) == true`. Confirms DI shape per CRS §DI requirements.
@@ -96,7 +96,7 @@
 
 `tests/unit/crowd-state-client/tick_is_newer_f4.spec.luau` + `tests/unit/crowd-state-client/get_lookup.spec.luau` + `tests/unit/crowd-state-client/crowdid_uniqueness.spec.luau`.
 
-**Status**: [ ] Not yet created
+**Status**: [x] Created — 33 tests passing (run-in-roblox headless 2026-05-04)
 
 ---
 
@@ -104,3 +104,29 @@
 
 - Depends on: Foundation `network-layer-ext` (RemoteEventName + buffer codec — already shipped)
 - Unlocks: story-002 (subscriber writes via this module's mirror cache); story-003 (reliable subscribers); HUD / Player Nameplate / Follower Entity (consume `get` / `getAllActive`)
+
+---
+
+## Completion Notes
+
+**Completed**: 2026-05-04
+**Criteria**: 13/13 passing (3 ACs — AC-7, AC-18, AC-22 — plus 10 sub-criteria all met)
+**Files created**:
+- `src/ReplicatedStorage/Source/CrowdStateClient/init.luau` (208 LOC; CrowdRecord export type, `get`/`getAllActive` read API, `tick_is_newer` F4 helper standalone DI export, `_debugSetRecord/_debugClearAll/_debugGetLastReceivedTick` test seam)
+- `tests/unit/crowd-state-client/tick_is_newer_f4.spec.luau` (14 cases — happy + boundary + DI shape)
+- `tests/unit/crowd-state-client/get_lookup.spec.luau` (10 cases — nil + populated + freshness + state filter)
+- `tests/unit/crowd-state-client/crowdid_uniqueness.spec.luau` (9 cases — 12-player fixture + lookup determinism)
+
+**Test evidence**: 33/33 PASS via run-in-roblox headless. Total project tests now 345 (Sprint 3 baseline 312 + 33 new). 0 failures.
+
+**Audits**: Selene `src/` 0 errors (7 pre-existing warnings unchanged). Asset-id audit PASS. Persistence audit PASS.
+
+**Deviations**:
+- ADVISORY (resolved): Story §QA Test Cases for `tick_is_newer(32767, 0)` and `tick_is_newer(32767, 65535)` were transposed against the F4 formula. Story doc corrected in this session — labels now match formula output (`(32767, 0) == true` / `(32767, 65535) == false`).
+- ADVISORY: `_debugSetRecord/_debugClearAll/_debugGetLastReceivedTick` test seam exposed as module fields with `**TEST ONLY**` markers per implementation prompt option (a). Reviewed and approved by lead-programmer code review. Story-002 broadcast subscriber will reuse the same seam.
+
+**Code Review**: APPROVED (lead-programmer; no required changes). 4 non-blocking suggestions deferred to future stories: story-002 implementer should consider `SharedConstants/CrowdId.luau` canonical helper (ADR-0006 L256), document `getAllActive` 10 Hz cadence expectation when wiring FollowerLODManager, and avoid caching closure refs to `_crowds`.
+
+**Out of scope respected**: No broadcast subscriber, no reliable subscriber, no F1 estimator, no LOD logic. Cache write path remains story-002 territory.
+
+**Unlocks**: Story 4-2 (FE story-002 CrowdManagerClient orchestrator) is now unblocked.
