@@ -6,7 +6,7 @@ goal: "Land complete FollowerEntity client simulation MVP. By sprint end, 80 LOD
 start: "2026-05-04"
 end: "2026-05-15"
 generated: "2026-05-04"
-updated: "2026-05-05T08:00"
+updated: "2026-05-06T11:30"
 
 stories:
   - id: "4-1"
@@ -113,10 +113,11 @@ stories:
     name: "FE story-011 — Perf soak validation 80 LOD-0 ≤ 2.5ms p99"
     file: "production/epics/follower-entity/story-011-perf-soak-validation.md"
     priority: must-have
-    status: blocked
-    owner: ""
+    status: provisional-pass
+    owner: "gameplay-programmer"
     estimate_days: 0.375
-    blocker: "PARTIAL — pure-module microbench + production wire-in COMPLETE (Client.luau + CrowdManagerClient adopt all 8 pure modules; debug.profilebegin/profileend wrapping RenderStepped); STILL REQUIRES manual Roblox Studio Micro Profiler 60 s capture on desktop hardware for full AC-17 sign-off. Evidence: production/qa/evidence/perf-soak-2026-05-04-microbench.md"
+    blocker: "Studio Micro Profiler partial capture (2026-05-06, ~19 s, 1,139 frames) shows FollowerEntityClient_Update mean = 1.02 ms — 41% of mobile 2.5 ms budget, 68% of desktop 1.5 ms budget. PROVISIONAL PASS. Full AC-17 sign-off requires 60 s sustained capture + explicit p99 readout from qa-lead. Dump: docs/MicroProfilerDump_2026.05.06_11.24.10.html. Evidence: production/qa/evidence/perf-soak-2026-05-04-microbench.md"
+    completed: ""
     completed: ""
 
   - id: "4-12"
