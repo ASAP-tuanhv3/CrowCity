@@ -13,141 +13,141 @@ stories:
     name: "NPC story-001 — Pool bootstrap 300 Parts chunked + Heartbeat + ARENA validation"
     file: "production/epics/npc-spawner/story-001-pool-bootstrap.md"
     priority: must-have
-    status: ready-for-dev
-    owner: ""
+    status: done
+    owner: "gameplay-programmer"
     estimate_days: 0.5
     blocker: ""
-    completed: ""
+    completed: "2026-05-06"
 
   - id: "5-2"
     name: "NPC story-002 — reclaim() synchronous + double-reclaim assert"
     file: "production/epics/npc-spawner/story-002-reclaim-synchronous.md"
     priority: must-have
-    status: ready-for-dev
-    owner: ""
+    status: done
+    owner: "gameplay-programmer"
     estimate_days: 0.25
     blocker: ""
-    completed: ""
+    completed: "2026-05-06"
 
   - id: "5-3"
     name: "NPC story-003 — getAllActiveNPCs frozen snapshot + cache invalidation"
     file: "production/epics/npc-spawner/story-003-frozen-snapshot.md"
     priority: must-have
-    status: ready-for-dev
-    owner: ""
+    status: done
+    owner: "gameplay-programmer"
     estimate_days: 0.25
     blocker: ""
-    completed: ""
+    completed: "2026-05-06"
 
   - id: "5-4"
     name: "NPC story-004 — Idle walk + boundary reflection (Heartbeat tick)"
     file: "production/epics/npc-spawner/story-004-idle-walk-boundary.md"
     priority: must-have
-    status: ready-for-dev
-    owner: ""
+    status: done
+    owner: "gameplay-programmer"
     estimate_days: 0.375
     blocker: ""
-    completed: ""
+    completed: "2026-05-06"
 
   - id: "5-5"
     name: "NPC story-005 — Respawn pipeline — delay, position, crowd exclusion, fallback"
     file: "production/epics/npc-spawner/story-005-respawn-pipeline.md"
     priority: must-have
-    status: ready-for-dev
-    owner: ""
+    status: done
+    owner: "gameplay-programmer"
     estimate_days: 0.5
     blocker: ""
-    completed: ""
+    completed: "2026-05-06"
 
   - id: "5-6"
     name: "NPC story-006 — Respawn fade-in (TweenService 1→0 over 0.3s)"
     file: "production/epics/npc-spawner/story-006-respawn-fade-in.md"
     priority: must-have
-    status: ready-for-dev
-    owner: ""
+    status: done
+    owner: "gameplay-programmer"
     estimate_days: 0.25
     blocker: ""
-    completed: ""
+    completed: "2026-05-06"
 
   - id: "5-7"
     name: "NPC story-007 — destroyAll() cleanup — cancel pending timers + tweens"
     file: "production/epics/npc-spawner/story-007-destroyall-cleanup.md"
     priority: must-have
-    status: ready-for-dev
-    owner: ""
+    status: done
+    owner: "gameplay-programmer"
     estimate_days: 0.25
     blocker: ""
-    completed: ""
+    completed: "2026-05-06"
 
   - id: "5-8"
     name: "NPC story-008 — F2/F4 density guards — R_absorb EPSILON guard + steady-state"
     file: "production/epics/npc-spawner/story-008-density-guards.md"
     priority: must-have
-    status: ready-for-dev
-    owner: ""
+    status: done
+    owner: "gameplay-programmer"
     estimate_days: 0.375
     blocker: ""
-    completed: ""
+    completed: "2026-05-06"
 
   - id: "5-9"
     name: "NPC story-009 — UREvent NpcStateBroadcast + client mirror pool"
     file: "production/epics/npc-spawner/story-009-urevent-replication.md"
     priority: must-have
-    status: ready-for-dev
-    owner: ""
+    status: done
+    owner: "gameplay-programmer"
     estimate_days: 0.5
     blocker: ""
-    completed: ""
+    completed: "2026-05-06"
 
   - id: "5-10"
     name: "Absorb story-001 — Phase 3 callback skeleton + DI scaffold"
     file: "production/epics/absorb-system/story-001-phase3-callback-skeleton.md"
     priority: must-have
-    status: ready-for-dev
-    owner: ""
+    status: done
+    owner: "gameplay-programmer"
     estimate_days: 0.25
     blocker: ""
-    completed: ""
+    completed: "2026-05-06"
 
   - id: "5-11"
     name: "Absorb story-002 — F1 overlap test + F2 contention resolution"
     file: "production/epics/absorb-system/story-002-overlap-contention.md"
     priority: must-have
-    status: ready-for-dev
-    owner: ""
+    status: done
+    owner: "gameplay-programmer"
     estimate_days: 0.5
     blocker: ""
-    completed: ""
+    completed: "2026-05-06"
 
   - id: "5-12"
     name: "Absorb story-003 — Per-overlap sequence + reclaim contract + snapshot atomicity"
     file: "production/epics/absorb-system/story-003-per-overlap-sequence.md"
     priority: must-have
-    status: ready-for-dev
-    owner: ""
+    status: done
+    owner: "gameplay-programmer"
     estimate_days: 0.375
     blocker: ""
-    completed: ""
+    completed: "2026-05-06"
 
   - id: "5-13"
     name: "Absorb story-004 — State guards — Active / GraceWindow allow, Eliminated skip"
     file: "production/epics/absorb-system/story-004-state-guards.md"
     priority: must-have
-    status: ready-for-dev
-    owner: ""
+    status: done
+    owner: "gameplay-programmer"
     estimate_days: 0.25
     blocker: ""
-    completed: ""
+    completed: "2026-05-06"
 
   - id: "5-14"
     name: "Absorb story-005 — Count clamp passthrough + Absorbed reliable RemoteEvent"
     file: "production/epics/absorb-system/story-005-count-clamp-reliable-signal.md"
     priority: must-have
-    status: ready-for-dev
-    owner: ""
+    status: done
+    owner: "gameplay-programmer"
     estimate_days: 0.375
     blocker: ""
-    completed: ""
+    completed: "2026-05-06"
 
   - id: "5-15"
     name: "Absorb story-006 — V/A consumers — VFX AbsorbSnap + audio batching + streak escalation"

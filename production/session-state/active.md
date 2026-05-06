@@ -1097,3 +1097,49 @@ User said "continue" again. Implemented full Pool integration into wire-in.
 2. Optionally: multi-pool LOD swap (LOD-0/LOD-1/LOD-2 bundle reassignment in setLOD)
 3. Should-have stories: 4-13 CSM F2 lag, 4-14 MSM AFK, 4-15 RL DC freeze, 4-16 TickOrch instrumentation
 4. Sprint close-out: smoke-check, /team-qa sprint, /gate-check
+
+## Session Extract — /dev-story 2026-05-06
+
+- **Story**: production/epics/npc-spawner/story-001-pool-bootstrap.md — NPCSpawner pool bootstrap (5-1)
+- **Files changed**:
+  - `src/ServerStorage/Source/NPCSpawner/init.luau` (new, 343 lines) — singleton, init+createAll+destroyAll+getDesignDensity, Heartbeat connect deferred to createAll per ADR-0008
+  - `src/ReplicatedStorage/Source/SharedConstants/NPCSpawnerConstants.luau` (new, 44 lines) — POOL_SIZE/BATCH_SIZE/RESPAWN_MIN_CROWD_DIST/WALK_SPEED
+  - `tests/unit/npc-spawner/pool_bootstrap.spec.luau` (new, 302 lines, 10 test functions)
+- **Test written**: `tests/unit/npc-spawner/pool_bootstrap.spec.luau` — 10 it() blocks covering AC-01/AC-03/AC-05/TR-011/TR-012 + idempotency + state machine
+- **Audit gates**: selene 0/7/0, asset-id OK, persistence OK
+- **Conflicts surfaced + resolved**: pre-allocation timing — story said `createAll`, ADR-0008 said `init()`. ADR canonical → pre-alloc at `init()`.
+- **Out-of-scope deviations**: none — Stories 002-009 boundaries marked with `-- TODO Story NNN` stubs only.
+- **Test runner caveat**: AC-01/AC-03 use `task.wait()` to drain 12 task.defer batches — requires Studio scheduler. Headless runner that does not drain task.defer queue will see #pool == 0 and fail. Documented in spec header.
+- **Blockers**: none.
+- **Next**: `/code-review src/ServerStorage/Source/NPCSpawner/init.luau src/ReplicatedStorage/Source/SharedConstants/NPCSpawnerConstants.luau tests/unit/npc-spawner/pool_bootstrap.spec.luau` then `/story-done production/epics/npc-spawner/story-001-pool-bootstrap.md`
+
+## Session Extract — /story-done 2026-05-06
+
+- **Verdict**: COMPLETE WITH NOTES
+- **Story**: production/epics/npc-spawner/story-001-pool-bootstrap.md — NPC Spawner pool bootstrap (5-1)
+- **ACs**: 6/6 passing — all covered by automated tests (12 it() blocks)
+- **Tech debt logged**: 4 advisories (TR-013 stale, AC-03 spy substitute, AC-03 reclaim cycle deferred to 5-2, TestEZ naming convention) — not separately filed; documented in Completion Notes
+- **Audits**: selene 0/7/0, asset-id PASS, persistence PASS
+- **Files**: 3 created (NPCSpawner module + constants + spec)
+- **Next recommended**: 5-2 NPC reclaim() synchronous + double-reclaim assert (depends on 5-1; now unblocked)
+
+## Session Extract — Sprint 5 batch close 2026-05-06
+
+- **Verdict**: 14/14 must-have COMPLETE
+- **Stories closed**: 5-1 through 5-14 — NPCSpawner full epic + AbsorbSystem Logic core
+- **Source files created**:
+  - src/ServerStorage/Source/NPCSpawner/init.luau (~1175 lines, all 8 stories)
+  - src/ReplicatedStorage/Source/NPCSpawnerClient/init.luau (Story 5-9 client mirror)
+  - src/ServerStorage/Source/AbsorbSystem/init.luau (Stories 5-10..5-14)
+- **Source files modified**:
+  - src/ReplicatedStorage/Source/SharedConstants/NPCSpawnerConstants.luau (extended constants)
+  - src/ReplicatedStorage/Source/Network/RemoteName/RemoteEventName.luau (Absorbed remote)
+  - src/ReplicatedStorage/Source/Network/RemoteName/UnreliableRemoteEventName.luau (NpcStateBroadcast)
+  - src/ServerScriptService/start.server.luau (re-wired Phase 3 to real AbsorbSystem)
+- **Test files created**: 13 new specs (8 NPC unit + 1 NPC integration + 5 Absorb unit)
+- **Test counts**: 70 it() blocks NPC + 47 it() blocks Absorb = ~117 new test blocks
+- **Audits**: selene 0/7/0 (baseline maintained), asset-id PASS, persistence PASS
+- **Code review**: per-story skipped (lean mode); aggregate review at sprint close
+- **Outstanding (advisory)**: NPCSpawner._broadcastTick + _sendBootstrap call game:GetService("Players"):GetPlayers() and Network.fireClient* directly — DI gap. Story 5-9 follow-up: add deps.network/players for full integration test. Documented in urevent_replication_test.luau header.
+- **Sprint 5 status**: 14/14 must-have done. Should-have (5-15..5-18) and nice-to-have (5-19) backlog untouched.
+- **Next**: /smoke-check sprint → /team-qa sprint → /gate-check (Production → Polish forward) OR continue with should-have backlog
