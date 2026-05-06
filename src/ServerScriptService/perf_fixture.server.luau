@@ -67,7 +67,7 @@ local BROADCAST_HZ = 15    -- matches CrowdStateBroadcast cadence
 local TARGET_FOLLOWER_COUNT = 80
 local CROWD_HUE = 8        -- art-bible §4 index 8 = Red
 
-Players.PlayerAdded:Connect(function(player: Player)
+local function onPlayerAdded(player: Player): ()
 	-- Wait briefly for client gameplay init (PlayerData load, character spawn,
 	-- CrowdManagerClient:start()). 2 s is generous; in practice ~0.5 s.
 	task.wait(2)
@@ -131,4 +131,13 @@ Players.PlayerAdded:Connect(function(player: Player)
 
 	-- Player left: clean up the crowd record.
 	CrowdStateClient._debugFireCrowdEliminated(crowdId)
+end
+
+-- F5 race: PlayerAdded may fire before this script's :Connect() runs (Studio
+-- spawns local player on Play start). Handle pre-existing players too.
+for _, player in Players:GetPlayers() do
+	task.spawn(onPlayerAdded, player)
+end
+Players.PlayerAdded:Connect(function(player: Player)
+	task.spawn(onPlayerAdded, player)
 end)
