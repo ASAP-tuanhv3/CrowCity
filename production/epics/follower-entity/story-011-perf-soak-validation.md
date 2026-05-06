@@ -1,7 +1,7 @@
 # Story 011: Perf soak validation — 80 LOD-0 followers ≤ 2.5 ms p99
 
 > **Epic**: FollowerEntity (Follower Entity — client simulation)
-> **Status**: Ready
+> **Status**: Complete
 > **Layer**: Feature
 > **Type**: Integration
 > **Estimate**: 3h

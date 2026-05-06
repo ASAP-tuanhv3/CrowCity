@@ -1,7 +1,7 @@
 # Story 012: Pool hide/unhide LOD swap — no Instance.new on swap
 
 > **Epic**: FollowerEntity (Follower Entity — client simulation)
-> **Status**: Ready
+> **Status**: Complete
 > **Layer**: Feature
 > **Type**: Integration
 > **Estimate**: 3h
