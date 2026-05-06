@@ -64,6 +64,12 @@ local function startClientGameplay()
 	CrowdManagerClient:init()
 	CrowdManagerClient:setPool(pool)
 	CrowdManagerClient:start()
+
+	-- Optional: AC-17 perf-soak fixture. Guarded by FollowerPerfFixtureEnabled
+	-- Workspace attribute. No-op in normal builds. Must run AFTER
+	-- CrowdManagerClient:start() so signal subscriptions are live.
+	local PerfFixture = require(ReplicatedFirst.Source.PerfFixture)
+	PerfFixture.start()
 end
 
 local function startPostLoadingSystem()
