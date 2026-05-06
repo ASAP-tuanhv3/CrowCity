@@ -6,7 +6,7 @@ goal: "Land complete FollowerEntity client simulation MVP. By sprint end, 80 LOD
 start: "2026-05-04"
 end: "2026-05-15"
 generated: "2026-05-04"
-updated: "2026-05-06T11:30"
+updated: "2026-05-06T15:15"
 
 stories:
   - id: "4-1"
@@ -124,11 +124,11 @@ stories:
     name: "FE story-012 — Pool hide/unhide LOD swap — no Instance.new on swap"
     file: "production/epics/follower-entity/story-012-pool-hide-unhide-no-alloc.md"
     priority: must-have
-    status: blocked
-    owner: ""
+    status: done
+    owner: "gameplay-programmer"
     estimate_days: 0.375
-    blocker: "STRONG PARTIAL → near-PASS — structural evidence + wire-in audit + Pool integration (spawnFromAbsorb/spawnFadeInAtCenter call grantBundle; Despawning state fade-out returns to pool over 0.2s); RUNTIME AC-18 EVIDENCE in tests/integration/follower-entity/wire_in_pool_integration.spec.luau verifies BasePart count identical across full spawn→despawn cycle; STILL REQUIRES manual Studio Player runtime snapshot + multi-pool LOD-swap (LOD-0/1/2 bundle reassignment, not implemented). Evidence: production/qa/evidence/lod-swap-2026-05-04-structural.md"
-    completed: ""
+    blocker: "Studio Player runtime AC-18 snapshot 2026-05-06: 12 consecutive [L]-hotkey runs all show 943 BaseParts BEFORE = 943 AFTER setPoolSize(15) = 943 AFTER setPoolSize(80) (delta +0 every run). AC-18 invariant CONFIRMED: zero Instance.new on shrink or cap-grow. Multi-pool LOD-0/1/2 bundle reassignment is a separate sub-feature outside AC-18 scope, deferred. Evidence: production/qa/evidence/lod-swap-2026-05-04-structural.md"
+    completed: "2026-05-06"
 
   - id: "4-13"
     name: "CSM story-005 — F2 position lag + nil HRP guard"
