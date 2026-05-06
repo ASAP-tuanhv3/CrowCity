@@ -25,17 +25,21 @@ return function()
 
 	local function spy()
 		local calls: { { n: number, [number]: any } } = {}
-		local fn: any = function(...)
-			table.insert(calls, table.pack(...))
-		end
-		fn.calls = calls
-		fn.callCount = function(): number
-			return #calls
-		end
-		fn.getCall = function(i: number): { n: number, [number]: any }
-			return calls[i]
-		end
-		return fn
+		local self: any = {
+			calls = calls,
+			callCount = function(): number
+				return #calls
+			end,
+			getCall = function(i: number): { n: number, [number]: any }
+				return calls[i]
+			end,
+		}
+		setmetatable(self, {
+			__call = function(_self: any, ...): ()
+				table.insert(calls, table.pack(...))
+			end,
+		})
+		return self
 	end
 
 	-- -------------------------------------------------------------------------

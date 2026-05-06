@@ -32,34 +32,42 @@ return function()
 
 	local function spy()
 		local calls: { { n: number, [number]: any } } = {}
-		local fn: any = function(...)
-			table.insert(calls, table.pack(...))
-		end
-		fn.calls = calls
-		fn.callCount = function(): number
-			return #calls
-		end
-		fn.getCall = function(i: number): { n: number, [number]: any }
-			return calls[i]
-		end
-		return fn
+		local self: any = {
+			calls = calls,
+			callCount = function(): number
+				return #calls
+			end,
+			getCall = function(i: number): { n: number, [number]: any }
+				return calls[i]
+			end,
+		}
+		setmetatable(self, {
+			__call = function(_self: any, ...): ()
+				table.insert(calls, table.pack(...))
+			end,
+		})
+		return self
 	end
 
 	--- Creates a spy that also appends a tag string to a shared ordered log on each call.
 	local function orderedSpy(log: { string }, tag: string)
 		local calls: { { n: number, [number]: any } } = {}
-		local fn: any = function(...)
-			table.insert(log, tag)
-			table.insert(calls, table.pack(...))
-		end
-		fn.calls = calls
-		fn.callCount = function(): number
-			return #calls
-		end
-		fn.getCall = function(i: number): { n: number, [number]: any }
-			return calls[i]
-		end
-		return fn
+		local self: any = {
+			calls = calls,
+			callCount = function(): number
+				return #calls
+			end,
+			getCall = function(i: number): { n: number, [number]: any }
+				return calls[i]
+			end,
+		}
+		setmetatable(self, {
+			__call = function(_self: any, ...): ()
+				table.insert(log, tag)
+				table.insert(calls, table.pack(...))
+			end,
+		})
+		return self
 	end
 
 	-- -------------------------------------------------------------------------
