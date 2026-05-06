@@ -54,6 +54,33 @@ end
 
 print("[perf_fixture] AC-17 perf soak harness ENABLED — waiting for player join")
 
+-- Ensure a baseplate + SpawnLocation exist so the player can stand and observe.
+-- Empty Workspace (default rojo build) has neither; character would fall into void.
+-- Both Parts created here are tagged so Studio editing pass can find/remove if needed.
+if Workspace:FindFirstChild("PerfFixtureBaseplate") == nil then
+	local baseplate = Instance.new("Part")
+	baseplate.Name = "PerfFixtureBaseplate"
+	baseplate.Size = Vector3.new(200, 1, 200)
+	baseplate.Position = Vector3.new(0, -0.5, 0)
+	baseplate.Anchored = true
+	baseplate.Material = Enum.Material.SmoothPlastic
+	baseplate.BrickColor = BrickColor.new("Dark stone grey")
+	baseplate.TopSurface = Enum.SurfaceType.Smooth
+	baseplate.Parent = Workspace
+end
+
+if Workspace:FindFirstChild("PerfFixtureSpawn") == nil then
+	-- Spawn at slight offset from origin so player isn't right inside the crowd.
+	local spawn = Instance.new("SpawnLocation")
+	spawn.Name = "PerfFixtureSpawn"
+	spawn.Size = Vector3.new(6, 1, 6)
+	spawn.Position = Vector3.new(0, 0.5, 30) -- 30 studs from crowd; nice viewing distance
+	spawn.Anchored = true
+	spawn.Neutral = true
+	spawn.BrickColor = BrickColor.new("Bright green")
+	spawn.Parent = Workspace
+end
+
 -- Lazy-require so production builds without the fixture attribute don't pay
 -- the require cost or accidentally pull in test-only seams.
 local CrowdStateClient = require(ReplicatedStorage.Source.CrowdStateClient)
