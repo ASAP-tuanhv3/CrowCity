@@ -30,7 +30,7 @@
 #   Superseded entries:     Grep pattern="status: superseded"
 
 version: 1
-last_updated: "2026-04-20"
+last_updated: "2026-05-02"
 
 # ─── STATE OWNERSHIP ─────────────────────────────────────────────────────────
 # Who is the authoritative owner of each piece of shared game state.
@@ -57,6 +57,20 @@ state_ownership:
       - docs/architecture/adr-0006-module-placement-rules.md  # ServerStorage placement firewall codification
     added: 2026-04-20
     revised: 2026-04-26
+
+  - state: client_render_pool_per_crowd
+    status: active
+    owner_system: follower-entity-client
+    adr: docs/architecture/adr-0007-client-rendering-strategy.md
+    interface: "FollowerEntity owns 1,500-Part pre-allocated pool (12 crowds × {80 own-close + 30 rival-close + 15 medium} per ADR-0001 caps). Read-only query: FollowerEntity.getPeelingCount(crowdId): number. Write access via setLOD / setPoolSize from FollowerLODManager only."
+    write_access: follower-entity-client-only
+    referenced_by:
+      - docs/architecture/adr-0007-client-rendering-strategy.md
+      - docs/architecture/adr-0001-crowd-replication-strategy.md  # caps + no-Humanoid + 2-Part rig
+      - docs/architecture/adr-0003-performance-budget.md           # 1.5/2.5 ms desktop/mobile per-frame budget
+      - docs/architecture/adr-0006-module-placement-rules.md       # ReplicatedStorage/Source/FollowerEntity/Client.luau path
+    added: 2026-05-02
+    revised: ""
 
 # Example:
 #
@@ -276,6 +290,47 @@ interfaces:
       - docs/architecture/adr-0006-module-placement-rules.md       # DataStoreService ban + Source Tree Map
       - docs/architecture/adr-0010-server-authoritative-validation-policy.md  # 4-check guard on PlayerData mutation requests
     added: 2026-04-27
+    revised: ""
+
+  - contract: follower_entity_lod_authority_split
+    status: active
+    pattern: method_call
+    producer: follower-lod-manager-client
+    consumers:
+      - follower-entity-client     # executes LOD changes via setLOD/setPoolSize; pool owner
+    adr: docs/architecture/adr-0007-client-rendering-strategy.md
+    signal_signature: |
+      FollowerEntity.setLOD(crowdId: string, tier: 1 | 2 | 3) -> ()
+        — LODManager pushes; FollowerEntity executes Tier swap on next RenderStepped frame.
+      FollowerEntity.setPoolSize(crowdId: string, n: number) -> ()
+        — Shrink path MUST first call getPeelingCount(crowdId); defer shrink 1 LOD-tick if > 0 (eviction-protection contract; sole inviolable inter-module invariant).
+      FollowerEntity.getPeelingCount(crowdId: string): number
+        — Read-only query consumed by LODManager + CrowdCollisionResolution. FollowerEntity does not write to this counter externally.
+    enforcement: "FollowerEntity is the sole producer of `_peelingFollowers` set + sole executor of pool resize. FollowerLODManager is the sole producer of LOD decisions (10 Hz cadence). Cross-module authority violations forbidden via cross_module_lod_authority_violation pattern."
+    referenced_by:
+      - docs/architecture/adr-0007-client-rendering-strategy.md
+      - docs/architecture/adr-0001-crowd-replication-strategy.md  # LOD caps + cadence
+      - docs/architecture/adr-0003-performance-budget.md           # 1.5/2.5 ms client per-frame budget
+    added: 2026-05-02
+    revised: ""
+
+  - contract: follower_peel_buffer
+    status: active
+    pattern: reliable_remote_event
+    producer: crowd-collision-resolution-server
+    consumers:
+      - follower-entity-client     # consumes startPeel(ownId, rivalId, n) for visual peel transit
+    adr: docs/architecture/adr-0007-client-rendering-strategy.md
+    signal_signature: |
+      reliable RemoteEvent CrowdPeelEvent fires per overlap-pair + tick batch with payload {ownCrowdId, rivalCrowdId, n}.
+      FollowerEntity.startPeel(ownId: string, rivalId: string, n: number) -> ()
+        — selects N peel-eligible Parts via F6 (closest to rival), tweens hue from own→rival across F7 transit duration, returns to rival's pool on completion.
+        — Parts in transit are flagged in _peelingFollowers; eviction-protection contract blocks pool shrink until peel completes.
+    enforcement: "CCR sole producer of CrowdPeelEvent; FollowerEntity sole consumer. Direct UREvent peel emission forbidden (peel is a discrete event, not state)."
+    referenced_by:
+      - docs/architecture/adr-0007-client-rendering-strategy.md
+      - docs/architecture/adr-0010-server-authoritative-validation-policy.md  # peel relevance filter (server-only)
+    added: 2026-05-02
     revised: ""
 
 # Example:
@@ -934,6 +989,34 @@ forbidden_patterns:
     why: "MessagingService is unreliable + not session-locked + not durable; it's a fan-out signal channel, not a data-replication channel. Using it for player data introduces split-brain scenarios where two servers have divergent views of a player's state. ProfileStore session lock is the durable + consistent source of truth — any cross-server move waits for lock release."
     adr: docs/architecture/adr-0011-persistence-schema.md
     added: 2026-04-27
+
+  - pattern: instance_new_in_render_loop
+    status: active
+    description: "FollowerEntity MUST NOT call Instance.new() inside its RenderStepped boids loop or any per-frame hot path. The 1,500-Part pool is pre-allocated at boot via task.defer in 60 batches of 25 Parts. Active assignment pulls from inactive set; deactivation returns to inactive set with Transparency=1 + Y=-1000. Mid-round Instance.new() is a budget bomb (Roblox Part allocation is non-trivial; 80 allocations during a peel event would spike the frame past the 2.5 ms mobile budget)."
+    why: "Per-frame Instance.new() defeats the entire pool design and tanks min-spec mobile FPS during dense-fight scenarios. Already proven catastrophic in prototype (`prototypes/crowd-sync/REPORT.md` baseline). Pool pattern is also re-used by NPCSpawner per ADR-0008 — keeping this discipline cross-system prevents one module from poisoning frame budget for another."
+    adr: docs/architecture/adr-0007-client-rendering-strategy.md
+    added: 2026-05-02
+
+  - pattern: humanoid_movement_for_followers
+    status: active
+    description: "Follower rendering MUST NOT use Humanoid:MoveTo, BodyMovers (BodyVelocity, BodyPosition, BodyGyro, BodyAngularVelocity, BodyForce, BodyThrust), AlignPosition, AlignOrientation, LinearVelocity, AngularVelocity, VectorForce, Torque, or any physics-driven movement constraint. Movement is procedural CFrame writes only, applied per-frame in the RenderStepped boids loop. Tween on CFrame is also forbidden in the boids loop; tweens are reserved for transparency cross-fade on tier swap and snap-in/peel-transit visuals only."
+    why: "Humanoid + physics movement carry per-character pathfinding, collision, and Solver overhead at 60 Hz. At 800+ followers per server this overhead is unsupportable on mobile. Pillar 4 anti-P2W also forbids any per-follower stat read that could be skin-derived. Already vetoed in ADR-0001 §humanoid_on_followers; this pattern extends the ban to all physics-based movement APIs that would similarly inflate cost."
+    adr: docs/architecture/adr-0007-client-rendering-strategy.md
+    added: 2026-05-02
+
+  - pattern: lod_eviction_during_peel
+    status: active
+    description: "FollowerEntity.setPoolSize(crowdId, newN) where newN < currentN MUST first query getPeelingCount(crowdId). If getPeelingCount(crowdId) > 0, the shrink is deferred for one LOD tick (0.1 s) and re-attempted; followers in `_peelingFollowers` set MUST be excluded from eviction. This is the sole inviolable inter-module invariant between FollowerEntity and FollowerLODManager (per follower-lod-manager.md Overview)."
+    why: "Mid-peel eviction would pop followers out of existence mid-transit, breaking the 'followers peel off you one by one, flipping hue as they cross over' visual that Pillar 5 (comeback/loss feel) depends on. The peel is the most emotionally charged visual moment in the game; eviction during it is the worst possible aesthetic violation. Integration test asserts shrink defers when getPeelingCount > 0."
+    adr: docs/architecture/adr-0007-client-rendering-strategy.md
+    added: 2026-05-02
+
+  - pattern: cross_module_lod_authority_violation
+    status: active
+    description: "FollowerEntity MUST NOT make LOD decisions (no per-frame distance check against camera; no tier selection; no cap arbitration). FollowerLODManager MUST NOT execute LOD changes (no CFrame writes; no Part Transparency manipulation; no pool resize). Authority split is strict: LODManager pushes setLOD / setPoolSize at 10 Hz cadence; FollowerEntity executes on next RenderStepped frame. Cross-violations include: FollowerEntity reading Camera.CFrame, FollowerLODManager calling part.CFrame = ..., either module owning data the other should query."
+    why: "The two-module split exists precisely to allow FollowerLODManager to swap policy (e.g., camera-cone-aware caps in V1, dynamic budget-based caps in V1.5) without touching FollowerEntity execution. Collapsing decisions into FollowerEntity (or execution into LODManager) breaks the GDD-locked sibling pattern and makes per-frame budget enforcement impossible (one module's RenderStepped budget would hide two cost sources). Distance-check at per-frame cadence also wastes budget — 10 Hz is sufficient per ADR-0001 §LOD cadence."
+    adr: docs/architecture/adr-0007-client-rendering-strategy.md
+    added: 2026-05-02
 
 # Example:
 #
