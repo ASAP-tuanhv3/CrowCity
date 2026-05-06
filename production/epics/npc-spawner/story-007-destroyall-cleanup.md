@@ -1,7 +1,7 @@
 # Story 007: destroyAll() cleanup — cancel pending timers + tweens
 
 > **Epic**: NPCSpawner (NPC Spawner)
-> **Status**: Ready
+> **Status**: Complete
 > **Layer**: Feature
 > **Type**: Logic
 > **Estimate**: 2h
@@ -103,3 +103,10 @@
 
 - Depends on: Story 001 (Heartbeat handle), Story 005 (respawn timer handles), Story 006 (fade tween handles).
 - Unlocks: T9 round lifecycle integration test (RoundLifecycle epic).
+
+
+## Completion Notes
+**Completed**: 2026-05-06 (Sprint 5 batch close)
+**Lean mode**: QL-TEST-COVERAGE + LP-CODE-REVIEW gates skipped per production/review-mode.txt
+**Audits**: selene 0/7/0, asset-id PASS, persistence PASS
+**Test Evidence**: see story Test Evidence section — file at expected path

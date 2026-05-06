@@ -1,7 +1,7 @@
 # Story 009: UREvent NpcStateBroadcast + client mirror pool
 
 > **Epic**: NPCSpawner (NPC Spawner)
-> **Status**: Ready
+> **Status**: Complete
 > **Layer**: Feature + Presentation
 > **Type**: Integration
 > **Estimate**: 5h
@@ -118,3 +118,10 @@
 
 - Depends on: Stories 001-008 (full server-side NPCSpawner); existing `Network` buffer codec from Sprint 3 (CrowdStateBroadcast epic).
 - Unlocks: AbsorbSystem story-007 perf soak (NPCs visible to overlap test); end-to-end vertical slice playtest.
+
+
+## Completion Notes
+**Completed**: 2026-05-06 (Sprint 5 batch close)
+**Lean mode**: QL-TEST-COVERAGE + LP-CODE-REVIEW gates skipped per production/review-mode.txt
+**Audits**: selene 0/7/0, asset-id PASS, persistence PASS
+**Test Evidence**: see story Test Evidence section — file at expected path

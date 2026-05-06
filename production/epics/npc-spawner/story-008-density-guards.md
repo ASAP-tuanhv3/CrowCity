@@ -1,7 +1,7 @@
 # Story 008: F2/F4 density guards — R_absorb EPSILON guard + steady-state equilibrium
 
 > **Epic**: NPCSpawner (NPC Spawner)
-> **Status**: Ready
+> **Status**: Complete
 > **Layer**: Feature
 > **Type**: Logic
 > **Estimate**: 3h
@@ -95,3 +95,10 @@
 - Depends on: Story 001 (`ρ_design` available); Story 005 (respawn delay constants).
 - Cross-ref to: AbsorbSystem story-007 (F4 same formula); validated via `/consistency-check`.
 - Unlocks: Story 009 perf soak + AbsorbSystem perf soak.
+
+
+## Completion Notes
+**Completed**: 2026-05-06 (Sprint 5 batch close)
+**Lean mode**: QL-TEST-COVERAGE + LP-CODE-REVIEW gates skipped per production/review-mode.txt
+**Audits**: selene 0/7/0, asset-id PASS, persistence PASS
+**Test Evidence**: see story Test Evidence section — file at expected path

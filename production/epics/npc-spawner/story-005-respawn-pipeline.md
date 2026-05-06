@@ -1,7 +1,7 @@
 # Story 005: Respawn pipeline — delay, position, crowd exclusion, fallback
 
 > **Epic**: NPCSpawner (NPC Spawner)
-> **Status**: Ready
+> **Status**: Complete
 > **Layer**: Feature
 > **Type**: Logic
 > **Estimate**: 4h
@@ -111,3 +111,10 @@
 
 - Depends on: Story 001 (pool), Story 002 (reclaim hook), Story 003 (cache invalidation), Story 004 (walk loop state).
 - Unlocks: Story 006 (fade-in tween), Story 007 (timer cancel), Story 008 (steady-state).
+
+
+## Completion Notes
+**Completed**: 2026-05-06 (Sprint 5 batch close)
+**Lean mode**: QL-TEST-COVERAGE + LP-CODE-REVIEW gates skipped per production/review-mode.txt
+**Audits**: selene 0/7/0, asset-id PASS, persistence PASS
+**Test Evidence**: see story Test Evidence section — file at expected path

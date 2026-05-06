@@ -1,7 +1,7 @@
 # Story 003: getAllActiveNPCs frozen snapshot + cache invalidation
 
 > **Epic**: NPCSpawner (NPC Spawner)
-> **Status**: Ready
+> **Status**: Complete
 > **Layer**: Feature
 > **Type**: Logic
 > **Estimate**: 2h
@@ -100,3 +100,10 @@
 
 - Depends on: Story 001 (pool), Story 002 (reclaim hook).
 - Unlocks: AbsorbSystem stories that consume snapshot.
+
+
+## Completion Notes
+**Completed**: 2026-05-06 (Sprint 5 batch close)
+**Lean mode**: QL-TEST-COVERAGE + LP-CODE-REVIEW gates skipped per production/review-mode.txt
+**Audits**: selene 0/7/0, asset-id PASS, persistence PASS
+**Test Evidence**: see story Test Evidence section — file at expected path

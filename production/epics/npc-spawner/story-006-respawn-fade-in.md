@@ -1,7 +1,7 @@
 # Story 006: Respawn fade-in (TweenService 1→0 over 0.3s)
 
 > **Epic**: NPCSpawner (NPC Spawner)
-> **Status**: Ready
+> **Status**: Complete
 > **Layer**: Feature
 > **Type**: Visual/Feel
 > **Estimate**: 2h
@@ -103,3 +103,10 @@
 
 - Depends on: Story 005 (`_doRespawn` site).
 - Unlocks: Story 007 (cancel handle), Story 009 (transparency delta replication).
+
+
+## Completion Notes
+**Completed**: 2026-05-06 (Sprint 5 batch close)
+**Lean mode**: QL-TEST-COVERAGE + LP-CODE-REVIEW gates skipped per production/review-mode.txt
+**Audits**: selene 0/7/0, asset-id PASS, persistence PASS
+**Test Evidence**: see story Test Evidence section — file at expected path

@@ -1,7 +1,7 @@
 # Story 001: NPCSpawner pool bootstrap — 300 Parts chunked + Heartbeat + ARENA validation
 
 > **Epic**: NPCSpawner (NPC Spawner)
-> **Status**: Ready
+> **Status**: Complete
 > **Layer**: Feature
 > **Type**: Logic
 > **Estimate**: 4h
@@ -112,7 +112,7 @@
 **Required evidence**:
 - `tests/unit/npc-spawner/pool_bootstrap.spec.luau` — must exist and pass
 
-**Status**: [ ] Not yet created
+**Status**: [x] Created — `tests/unit/npc-spawner/pool_bootstrap.spec.luau` (12 it() blocks; all 6 ACs covered + idempotency + state-machine + getDesignDensity pre-init guard)
 
 ---
 
@@ -120,3 +120,28 @@
 
 - Depends on: TickOrchestrator + RoundLifecycle (createAll caller); Connections.luau pattern.
 - Unlocks: All other NPCSpawner stories.
+
+---
+
+## Completion Notes
+
+**Completed**: 2026-05-06
+**Criteria**: 6/6 passing — all ACs covered by automated tests
+**Deviations** (advisory):
+- Pre-alloc timing — story said `createAll`; ADR-0008 said `init()`. Implementation follows ADR-0008 (canonical). Header doc-comment cites resolution.
+- TR-013 registry text ("ServerTickAccumulator callback") is stale — superseded by ADR-0008 §Cadence Exemption. Flag for next `/architecture-review` to refresh.
+- AC-03 substitutes pool-size invariant for `Instance.new` global spy (not feasible in Luau sandbox). Story 5-2 must extend test with reclaim/respawn cycle simulation — TODO marker added.
+- TestEZ `it()` description strings deviate from `.claude/rules/test-standards.md` naming rule. Project-wide TestEZ idiom; needs qa-lead ruling before retroactive change.
+
+**Test Evidence**: `tests/unit/npc-spawner/pool_bootstrap.spec.luau` (Logic — 12 it() blocks, BLOCKING gate satisfied)
+
+**Files**:
+- `src/ServerStorage/Source/NPCSpawner/init.luau` (created, 342 lines)
+- `src/ReplicatedStorage/Source/SharedConstants/NPCSpawnerConstants.luau` (created, 44 lines)
+- `tests/unit/npc-spawner/pool_bootstrap.spec.luau` (created, 349 lines)
+
+**Audits**: selene 0/7/0, asset-id PASS, persistence PASS
+
+**Code Review**: Complete — `/code-review` ran 2026-05-06; verdict CHANGES REQUIRED (3 BLOCKING test gaps); fixes applied (added 2 tests + workspace attribute isolation); re-verified clean.
+
+**Lean mode**: QL-TEST-COVERAGE + LP-CODE-REVIEW gates skipped per `production/review-mode.txt`.
