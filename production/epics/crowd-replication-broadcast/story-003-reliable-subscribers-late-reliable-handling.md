@@ -1,7 +1,7 @@
 # Story 003: Reliable signal subscribers + 4 client signals + late-reliable handling
 
 > **Epic**: crowd-replication-broadcast
-> **Status**: Ready
+> **Status**: Complete
 > **Layer**: Presentation
 > **Type**: Integration
 > **Manifest Version**: 2026-04-27
@@ -85,3 +85,10 @@
 
 - Depends on: story-001 (cache + lookup); story-002 (cache merge respects Eliminated terminal); CSM story-001 (CrowdCreated/Destroyed fire), story-003 (CrowdRelicChanged fire), story-002 (CrowdCountClamped fire), story-006 (CrowdEliminated fire)
 - Unlocks: HUD / Nameplate / Follower Entity / VFX Manager epic stories (subscribe to client BindableEvents)
+
+
+## Completion Notes
+**Completed**: 2026-05-07 (Sprint 5 scope-add batch close — CRB unblock for follower visualization)
+**Lean mode**: QL-TEST-COVERAGE + LP-CODE-REVIEW skipped per production/review-mode.txt
+**Audits**: selene 0/7/0, asset-id PASS, persistence PASS
+**Test Evidence**: see story Test Evidence section — files at expected paths

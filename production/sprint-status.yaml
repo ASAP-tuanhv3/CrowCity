@@ -6,7 +6,7 @@ goal: "Land NPC Spawner full epic + Absorb System Logic core. By sprint end, neu
 start: "2026-05-07"
 end: "2026-05-20"
 generated: "2026-05-06"
-updated: "2026-05-06"
+updated: "2026-05-07"
 
 stories:
   - id: "5-1"
@@ -198,3 +198,23 @@ stories:
     estimate_days: 0.5
     blocker: ""
     completed: ""
+
+  - id: "5-20"
+    name: "SCOPE-ADD CRB story-002 — Broadcast subscriber + decode + stale freeze (F2) + Eliminated defensive"
+    file: "production/epics/crowd-replication-broadcast/story-002-broadcast-subscriber-decode-stale-defense.md"
+    priority: should-have
+    status: done
+    owner: "gameplay-programmer"
+    estimate_days: 0.375
+    blocker: ""
+    completed: "2026-05-07"
+
+  - id: "5-21"
+    name: "SCOPE-ADD CRB story-003 — Reliable subscribers + 4 client BindableEvent signals + late-reliable handling"
+    file: "production/epics/crowd-replication-broadcast/story-003-reliable-subscribers-late-reliable-handling.md"
+    priority: should-have
+    status: done
+    owner: "gameplay-programmer"
+    estimate_days: 0.5
+    blocker: ""
+    completed: "2026-05-07"

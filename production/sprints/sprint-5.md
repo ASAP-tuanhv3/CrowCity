@@ -38,7 +38,7 @@ Land NPC Spawner full epic + Absorb System Logic core. By sprint end, neutral NP
 
 **Must Have total: 42h ≈ 5.3d**
 
-### Should Have (1.9d / 15h)
+### Should Have (2.8d / 22h)
 
 | ID | Task | Owner | Est. | Deps | Acceptance Criteria |
 |----|------|-------|------|------|---------------------|
@@ -46,8 +46,12 @@ Land NPC Spawner full epic + Absorb System Logic core. By sprint end, neutral NP
 | 5-16 | Absorb story-007 — Perf soak 3600 overlap tests p99 ≤ 1.5ms | gameplay-programmer | 3h | 5-14 | story-007 ACs pass; synthetic 8 crowds × 60 NPCs over 60 ticks; p99 ≤ 1.5ms (manifest 0.5ms advisory); evidence doc |
 | 5-17 | CSM story-005 — F2 position lag + nil HRP guard (Sprint 4 backlog) | gameplay-programmer | 4h | 3-2 done | story-005 ACs (AC-7/19) pass; nil HRP does not crash position pull |
 | 5-18 | MSM story-007 — broadcast Participation + GetParticipation + AFKToggle 4-Check (Sprint 4 backlog) | gameplay-programmer | 4h | 3-9 done | story-007 ACs pass; resolves Selene Condition 2 from Sprint 3 sign-off; ADR-0010 4-Check Guard validated |
+| 5-20 | **SCOPE-ADD** CRB story-002 — Broadcast subscriber + decode + idempotent overwrite + stale freeze (F2) + Eliminated defensive | gameplay-programmer | 3h | 4-1 done (CRB 001) | story-002 ACs pass; client UREvent CrowdStateBroadcast decode populates CrowdStateClient cache; tick_is_newer rejects stale; Eliminated state defensive freeze |
+| 5-21 | **SCOPE-ADD** CRB story-003 — Reliable subscribers + 4 client BindableEvent signals + late-reliable handling | gameplay-programmer | 4h | 4-1 done, 5-20 (decode shape) | story-003 ACs pass; CrowdCreated/CrowdDestroyed/CrowdEliminated/CrowdRelicChanged reliable subscribers wire CrowdStateClient BindableEvents; late-reliable handled |
 
-**Should Have total: 15h ≈ 1.9d**
+**Should Have total: 22h ≈ 2.8d**
+
+> **Scope addition rationale (2026-05-07)**: CRB 002+003 added mid-sprint after Sprint 5 batch-close revealed FollowerEntity client cannot spawn followers without Network → CrowdStateClient bridge. CRB 001 (mirror cache) closed Sprint 4 but 002-005 never scheduled. 002+003 are minimum unblock for visual confirmation. CRB 004 (server transport phase machine) + 005 (bandwidth perf) deferred to Sprint 6.
 
 ### Nice to Have (0.5d / 4h)
 
@@ -57,7 +61,7 @@ Land NPC Spawner full epic + Absorb System Logic core. By sprint end, neutral NP
 
 **Nice to Have total: 4h ≈ 0.5d**
 
-**Sprint planned total: 7.6d** (within 8-day capacity, 0.4d slack on top of 2d buffer)
+**Sprint planned total: 8.6d** (with CRB 002+003 scope-add; 0.6d over nominal 8d; absorbs into 2d buffer — net 1.4d buffer remaining)
 
 ## Carryover from Previous Sprint
 

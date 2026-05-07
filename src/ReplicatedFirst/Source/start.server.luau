@@ -27,6 +27,13 @@ local function preGameLoadTasksAsync()
 end
 
 local function startClientGameplay()
+	-- CRB story-002+003: wire CrowdStateClient to Network — must run BEFORE
+	-- CrowdManagerClient:init() so CrowdCreated reliable + CrowdStateBroadcast
+	-- UREvent populate the cache before FollowerEntity subscribers connect.
+	-- Network.startClientAsync() has already completed at this call site.
+	local CrowdStateClient = require(ReplicatedStorage.Source.CrowdStateClient)
+	CrowdStateClient.start()
+
 	-- FollowerEntity client simulation orchestrator (Sprint 4 / Stories 4-2..4-12).
 	-- Singleton: init() subscribes to CrowdStateClient.CrowdCreated/Eliminated;
 	-- start() begins the single RenderStepped loop iterating all active crowds.

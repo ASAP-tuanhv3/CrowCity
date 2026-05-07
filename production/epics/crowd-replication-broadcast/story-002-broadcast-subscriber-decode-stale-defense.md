@@ -1,7 +1,7 @@
 # Story 002: Broadcast subscriber + decode + idempotent overwrite + stale freeze (F2) + Eliminated defensive
 
 > **Epic**: crowd-replication-broadcast
-> **Status**: Ready
+> **Status**: Complete
 > **Layer**: Presentation
 > **Type**: Logic
 > **Manifest Version**: 2026-04-27
@@ -125,3 +125,10 @@
 
 - Depends on: story-001 (mirror module + tick_is_newer); Foundation `network-layer-ext` story-001 (UREvent wrapper) + story-003 (BufferCodec.CrowdState.decode); CSM story-008 (server fires the broadcast)
 - Unlocks: story-003 (reliable subscribers populate same cache); HUD/Nameplate/FollowerEntity consume cache
+
+
+## Completion Notes
+**Completed**: 2026-05-07 (Sprint 5 scope-add batch close — CRB unblock for follower visualization)
+**Lean mode**: QL-TEST-COVERAGE + LP-CODE-REVIEW skipped per production/review-mode.txt
+**Audits**: selene 0/7/0, asset-id PASS, persistence PASS
+**Test Evidence**: see story Test Evidence section — files at expected paths

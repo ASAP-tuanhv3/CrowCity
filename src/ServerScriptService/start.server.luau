@@ -119,10 +119,41 @@ ShutdownCoordinator.register({
 })
 -- ---------------------------------------------------------------------------
 
--- TODO: Initialize your global server-side gameplay systems here.
--- Example:
---   local MyGameplayServer = require(ServerStorage.Source.MyGameplay.MyGameplayServer)
---   MyGameplayServer.start()
+-- ---------------------------------------------------------------------------
+-- Sprint 5 gameplay boot wiring
+--
+-- NPCSpawner.init() — pre-allocates 300-Part neutral pool. ARENA_WALKABLE_AREA_SQ
+-- workspace attribute MUST be set before this runs (asserted at init).
+-- Default = 40000 studs² (200×200 ARENA) if attribute absent (dev convenience).
+-- ---------------------------------------------------------------------------
+do
+	local arenaArea = workspace:GetAttribute("ArenaWalkableAreaSq")
+	if typeof(arenaArea) ~= "number" or arenaArea <= 0 then
+		warn("[start] ArenaWalkableAreaSq attribute missing — defaulting to 40000 (200×200 ARENA)")
+		workspace:SetAttribute("ArenaWalkableAreaSq", 40000)
+	end
+	NPCSpawner.init({})
+end
+
+-- ---------------------------------------------------------------------------
+-- Auto-start a round on first player join (dev convenience).
+-- Production gameplay loop should drive this via MatchStateServer Lobby→Round
+-- timer once MSM is fully wired (Sprint 6+).
+-- ---------------------------------------------------------------------------
+local RoundLifecycle = require(ServerStorage.Source.RoundLifecycle)
+local _roundStarted = false
+
+local function startRoundForPlayer(player: Player)
+	if _roundStarted then return end
+	_roundStarted = true
+	local ok, err = pcall(RoundLifecycle.createAll, { player })
+	if not ok then
+		warn("[start] RoundLifecycle.createAll failed:", err)
+		_roundStarted = false
+	else
+		print("[start] Round started for", player.Name, "— crowd spawned")
+	end
+end
 
 local function onPlayerAdded(player: Player)
 	if not PlayerDataServer.hasLoaded(player) then
@@ -131,13 +162,11 @@ local function onPlayerAdded(player: Player)
 
 	PlayerObjectsContainer.registerPlayer(player)
 
-	-- TODO: Initialize per-player server-side gameplay systems here.
-	-- Example:
-	--   local MyGameplayServer = require(ServerStorage.Source.MyGameplay.MyGameplayServer)
-	--   MyGameplayServer.createPlayerData(player)
-
 	FtueManagerServer.onPlayerAdded(player)
 	CharacterSpawner.startRespawnLoop(player)
+
+	-- Dev auto-start: spawn a crowd for the first player who joins.
+	startRoundForPlayer(player)
 end
 
 safePlayerAdded(onPlayerAdded)
