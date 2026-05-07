@@ -27,12 +27,8 @@ local function preGameLoadTasksAsync()
 end
 
 local function startClientGameplay()
-	-- CRB story-002+003: wire CrowdStateClient to Network — must run BEFORE
-	-- CrowdManagerClient:init() so CrowdCreated reliable + CrowdStateBroadcast
-	-- UREvent populate the cache before FollowerEntity subscribers connect.
-	-- Network.startClientAsync() has already completed at this call site.
-	local CrowdStateClient = require(ReplicatedStorage.Source.CrowdStateClient)
-	CrowdStateClient.start()
+	-- CrowdStateClient.start() wired earlier in postGameLoadTasksAsync (immediately
+	-- after Network.startClientAsync) so subscribers are live before character/data wait.
 
 	-- FollowerEntity client simulation orchestrator (Sprint 4 / Stories 4-2..4-12).
 	-- Singleton: init() subscribes to CrowdStateClient.CrowdCreated/Eliminated;
@@ -97,6 +93,13 @@ local function postGameLoadTasksAsync()
 
 	LoadingScreen.updateDetailText("Waiting for network...")
 	Network.startClientAsync()
+
+	-- CRB story-002+003: wire CrowdStateClient subscribers immediately after Network is up.
+	-- Must NOT wait for PlayerData / character loaded — broadcast can arrive at any time
+	-- post-Network.startClientAsync, and missing the first CrowdCreated reliable would
+	-- leave FollowerEntity inert. Idempotent — safe to call before startClientGameplay.
+	require(ReplicatedStorage.Source.CrowdStateClient).start()
+
 	PlayerDataClient.start()
 
 	if not PlayerDataClient.hasLoaded() then

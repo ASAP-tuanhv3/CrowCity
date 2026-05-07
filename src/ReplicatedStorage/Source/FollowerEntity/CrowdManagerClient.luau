@@ -275,6 +275,16 @@ function CrowdManagerClient:start(): ()
 	-- Connect exactly one RenderStepped callback per ADR-0007 §Boids Loop +
 	-- ADR-0002 §audit-no-competing-heartbeat.
 	_renderStepConn = RunService.RenderStepped:Connect(onRenderStepped)
+
+	-- Catch-up: client boot order can race ahead of CrowdCreated reliable arrival.
+	-- CrowdStateClient.start() wires before Pool is initialised, so any CrowdCreated
+	-- BindableEvent fired pre-init was missed by our subscriber. Iterate the live
+	-- cache and construct FollowerEntity for any crowds we don't already track.
+	for _, record in ipairs(CrowdStateClient.getAllActive()) do
+		if _crowds[record.crowdId] == nil then
+			constructCrowd(record.crowdId)
+		end
+	end
 end
 
 --- Stops the RenderStepped loop and destroys all per-crowd clients.
