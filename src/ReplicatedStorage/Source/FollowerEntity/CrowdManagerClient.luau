@@ -137,6 +137,23 @@ local function constructCrowd(crowdId: string): ()
 		client:setPool(_pool)
 	end
 	_crowds[crowdId] = client
+
+	-- Initial spawn: read crowd record's count + grow to that size via setPoolSize.
+	-- setPoolSize internally fires _onCapGrowRequest(growCount); the cap-grow callback
+	-- enqueues N FadeIn requests through SpawnThrottleQueue. onRenderStepped drains
+	-- 4/frame, calling spawnFadeInAtCenter → Pool.grantBundle → bundle parented at
+	-- crowd center. Without this trigger, _positions stays empty and _update no-ops.
+	-- Source: bridges CRB story-003 reliable CrowdCreated → FE Sprint 4 Pool grant path.
+	local record = CrowdStateClient.get(crowdId)
+	if record ~= nil and record.count and record.count > 0 then
+		local ok, err = pcall(function()
+			(client :: any):setPoolSize(record.count)
+		end)
+		if not ok then
+			warn("[CrowdManagerClient] setPoolSize failed for crowdId=" .. crowdId
+				.. " count=" .. tostring(record.count) .. ": " .. tostring(err))
+		end
+	end
 end
 
 --- Destroys the FollowerEntityClient for `crowdId` and removes it from the map.
