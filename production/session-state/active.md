@@ -1281,3 +1281,22 @@ User said "continue" again. Implemented full Pool integration into wire-in.
 - Action items before sprint close: (1) run 6-3 (npc-spawner cleanup); (2) new story for 11 follower-entity failures; (3) run /qa-plan sprint for Sprint 6 (artifact missing); (4) update tests/smoke/critical-paths.md (Sprint 2-stale → Sprint 6).
 - Sprint 6 progress: 8/12 must-have done (6-2, 6-4..6-9, 6-12). Remaining must: 6-1, 6-3, 6-10, 6-11.
 - Next recommended: 6-3 NPC test infra cleanup (3h, fixes 6 of the 17 failures — direct close-out path); OR new tech-debt story for 11 follower-entity failures (larger scope, may need /quick-design); OR commit 6-12 work first (smoke report + 2 test fixes + sprint tracking).
+
+## Session Extract — /story-done 2026-05-08 (6-3 Complete)
+- Verdict: COMPLETE
+- Task: 6-3 NPC test infra cleanup (no story file; wiring/test-debt scope)
+- Fixed all 6 Sprint 5 npc-spawner test failures via 3 root-cause fixes:
+  1. Pool growth across tests: added `_initToken` epoch + token check in init() task.defer batches; _resetForTests bumps token. Defers from prior init are rejected.
+  2. Orphan _NpcPool folder: _resetForTests destroys ServerStorage._NpcPool. Production never re-runs init() so this is test-only cleanup. ADR-0008 explicitly forbids destroying pool on round transitions (mid-round Instance.new banned).
+  3. Respawn state guard: _doRespawn returns early on _state != "Ticking". Tests using _seedNpcForTest skip createAll, so added _setStateForTest test helper + seedActive bundling helper in both spec files.
+- Test results: 854 → 860 passed (+6); 11 failures remain (all follower-entity, out of 6-3 scope per sprint-status task name "fix 6 Sprint 5 failures").
+- Code-review applied: _setStateForTest param typed SpawnerState literal union (was string + runtime assert). Type checker enforces narrowing for free.
+- Audit: selene 0/5/0; audit-asset-ids.sh PASS; audit-persistence.sh PASS
+- Sprint 6 progress: 9/12 must-have done (6-2, 6-3, 6-4..6-9, 6-12). Remaining: 6-1, 6-10, 6-11.
+- **TECH DEBT — 11 follower-entity test failures** (NEW, not tracked):
+  - tests/integration/follower-entity/crowd_manager_orchestrator.spec ×3 (lines 345, 428, 476)
+  - tests/integration/follower-entity/wire_in_end_to_end.spec ×4 (lines 108, 138, 340, 397)
+  - tests/integration/follower-entity/wire_in_pool_integration.spec ×4 (lines 117, 135, 161, 258)
+  Recommend: new tech-debt story OR scope expansion of follow-up sprint.
+- **TECH DEBT — task.wait() drain pattern in 4 npc-spawner tests** (advisory): scheduler-dependent. Could be eliminated via `syncAllocate` DI flag in NPCSpawner.init. Backlog.
+- Next recommended: 6-10 CSM story-005 follow-up (3h) OR 6-11 NPCSpawner story-009 follow-up (3h) OR 6-1 Visual cap-grow loop (4h, needs /quick-design first); or commit current work first.

@@ -6,7 +6,7 @@ goal: "Close visualization → gameplay loop in vertical slice (NPC absorb visib
 start: "2026-05-09"
 end: "2026-05-22"
 generated: "2026-05-08"
-updated: "2026-05-08-T8"
+updated: "2026-05-08-T9"
 
 # Sprint 5 closed 2026-05-08 (APPROVED WITH CONDITIONS).
 # Sprint 5 status archive: production/sprints/sprint-5.md + production/qa/qa-signoff-sprint-5-2026-05-08.md.
@@ -36,11 +36,11 @@ stories:
     name: "NPC test infra cleanup — fix 6 Sprint 5 failures"
     file: ""
     priority: must-have
-    status: ready-for-dev
+    status: done
     owner: ""
     estimate_days: 0.375
     blocker: ""
-    completed: ""
+    completed: "2026-05-08"
 
   - id: "6-4"
     name: "CRB story-004 — Server transport phase machine (Dormant → Active → Closing)"
