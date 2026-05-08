@@ -154,9 +154,17 @@ local function startRoundForPlayer(player: Player)
 	if not ok then
 		warn("[start] RoundLifecycle.createAll failed:", err)
 		_roundStarted = false
-	else
-		print("[start] Round started for", player.Name, "— crowd spawned")
+		return
 	end
+	-- NPCSpawner.createAll fires at RoundLifecycle T4 per ADR-0008. Activates NPC
+	-- pool + connects own Heartbeat for movement+broadcast. Without this, no NPCs
+	-- exist on server (pool stays parked at Y=-10000), so no UREvent broadcast,
+	-- no client mirror, no Absorb candidates.
+	local okNpc, errNpc = pcall(NPCSpawner.createAll, { player })
+	if not okNpc then
+		warn("[start] NPCSpawner.createAll failed:", errNpc)
+	end
+	print("[start] Round started for", player.Name, "— crowd spawned")
 end
 
 local function onPlayerAdded(player: Player)

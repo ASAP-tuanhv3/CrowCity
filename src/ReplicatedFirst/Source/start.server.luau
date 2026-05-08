@@ -100,6 +100,12 @@ local function postGameLoadTasksAsync()
 	-- leave FollowerEntity inert. Idempotent — safe to call before startClientGameplay.
 	require(ReplicatedStorage.Source.CrowdStateClient).start()
 
+	-- NPCSpawnerClient: subscribes NpcPoolBootstrap reliable + NpcStateBroadcast
+	-- UREvent. Mirror Pool spawned on Bootstrap; subsequent UREvents apply CFrame +
+	-- Transparency deltas to mirror Parts. Without this, server NPCs are invisible
+	-- to client (Workspace.StreamingEnabled = false on arena per ADR-0008).
+	require(ReplicatedStorage.Source.NPCSpawnerClient).start()
+
 	PlayerDataClient.start()
 
 	if not PlayerDataClient.hasLoaded() then
