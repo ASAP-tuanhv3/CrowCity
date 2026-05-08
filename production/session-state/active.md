@@ -1300,3 +1300,16 @@ User said "continue" again. Implemented full Pool integration into wire-in.
   Recommend: new tech-debt story OR scope expansion of follow-up sprint.
 - **TECH DEBT — task.wait() drain pattern in 4 npc-spawner tests** (advisory): scheduler-dependent. Could be eliminated via `syncAllocate` DI flag in NPCSpawner.init. Backlog.
 - Next recommended: 6-10 CSM story-005 follow-up (3h) OR 6-11 NPCSpawner story-009 follow-up (3h) OR 6-1 Visual cap-grow loop (4h, needs /quick-design first); or commit current work first.
+
+## Session Extract — /story-done 2026-05-08 (6-10 Complete)
+- Verdict: COMPLETE
+- Story: production/epics/crowd-state-server/story-005-f2-position-lag-nil-hrp-guard.md — CSM F2 position lag + nil HRP guard
+- Sprint 5 minimal lerp (cf90b9f) corrected to GDD spec: CROWD_POS_LAG 0.35 → 0.15. Eliminated-skip removed (GDD §States L83 says position mutable for Eliminated).
+- Source refactor: forward-declared resolveOwner so _updatePositions can use the existing _testOwnerResolver seam (replaces direct Players:GetPlayerByUserId for headless test compatibility).
+- New test surface: _updatePositionsForTest(tick) + _getCrowdPosLag() boundary accessor.
+- New spec: tests/unit/crowd-state-server/position_lag.spec.luau (12 it() blocks).
+- In-loop fixes during testing: 2 Luau ambiguous-statement syntax bugs (semicolon needed before parens); seedRecord missing CrowdRecord fields (sqrt nil arg crash); Network fanout interceptor needed in headless; float32 precision needs approxVector3 helper; 30-tick convergence threshold too tight (extended to 40).
+- Audit: selene 0/5/0; audit-asset-ids.sh PASS; audit-persistence.sh PASS
+- Test results: 860 → 872 passed (+12); 11 failures remain (all follower-entity, unchanged tech debt).
+- Sprint 6 progress: 10/12 must-have done (6-2, 6-3, 6-4..6-10, 6-12). Remaining: 6-1, 6-11.
+- Next recommended: 6-11 NPCSpawner story-009 follow-up (3h, Sprint 5 carry); OR 6-1 Visual cap-grow loop (4h, sprint goal — needs /quick-design first); or commit current work first.
