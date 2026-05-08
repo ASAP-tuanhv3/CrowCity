@@ -6,7 +6,7 @@ goal: "Close visualization → gameplay loop in vertical slice (NPC absorb visib
 start: "2026-05-09"
 end: "2026-05-22"
 generated: "2026-05-08"
-updated: "2026-05-08"
+updated: "2026-05-08-T5"
 
 # Sprint 5 closed 2026-05-08 (APPROVED WITH CONDITIONS).
 # Sprint 5 status archive: production/sprints/sprint-5.md + production/qa/qa-signoff-sprint-5-2026-05-08.md.
@@ -46,51 +46,51 @@ stories:
     name: "CRB story-004 — Server transport phase machine (Dormant → Active → Closing)"
     file: "production/epics/crowd-replication-broadcast/story-004-server-transport-phase-machine.md"
     priority: must-have
-    status: ready-for-dev
+    status: done
     owner: ""
     estimate_days: 0.625
     blocker: ""
-    completed: ""
+    completed: "2026-05-08"
 
   - id: "6-5"
     name: "CCR story-001 — Phase 1 callback skeleton + DI scaffold"
     file: "production/epics/crowd-collision-resolution/story-001-phase1-skeleton.md"
     priority: must-have
-    status: ready-for-dev
+    status: done
     owner: ""
     estimate_days: 0.375
     blocker: ""
-    completed: ""
+    completed: "2026-05-08"
 
   - id: "6-6"
     name: "CCR story-002 — Pair iteration + overlap test"
     file: "production/epics/crowd-collision-resolution/story-002-pair-iteration-overlap.md"
     priority: must-have
-    status: ready-for-dev
+    status: done
     owner: ""
     estimate_days: 0.625
     blocker: ""
-    completed: ""
+    completed: "2026-05-08"
 
   - id: "6-7"
     name: "CCR story-003 — Drip math (count delta per overlap)"
     file: "production/epics/crowd-collision-resolution/story-003-drip-math.md"
     priority: must-have
-    status: ready-for-dev
+    status: done
     owner: ""
     estimate_days: 0.5
     blocker: ""
-    completed: ""
+    completed: "2026-05-08"
 
   - id: "6-8"
     name: "CCR story-004 — Skip conditions (same hue, eliminated, grace)"
     file: "production/epics/crowd-collision-resolution/story-004-skip-conditions.md"
     priority: must-have
-    status: ready-for-dev
+    status: done
     owner: ""
     estimate_days: 0.375
     blocker: ""
-    completed: ""
+    completed: "2026-05-08"
 
   - id: "6-9"
     name: "CCR story-005 — Overlap bit feed + setStillOverlapping per crowd"

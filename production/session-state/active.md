@@ -1158,3 +1158,85 @@ User said "continue" again. Implemented full Pool integration into wire-in.
 - **Retrospective**: production/retrospectives/sprint-5-retrospective.md
 - **QA sign-off**: production/qa/qa-signoff-sprint-5-2026-05-08.md
 - **Next**: /story-readiness or /dev-story for Sprint 6 6-1 (visual absorb loop) — most user-visible win
+
+## Session Extract — /dev-story 2026-05-08 (Sprint 6 task 6-4)
+
+- **Story**: production/epics/crowd-replication-broadcast/story-004-server-transport-phase-machine.md — CRB transport phase machine (6-4)
+- **Files changed**:
+  - `tests/integration/crowd-replication-broadcast/transport_phase_machine.spec.luau` (new, 308 lines, 7 it() blocks)
+- **Test written**: 7 it() blocks across 3 describe blocks covering AC-8 (2), AC-9 (2), AC-10 (3)
+- **Approach**: Real CSM (no `_setCSMOverride`) + real `RoundLifecycle.createAll/destroyAll` composition. Force C → Eliminated through real Phase 5 pipeline (Active→GraceWindow→Eliminated) with deterministic `recC.timer_start -= 3.5s` time-warp (mirrors broadcastall.spec line 100 `rec.tick = 65535` mutation pattern).
+- **Audit gates**: selene src/ 0/7/0 baseline maintained (tests not in CI scope per CLAUDE.md `selene src/`); asset-id PASS; persistence PASS.
+- **Deviations / open**:
+  - Story header lists TR-crs-017..020 as "transport phase machine" but tr-registry shows those IDs map to F1 bandwidth / F2 stale-freeze / out-of-order. Real transport-phase TR-IDs are TR-crs-022 (Dormant→Active) + TR-crs-023 (Active→Closing). TR-crs-013 (Eliminated continues) is correct. Recommend correcting story header in /story-done or follow-up.
+  - Optional doc note clarifier in control-manifest skipped (story marks low priority — manifest already authoritative).
+- **No source changes** — story emphasises "no new module needed; this is purely an integration test that exercises emergent behavior".
+- **Blockers**: none.
+- **Next**: `/code-review tests/integration/crowd-replication-broadcast/transport_phase_machine.spec.luau` then `/story-done production/epics/crowd-replication-broadcast/story-004-server-transport-phase-machine.md`
+
+## Session Extract — /story-done 2026-05-08 (Sprint 6 task 6-4)
+
+- **Verdict**: COMPLETE WITH NOTES
+- **Story**: production/epics/crowd-replication-broadcast/story-004-server-transport-phase-machine.md — CRB transport phase machine (6-4)
+- **ACs**: 3/3 covered (AC-8/9/10) via 7 it() blocks. Story Status: Ready → Complete; Test Evidence flipped to "Created 2026-05-08".
+- **Code review applied**: suggestions 1+2 (dead pcall removed; interceptor re-install comment added). Suggestions 3+4 (wire enum constants, ADR-0004 amendment) deferred — not blocking.
+- **Tech debt logged**: None (advisories noted in Completion Notes inline; no separate register entry).
+- **Sprint 6 progress**: 1/12 must-have done (6-4); 11 remain (6-1, 6-2, 6-3, 6-5..6-12).
+- **sprint-status.yaml**: 6-4 status: ready-for-dev → done; completed: 2026-05-08.
+- **Next recommended (Sprint 6)**:
+  - 6-5 CCR story-001 Phase 1 callback skeleton (3h, opens CCR epic)
+  - 6-1 Visual cap-grow loop (4h, most user-visible — needs /quick-design first)
+  - 6-3 NPC test infra cleanup (3h, fixes Sprint 5 6 failures)
+  - 6-10 CSM story-005 follow-up (3h, full F2 lag coverage)
+  - 6-11 NPCSpawner story-009 follow-up (3h, DI hooks)
+
+## Session Extract — /dev-story 2026-05-08
+- Story: production/epics/crowd-collision-resolution/story-001-phase1-skeleton.md — CCR story-001 Phase 1 callback skeleton + Dormant/Ticking states
+- Files changed:
+  - src/ServerStorage/Source/CollisionResolver/init.luau (new, 8338 B — folder-as-module skeleton)
+  - tests/unit/collision/phase1_skeleton.spec.luau (new, 12 it() blocks — AC-01/AC-02/DI/State transitions covered)
+  - src/ServerScriptService/start.server.luau (3 edits — require + init + Phase 1 callback wiring)
+- Test written: tests/unit/collision/phase1_skeleton.spec.luau
+- Audit: selene src/ 0/7/0 baseline maintained
+- Deviation: destroyAll() transition path not implemented — not in story Public surface or ACs; out-of-tick destroy already covered by next-tick empty-getAllActive returning Dormant. ADVISORY.
+- Blockers: None
+- Next: /code-review src/ServerStorage/Source/CollisionResolver/init.luau tests/unit/collision/phase1_skeleton.spec.luau then /story-done production/epics/crowd-collision-resolution/story-001-phase1-skeleton.md
+
+## Session Extract — /story-done 2026-05-08 (6-5 Complete)
+- Verdict: COMPLETE WITH NOTES
+- Story: production/epics/crowd-collision-resolution/story-001-phase1-skeleton.md — CCR story-001 Phase 1 callback skeleton + Dormant/Ticking states
+- Suggestion 3 applied in-loop: AC-02 dormant test now asserts getAllActive call count == 1 (locks early-return-read contract for Story 002)
+- Tech debt logged: 5 advisory deviations (destroyAll path / getClock per-tick / AC-01 timing headless / ADR-0002 example name drift / _overlapPairs accessor pending Story 002) — all non-blocking; no separate tech-debt-register entry per lean mode
+- Audit: selene 0/7/0; audit-asset-ids.sh PASS; audit-persistence.sh PASS
+- Sprint 6 progress: 2/12 must-have done (6-4 + 6-5). Remaining must: 6-1, 6-2, 6-3, 6-6, 6-7, 6-8, 6-9, 6-10, 6-11, 6-12
+- Next recommended: 6-6 CCR story-002 Pair iteration + overlap test (5h, unlocks F1 work) — directly builds on 6-5 skeleton; OR 6-10 CSM story-005 follow-up (3h, picks up Sprint 5 lerp follow-up); OR 6-3 NPC test infra cleanup (3h, fixes 6 Sprint 5 failures)
+
+## Session Extract — /story-done 2026-05-08 (6-6 Complete)
+- Verdict: COMPLETE WITH NOTES
+- Story: production/epics/crowd-collision-resolution/story-002-pair-iteration-overlap.md — CCR story-002 F1 + F2 + O(p²) pair iteration
+- All 4 code-review suggestions applied in-loop: (1) hoisted crowdIdComparator to module level (zero per-tick closure alloc); (2) inline pairKey shortcut replaced with pairKey() helper call; (3) added B-C non-overlap integration test (closes story QA row); (4) added a/b CrowdRecord ref identity assertion (Story 003 will consume those refs).
+- ADR-0004 mutation question resolved: table.sort on local-copy fresh array is compliant. Read-only contract targets CrowdRecord field mutation, not local array reordering.
+- Tech debt logged: 2 advisory deviations (F1 invocation spy-count not implemented; getClock discard carryover) — non-blocking
+- Audit: selene 0/7/0; audit-asset-ids.sh PASS; audit-persistence.sh PASS
+- Sprint 6 progress: 3/12 must-have done (6-4 + 6-5 + 6-6). Remaining must: 6-1, 6-2, 6-3, 6-7, 6-8, 6-9, 6-10, 6-11, 6-12
+- Next recommended: 6-7 CCR story-003 F3 drip math (4h, consumes _overlapPairs from 6-6 — direct continuation); OR 6-10 CSM story-005 follow-up (3h, picks up cf90b9f minimal lerp); OR 6-3 NPC test infra cleanup (3h, fixes Sprint 5 6 failures)
+
+## Session Extract — /story-done 2026-05-08 (6-7 Complete)
+- Verdict: COMPLETE WITH NOTES
+- Story: production/epics/crowd-collision-resolution/story-003-drip-math.md — CCR story-003 F3 drip math + per-pair updateCount + equal-count mutual drain
+- All 5 code-review suggestions applied in-loop: (1) CollisionPair export type alias tightens _overlapPairs to { CollisionPair }; (2) test comment fix on cd=290 (DELTA_MAX clamp, not rate cap); (3) story-doc F3 edges added (cd=60/cd=100); (4) AC-07 ordered call sequence test added; (5) story-doc triple-overlap narrative corrected to match GDD §F3 attacker rule.
+- Single-source-of-truth: equal-count branch passes -DELTA_PER_TICK_MIN (constant ref); formula route also produces 1 at cd=0 — both consistent.
+- New module: SharedConstants/CollisionResolverConstants.luau (6 GDD-locked F3 inputs).
+- Audit: selene 0/7/0; audit-asset-ids.sh PASS; audit-persistence.sh PASS
+- Sprint 6 progress: 4/12 must-have done (6-4, 6-5, 6-6, 6-7). Remaining must: 6-1, 6-2, 6-3, 6-8, 6-9, 6-10, 6-11, 6-12
+- Next recommended: 6-8 CCR story-004 Skip conditions (3h, state-filter Active/GraceWindow/Eliminated — direct continuation; was already deferred in Story 003 per "iterate every pair from getAllActive which excludes Eliminated"); OR 6-9 CCR story-005 Overlap-bit feed (3h, post-drip CSM.setStillOverlapping pass); OR 6-10 CSM follow-up (3h, Sprint 5 carry)
+
+## Session Extract — /story-done 2026-05-08 (6-8 Complete)
+- Verdict: COMPLETE WITH NOTES
+- Story: production/epics/crowd-collision-resolution/story-004-skip-conditions.md — CCR story-004 nil/Eliminated guard + GraceWindow drip suspension + no-state-writes audit
+- All 5 code-review fixes applied: (1) BLOCKING defect — scratch-clear inline mock missing get+updateCount, would crash; (2) setStillOverlapping tripwire added to no-state-writes test; (3) positive-list state filter comment for Story 010+ implementers; (4) _getOverlapPairsLength==3 lock on Eliminated mixed test (Story 005 prerequisite); (5) dual-nil + 1-valid-pair edge test.
+- Mock back-compat fixes: pair_iteration_overlap.spec + drip_math.spec mocks extended with `get` so Story 004 drip pass csm.get re-fetch doesn't error against Story 002/003 fixtures.
+- Static grep audit: 0 call-site matches for transitionTo|setState in CollisionResolver source; runtime tripwire spy substitutes for AC's "static grep returns zero" criterion (TestEZ has no FS access).
+- Audit: selene 0/7/0; audit-asset-ids.sh PASS; audit-persistence.sh PASS
+- Sprint 6 progress: 5/12 must-have done (6-4, 6-5, 6-6, 6-7, 6-8). Remaining must: 6-1, 6-2, 6-3, 6-9, 6-10, 6-11, 6-12
+- Next recommended: 6-9 CCR story-005 Overlap-bit feed (3h, post-drip pass that consumes preserved _overlapPairs from Story 004 to fire CSM.setStillOverlapping per crowd — direct continuation; Story 005 prerequisite checks already locked); OR 6-10 CSM story-005 follow-up (3h, Sprint 5 carry); OR 6-3 NPC test infra cleanup (3h)
