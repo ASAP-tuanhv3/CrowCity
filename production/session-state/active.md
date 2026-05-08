@@ -1240,3 +1240,15 @@ User said "continue" again. Implemented full Pool integration into wire-in.
 - Audit: selene 0/7/0; audit-asset-ids.sh PASS; audit-persistence.sh PASS
 - Sprint 6 progress: 5/12 must-have done (6-4, 6-5, 6-6, 6-7, 6-8). Remaining must: 6-1, 6-2, 6-3, 6-9, 6-10, 6-11, 6-12
 - Next recommended: 6-9 CCR story-005 Overlap-bit feed (3h, post-drip pass that consumes preserved _overlapPairs from Story 004 to fire CSM.setStillOverlapping per crowd — direct continuation; Story 005 prerequisite checks already locked); OR 6-10 CSM story-005 follow-up (3h, Sprint 5 carry); OR 6-3 NPC test infra cleanup (3h)
+
+## Session Extract — /story-done 2026-05-08 (6-9 Complete)
+- Verdict: COMPLETE WITH NOTES
+- Story: production/epics/crowd-collision-resolution/story-005-overlap-bit-feed.md — CCR story-005 setStillOverlapping post-drip fan-out
+- Drip pass restructured for per-side overlap-bit aggregation (nil/Eliminated → no contribute; Active/GraceWindow → contribute). Post-drip fan-out loop calls setStillOverlapping exactly once per active crowd per tick.
+- All 4 review suggestions applied: (1) test title clarified (per-side eligibility); (2) total-callCount assertions added to Eliminated + GW tests; (3) unused flagSeq field removed; (4) snapshot test extended with fan-out callCount assertion.
+- Story 004's prior `_setStillOverlappingSpy.callCount() == 0` assertion was retroactively wrong — Story 005 makes setStillOverlapping a legitimate authorized write per ADR-0004. Corrected in skip_conditions.spec.
+- Mock back-compat: 4 existing spec files updated. Story 005's fan-out fires for every Active crowd, requires `setStillOverlapping` mock on every fixture.
+- Resolved decisions: aggregation BEFORE skip guards (correct — moving AFTER would silently break GraceWindow + nil-partner pairs); unconditional `false` firing required (eliding false would trap crowds in GraceWindow via stale CSM Phase 5 reads).
+- Audit: selene 0/7/0; audit-asset-ids.sh PASS; audit-persistence.sh PASS
+- Sprint 6 progress: 6/12 must-have done (6-4..6-9). Remaining must: 6-1, 6-2, 6-3, 6-10, 6-11, 6-12
+- Next recommended: pivot away from CCR streak (6 stories deep). 6-2 (MSM Lobby→Round timer, replaces dev hack — direct sprint-goal value); OR 6-1 (visual cap-grow loop, most user-visible — needs /quick-design first); OR 6-10 (CSM story-005 follow-up, Sprint 5 lerp carry — small scope, 3h). CCR core epic (6-9) closes its drip+overlap-bit contract; Stories 6 (pairEntered diff) + 7 (equal-count peel buffer) + 8 (peel dispatch) + 9 (client) extend toward visual loop but live in separate stories not yet in Sprint 6 scope.
