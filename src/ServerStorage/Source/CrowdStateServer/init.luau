@@ -201,20 +201,34 @@ local STATE_TO_ENUM: { [CrowdState]: number } = {
 --- (position update happens BEFORE state-transition evaluation per AC).
 local _lastUpdatePositionsTick: number? = nil
 
+-- Forward declaration: resolveOwner is defined further down (after the
+-- record-mutation helpers) but _updatePositions references it. In Luau,
+-- locals must be in scope before use, so declare the variable here and
+-- assign the function body at its definition site below.
+local resolveOwner: (crowdId: string) -> Player?
+
+--- Per-tick position lag factor — F2 default per GDD §Tuning Knobs.
+--- Range [0.05, 0.40]; tighter values lag more, looser values snap.
+--- 0.15 = ~5 studs/tick toward target with 100-stud delta — smooth flock feel
+--- without teleport-exploit visibility.
+--- Source: design/gdd/crowd-state-manager.md §F2 + §Tuning Knobs L400.
+local CROWD_POS_LAG = 0.15
+
 --- Per-tick position lag update — F2.
---- Sprint 5 dev unblock: minimal lerp from HRP each tick. Full story-005 covers
---- nil-HRP guard, configurable lag constant, eliminated-skip. Tightens AC-7.
 --- `position_new = position_old + (char_pos - position_old) * CROWD_POS_LAG`
---- ADR-0002 §Phase Sequence; GDD §F2.
-local CROWD_POS_LAG = 0.35  -- per-tick lerp factor; 0.35 ≈ 95% catchup over ~6 ticks @ 15 Hz
+--- Iterates ALL crowds including Eliminated — per GDD §States table L83
+--- ("position mutable: yes (character still moves)"). Position broadcast
+--- keeps client render reasonable until RoundLifecycle.destroyAll.
+--- ADR-0002 §Phase Sequence; ADR-0004 §Read-vs-Write (CSM owns position field).
+--- GDD §F2; story-005.
 local function _updatePositions(tickCount: number): ()
 	_lastUpdatePositionsTick = tickCount
 	for _, record in _crowds do
-		if record.state == "Eliminated" then continue end
 		-- crowdId encodes UserId; resolve player + HRP each tick. Tolerates DC.
-		local userId = tonumber(record.crowdId)
-		if userId == nil then continue end
-		local player = Players:GetPlayerByUserId(userId)
+		-- nil-HRP graceful degrade (AC-19): leave record.position unchanged;
+		-- never mutate stillOverlapping/state. No per-tick log (would flood).
+		-- resolveOwner respects _testOwnerResolver override for headless tests.
+		local player = resolveOwner(record.crowdId)
 		if player == nil then continue end
 		local char = player.Character
 		if char == nil then continue end
@@ -242,7 +256,8 @@ end
 --- Returns nil if the player has disconnected mid-tick (CrowdCountClamped fire is
 --- skipped for that frame; client-side broadcast handles the eliminated state).
 --- Test override available via _setTestOwnerResolver.
-local function resolveOwner(crowdId: string): Player?
+--- Forward-declared above _updatePositions so the lag helper can call it.
+resolveOwner = function(crowdId: string): Player?
 	if _testOwnerResolver ~= nil then
 		return _testOwnerResolver(crowdId)
 	end
@@ -760,6 +775,21 @@ end
 --- before any state-transition logic. nil when never called since reset.
 function CrowdStateServer._getLastUpdatePositionsTick(): number?
 	return _lastUpdatePositionsTick
+end
+
+--- **TEST ONLY** — never call from production code.
+--- Invokes the module-private `_updatePositions(tickCount)` helper directly
+--- so position_lag.spec.luau can assert F2 math + nil-HRP guard without
+--- driving the full Phase 5 pipeline. Story-005.
+function CrowdStateServer._updatePositionsForTest(tickCount: number): ()
+	_updatePositions(tickCount)
+end
+
+--- **TEST ONLY** — never call from production code.
+--- Exposes the F2 lag constant for boundary-value tests. CROWD_POS_LAG
+--- changes require GDD §F2 amendment. Story-005 boundary check.
+function CrowdStateServer._getCrowdPosLag(): number
+	return CROWD_POS_LAG
 end
 
 --- **TEST ONLY** — never call from production code.

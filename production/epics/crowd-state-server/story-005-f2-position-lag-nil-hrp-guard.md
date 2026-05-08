@@ -1,7 +1,7 @@
 # Story 005: F2 position lag + nil HumanoidRootPart guard
 
 > **Epic**: crowd-state-server
-> **Status**: Ready
+> **Status**: Complete
 > **Layer**: Core
 > **Type**: Logic
 > **Manifest Version**: 2026-04-27
@@ -100,7 +100,7 @@
 **Story Type**: Logic
 **Required evidence**: `tests/unit/crowd-state-server/position_lag.spec.luau` (F2 math + nil HRP guard + iteration).
 
-**Status**: [ ] Not yet created
+**Status**: [x] Created 2026-05-08 — 12 it() blocks (AC-07 ×3, AC-19 ×4, CROWD_POS_LAG boundary ×1, iteration ×1, Eliminated keeps moving ×1, perf soft ×1, tick counter ×1).
 
 ---
 
