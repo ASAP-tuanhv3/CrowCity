@@ -1143,3 +1143,18 @@ User said "continue" again. Implemented full Pool integration into wire-in.
 - **Outstanding (advisory)**: NPCSpawner._broadcastTick + _sendBootstrap call game:GetService("Players"):GetPlayers() and Network.fireClient* directly — DI gap. Story 5-9 follow-up: add deps.network/players for full integration test. Documented in urevent_replication_test.luau header.
 - **Sprint 5 status**: 14/14 must-have done. Should-have (5-15..5-18) and nice-to-have (5-19) backlog untouched.
 - **Next**: /smoke-check sprint → /team-qa sprint → /gate-check (Production → Polish forward) OR continue with should-have backlog
+
+## Session Extract — Sprint 5 close 2026-05-08
+
+- **Verdict**: APPROVED WITH CONDITIONS — vertical slice playable end-to-end
+- **Sprint 5 closed**: 14/14 must-have + 3/4 should-have + 8 mid-sprint scope-add wirings
+- **Studio Play verified**: followers visible + tracking player; NPCs replicate via UREvent
+- **Outstanding for Sprint 6**:
+  - Visual absorb loop (count delta → cap-grow trigger)
+  - Replace dev hacks (auto-round, client HRP prediction)
+  - Fix 6 NPC test infra failures
+  - Open CCR epic (5 stories)
+- **Sprint 6 plan drafted**: production/sprints/sprint-6.md — 12 must-have + 3 should-have + 2 nice-to-have
+- **Retrospective**: production/retrospectives/sprint-5-retrospective.md
+- **QA sign-off**: production/qa/qa-signoff-sprint-5-2026-05-08.md
+- **Next**: /story-readiness or /dev-story for Sprint 6 6-1 (visual absorb loop) — most user-visible win
