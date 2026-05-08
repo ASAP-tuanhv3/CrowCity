@@ -1252,3 +1252,15 @@ User said "continue" again. Implemented full Pool integration into wire-in.
 - Audit: selene 0/7/0; audit-asset-ids.sh PASS; audit-persistence.sh PASS
 - Sprint 6 progress: 6/12 must-have done (6-4..6-9). Remaining must: 6-1, 6-2, 6-3, 6-10, 6-11, 6-12
 - Next recommended: pivot away from CCR streak (6 stories deep). 6-2 (MSM Lobby→Round timer, replaces dev hack — direct sprint-goal value); OR 6-1 (visual cap-grow loop, most user-visible — needs /quick-design first); OR 6-10 (CSM story-005 follow-up, Sprint 5 lerp carry — small scope, 3h). CCR core epic (6-9) closes its drip+overlap-bit contract; Stories 6 (pairEntered diff) + 7 (equal-count peel buffer) + 8 (peel dispatch) + 9 (client) extend toward visual loop but live in separate stories not yet in Sprint 6 scope.
+
+## Session Extract — /story-done 2026-05-08 (6-2 Complete)
+- Verdict: COMPLETE WITH NOTES
+- Task: 6-2 MSM Lobby→Round timer (no story file; user-approved skip per wiring scope)
+- MSM real module replaces 3 stubs (MSMTimerCheckStub / MSMEliminationConsumerStub / MatchStateServerStub). Phase 6+7 wired. ShutdownCoordinator integrated. Dev hack auto-round-on-PlayerAdded removed. Solo Studio playtest regression accepted per user.
+- New MSM APIs: MatchStateChangedServer BindableEvent (server-only, mirrors CSM.CrowdEliminatedServer pattern; fires from _transitionTo); requestServerClosing T11 entry (mirrors stub semantics).
+- NPCSpawner bridge in start.server.luau subscribes to MatchStateChangedServer.Event: Active → createAll(participants); Intermission → destroyAll(). Bridge required by Core→Feature import restriction.
+- All 7 review fixes applied (1 BLOCKING + 6 advisory): (1) _npcSpawnerActive reset before pcall on destroyAll; (2) Result-entry BindableEvent gap doc; (3) deferred-dispatch + participant-coupling comment; (4) endsAt-nil payload test; (5) afterEach with tracked-connection leak protection both describes; (6) Active-transition BindableEvent test with RoundLifecycle mock; (7) ADR-0008 amendment tracker logged below.
+- **TECH DEBT — ADR-0008 amendment**: §Caller Authority Matrix names "RoundLifecycle (T4 transition only)" as sole caller of NPCSpawner.createAll. start.server.luau bridge is now de-facto authorised caller. Required because direct MSM→NPCSpawner import would violate Core→Feature layer direction. Amendment should recognise the boot-script bridge pattern and document the layering constraint that drove it.
+- Audit: selene 0/5/0 (improved from 0/7/0); audit-asset-ids.sh PASS; audit-persistence.sh PASS
+- Sprint 6 progress: 7/12 must-have done (6-2, 6-4..6-9). Remaining must: 6-1, 6-3, 6-10, 6-11, 6-12
+- Next recommended: 6-1 visual cap-grow loop (4h, most user-visible — needs /quick-design first); OR 6-3 NPC test infra cleanup (3h, low-risk debt); OR 6-10 CSM story-005 follow-up (3h, Sprint 5 carry); OR 6-12 smoke check + manual playtest (3h, validates 6-2 dev-hack replacement end-to-end via 2-client Studio test).
