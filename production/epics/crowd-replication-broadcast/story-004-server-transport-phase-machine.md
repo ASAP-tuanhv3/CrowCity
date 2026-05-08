@@ -1,7 +1,7 @@
 # Story 004: Server-side broadcast loop wiring + Dormant → Active → Closing transport phase machine
 
 > **Epic**: crowd-replication-broadcast
-> **Status**: Ready
+> **Status**: Complete
 > **Layer**: Core (server-side)
 > **Type**: Integration
 > **Manifest Version**: 2026-04-27
@@ -85,7 +85,7 @@
 
 `tests/integration/crowd-replication-broadcast/transport_phase_machine.spec.luau` (AC-8/9/10) — multi-system integration test.
 
-**Status**: [ ] Not yet created
+**Status**: [x] Created 2026-05-08 — 7 it() blocks across 3 describe blocks, AC-8/9/10 covered
 
 ---
 
@@ -93,3 +93,19 @@
 
 - Depends on: CSM story-008 (broadcastAll); RoundLifecycle story-001 (createAll/destroyAll); TickOrch stories 001+002+003 (boot wiring + Phase 8 dispatch)
 - Unlocks: gate-check Pre-Production → Production re-evaluation
+
+---
+
+## Completion Notes
+
+**Completed**: 2026-05-08 (Sprint 6 task 6-4)
+**Criteria**: 3/3 covered (AC-8 / AC-9 / AC-10) via `tests/integration/crowd-replication-broadcast/transport_phase_machine.spec.luau` — 7 it() blocks across 3 describe blocks.
+**Approach**: Real CSM (no `_setCSMOverride`) + real RoundLifecycle composition. C → Eliminated forced through real Phase 5 pipeline (Active→GraceWindow→Eliminated) with deterministic `recC.timer_start -= GRACE_WINDOW_SEC + 0.5` time-warp (mirrors broadcastall.spec line 100 `rec.tick = 65535` precedent). AC-10 expanded with idempotency + empty-start tests for full skip-path contract coverage.
+**Audit gates**: `selene src/` 0/7/0 baseline maintained (tests not in CI scope per CLAUDE.md `selene src/`); `audit-asset-ids.sh` PASS; `audit-persistence.sh` PASS.
+**Code Review**: Skipped (lean mode). qa-tester + lead-programmer ad-hoc reviews APPROVED WITH SUGGESTIONS; suggestions 1+2 (dead pcall removal + interceptor re-install comment) applied in-loop.
+**Deviations**:
+- ADVISORY — Story header refs `TR-crs-017..020` but tr-registry shows those map to F1 bandwidth / F2 stale-freeze / stale-recovery / out-of-order. Real transport-phase TRs = `TR-crs-022` (Dormant→Active), `TR-crs-023` (Active→Closing), `TR-crs-013` (Eliminated continues). Implementation honors actual semantics. Recommend story header correction in follow-up batch.
+- ADVISORY — ADR-0004 §Risk 4 anticipated `_setForTest` API; live-reference mutation via `get()` is de-facto project pattern. Recommend ADR-0004 §Read-vs-Write Split amendment to document live-reference test-mutation pattern.
+- ADVISORY — AC-8 "within 67ms (1 tick)" timing sub-clause unverifiable in headless TestEZ (bypasses TickOrch). Latency enforced by TickOrch 001/002/003 cadence (Complete) + Studio playtest sign-off. Spec covers payload-shape half only.
+**No source changes** — story explicitly stated "no new module needed; integration test only".
+**Files changed**: `tests/integration/crowd-replication-broadcast/transport_phase_machine.spec.luau` (new, 308 lines).
