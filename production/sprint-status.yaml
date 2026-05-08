@@ -6,7 +6,7 @@ goal: "Close visualization → gameplay loop in vertical slice (NPC absorb visib
 start: "2026-05-09"
 end: "2026-05-22"
 generated: "2026-05-08"
-updated: "2026-05-08-T10"
+updated: "2026-05-08-T11"
 
 # Sprint 5 closed 2026-05-08 (APPROVED WITH CONDITIONS).
 # Sprint 5 status archive: production/sprints/sprint-5.md + production/qa/qa-signoff-sprint-5-2026-05-08.md.
@@ -116,11 +116,11 @@ stories:
     name: "NPCSpawner story-009 follow-up — DI hooks for Network/Players (UREvent integration test)"
     file: "production/epics/npc-spawner/story-009-urevent-replication.md"
     priority: must-have
-    status: ready-for-dev
+    status: done
     owner: ""
     estimate_days: 0.375
-    blocker: "Sprint 5 closed story 5-9 with documented DI gap; follow-up enables full integration test capture"
-    completed: ""
+    blocker: ""
+    completed: "2026-05-08"
 
   - id: "6-12"
     name: "Smoke check + manual playtest — visual absorb loop verified"

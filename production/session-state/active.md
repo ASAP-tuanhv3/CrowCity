@@ -1313,3 +1313,16 @@ User said "continue" again. Implemented full Pool integration into wire-in.
 - Test results: 860 → 872 passed (+12); 11 failures remain (all follower-entity, unchanged tech debt).
 - Sprint 6 progress: 10/12 must-have done (6-2, 6-3, 6-4..6-10, 6-12). Remaining: 6-1, 6-11.
 - Next recommended: 6-11 NPCSpawner story-009 follow-up (3h, Sprint 5 carry); OR 6-1 Visual cap-grow loop (4h, sprint goal — needs /quick-design first); or commit current work first.
+
+## Session Extract — /story-done 2026-05-08 (6-11 Complete)
+- Verdict: COMPLETE
+- Story: production/epics/npc-spawner/story-009-urevent-replication.md (Sprint 5 Story 5-9 follow-up)
+- NPCSpawner.init now accepts deps.players + deps.network. Hardcoded Players:GetPlayers() + Network.fireClient* replaced with DI seams in _broadcastTick + _sendBootstrap.
+- Test file renamed urevent_replication_test.luau → urevent_replication.spec.luau. CRITICAL FINDING: TestEZ runner discovers `*.spec.luau` only — old `_test.luau` suffix was being SKIPPED. This file's 7 pre-existing tests had never run in CI/headless. Now they do.
+- Added 5 full-DI tests: AC-19 fireClientUnreliable buffer; per-relevance filter end-to-end exclusion; spectator no-fire; NpcPoolBootstrap reliable snapshot; multi-player per-player filtering.
+- 2 new test-only accessors: _broadcastTickForTest(), _sendBootstrapForTest(player).
+- Audit: selene 0/5/0; audit-asset-ids.sh PASS; audit-persistence.sh PASS
+- Test results: 872 → 884 passed (+12). 11 follower-entity failures unchanged (out of any Sprint 6 scope).
+- **POSSIBLE TECH DEBT**: scan tests/ for any other `*_test.luau` files that might be silently skipped by TestEZ runner. Quick grep: only urevent_replication_test.luau used the pattern; all others use `.spec.luau`.
+- Sprint 6 progress: 11/12 must-have done (6-2..6-11, 6-12). Remaining: 6-1 only.
+- Next: 6-1 Visual cap-grow loop (4h, sprint goal — needs /quick-design first); OR commit current work first.
