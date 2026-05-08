@@ -201,15 +201,28 @@ local STATE_TO_ENUM: { [CrowdState]: number } = {
 --- (position update happens BEFORE state-transition evaluation per AC).
 local _lastUpdatePositionsTick: number? = nil
 
---- Per-tick position lag update — F2 placeholder.
---- Story-005 (`CSM 005 F2 position lag + nil HRP guard`) fills the actual
---- math: `position_new = position_old + (char_pos - position_old) * CROWD_POS_LAG`
---- with nil-HRP guard. Until story-005 ships, this is a no-op shim that exists
---- so Phase 5 (`stateEvaluate`) can call it in the prescribed order.
---- ADR-0002 §Phase Sequence; GDD §F2; manifest L62 no-yield invariant.
+--- Per-tick position lag update — F2.
+--- Sprint 5 dev unblock: minimal lerp from HRP each tick. Full story-005 covers
+--- nil-HRP guard, configurable lag constant, eliminated-skip. Tightens AC-7.
+--- `position_new = position_old + (char_pos - position_old) * CROWD_POS_LAG`
+--- ADR-0002 §Phase Sequence; GDD §F2.
+local CROWD_POS_LAG = 0.35  -- per-tick lerp factor; 0.35 ≈ 95% catchup over ~6 ticks @ 15 Hz
 local function _updatePositions(tickCount: number): ()
 	_lastUpdatePositionsTick = tickCount
-	-- TODO(story-005): apply F2 position lag for each active record.
+	for _, record in _crowds do
+		if record.state == "Eliminated" then continue end
+		-- crowdId encodes UserId; resolve player + HRP each tick. Tolerates DC.
+		local userId = tonumber(record.crowdId)
+		if userId == nil then continue end
+		local player = Players:GetPlayerByUserId(userId)
+		if player == nil then continue end
+		local char = player.Character
+		if char == nil then continue end
+		local hrp = char:FindFirstChild("HumanoidRootPart")
+		if hrp == nil or not hrp:IsA("BasePart") then continue end
+		local target = hrp.Position
+		record.position = record.position + (target - record.position) * CROWD_POS_LAG
+	end
 end
 
 --- Recomputes `record.radius` from `record.count` and `record.radiusMultiplier`
