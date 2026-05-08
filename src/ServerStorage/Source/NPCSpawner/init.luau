@@ -219,6 +219,17 @@ local _rng: any = nil
 --- Tests inject a controllable clock for deterministic time-based tests.
 local _clock: (() -> number)? = nil
 
+--- Injected Players service. Default: game:GetService("Players").
+--- Tests inject mock with `:GetPlayers() -> { Player }`. Story 6-11 follow-up
+--- closes the DI gap documented in tests/integration/npc-spawner/
+--- urevent_replication_test.luau header (Story 5-9 left this hardcoded).
+local _players: any = nil
+
+--- Injected Network module. Default: ReplicatedStorage.Source.Network.
+--- Tests inject mock with `fireClientUnreliable(player, eventName, buf)`
+--- + `fireClient(eventName, player, payload)`. Same DI gap as `_players`.
+local _network: any = nil
+
 -- ---------------------------------------------------------------------------
 -- Internal helpers
 -- ---------------------------------------------------------------------------
@@ -624,8 +635,9 @@ local function _broadcastTick(): ()
 
 	-- Build per-player crowd lookup: { [Player]: { {pos, radius} } }
 	-- CrowdRecord has: crowdId (string — encodes userId), position (Vector3), radius (number).
-	local Players = game:GetService("Players")
-	local playerList = Players:GetPlayers()
+	-- _players DI seam: production = real Players service; tests = mock w/ GetPlayers().
+	local players = _players or game:GetService("Players")
+	local playerList = players:GetPlayers()
 
 	-- Pre-build crowd data for fast iteration.
 	type CrowdEntry = { pos: Vector3, radius: number, userId: number }
@@ -731,8 +743,10 @@ local function _broadcastTick(): ()
 			buffer.writeu8(buf,  base + BROADCAST_RECORD_SIZE - 1, 0)  -- reserved byte
 		end
 
-		-- Fire UREvent to this player.
-		Network.fireClientUnreliable(player, UnreliableRemoteEventName.NpcStateBroadcast, buf)
+		-- Fire UREvent to this player. _network DI seam: production = real
+		-- Network module; tests = mock w/ fireClientUnreliable spy.
+		local network = _network or Network
+		network.fireClientUnreliable(player, UnreliableRemoteEventName.NpcStateBroadcast, buf)
 	end
 end
 
@@ -775,7 +789,9 @@ local function _sendBootstrap(player: Player): ()
 		end
 	end
 
-	Network.fireClient(RemoteEventName.NpcPoolBootstrap, player, snapshot)
+	-- _network DI seam: production = real Network; tests = mock spy.
+	local network = _network or Network
+	network.fireClient(RemoteEventName.NpcPoolBootstrap, player, snapshot)
 end
 
 -- ---------------------------------------------------------------------------
@@ -801,6 +817,9 @@ local NPCSpawner = {}
 ---   deps.tweenService — mock TweenService (default: game:GetService("TweenService"))
 ---   deps.rng          — mock Random object with :NextNumber(lo, hi) (default: Random.new())
 ---   deps.clock        — mock clock function () -> number (default: os.clock)
+---   deps.players      — mock Players service with :GetPlayers() (default: game:GetService("Players"))
+---   deps.network      — mock Network module with fireClient + fireClientUnreliable
+---                       (default: ReplicatedStorage.Source.Network). Story 6-11 follow-up.
 ---
 --- Source: TR-npc-spawner-001, TR-npc-spawner-011, TR-npc-spawner-012; ADR-0008 §Boot.
 function NPCSpawner.init(deps: {
@@ -811,6 +830,8 @@ function NPCSpawner.init(deps: {
 	tweenService: any?,
 	rng: any?,
 	clock: (() -> number)?,
+	players: any?,
+	network: any?,
 }?): ()
 	assert(not _initialized, "NPCSpawner.init: already initialised — init() must only be called once per server lifetime")
 
@@ -823,6 +844,8 @@ function NPCSpawner.init(deps: {
 		_tweenService      = deps.tweenService
 		_rng               = deps.rng
 		_clock             = deps.clock
+		_players           = deps.players
+		_network           = deps.network
 	end
 
 	-- TR-npc-spawner-011: ARENA_WALKABLE_AREA_SQ must be present and valid at boot.
@@ -1154,6 +1177,8 @@ function NPCSpawner._resetForTests(): ()
 	_tweenService = nil
 	_rng = nil
 	_clock = nil
+	_players = nil
+	_network = nil
 	_fallbackWarningCount = 0
 end
 
@@ -1203,6 +1228,22 @@ end
 --- no runtime assert needed (caller can't pass an invalid string under strict).
 function NPCSpawner._setStateForTest(state: SpawnerState): ()
 	_state = state
+end
+
+--- **TEST ONLY** — never call from production code.
+--- Invokes the module-private `_broadcastTick()` helper directly so
+--- urevent_replication_test.luau can drive a single broadcast cycle
+--- without running the full Heartbeat accumulator. Story 6-11 follow-up.
+function NPCSpawner._broadcastTickForTest(): ()
+	_broadcastTick()
+end
+
+--- **TEST ONLY** — never call from production code.
+--- Invokes the module-private `_sendBootstrap(player)` helper for the
+--- given mock Player. Lets tests assert NpcPoolBootstrap reliable fires
+--- before any UREvent. Story 6-11 follow-up.
+function NPCSpawner._sendBootstrapForTest(player: any): ()
+	_sendBootstrap(player)
 end
 
 --- **TEST ONLY** — never call from production code.

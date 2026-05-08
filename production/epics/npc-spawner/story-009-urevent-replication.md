@@ -110,7 +110,7 @@
 - `tests/integration/npc-spawner/urevent_replication_test.luau` — must exist and pass
 - `production/qa/evidence/npc-bandwidth-soak-2026-XX-XX.md` — Studio bandwidth instrumentation export + sign-off
 
-**Status**: [ ] Not yet created
+**Status**: [x] Created 2026-05-06 (Sprint 5 Story 5-9); 6-11 follow-up 2026-05-08 added 5 full-DI tests (12 it() blocks total). File renamed urevent_replication_test.luau → urevent_replication.spec.luau (TestEZ discovers `.spec` only — pre-rename file was SKIPPED).
 
 ---
 

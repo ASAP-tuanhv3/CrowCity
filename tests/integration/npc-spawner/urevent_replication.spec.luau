@@ -191,13 +191,202 @@ return function()
 			expect(sampledNpc.transparency).to.equal(0)
 		end)
 
-		-- Bootstrap on join (DEFERRED — depends on deps.network injection):
-		-- Marker test that documents the gap. Will be filled when source adds DI.
-		it("Bootstrap on join — DEFERRED until NPCSpawner.init exposes deps.network/players", function()
-			-- See header note: NPCSpawner._broadcastTick + _sendBootstrap call
-			-- game:GetService("Players"):GetPlayers() and Network.fireClient* directly.
-			-- Story 5-9 follow-up: add DI hooks to enable end-to-end capture.
-			expect(true).to.equal(true)
+		-- ---------------------------------------------------------------------
+		-- Story 6-11 follow-up: deps.network + deps.players injection enables
+		-- full server→client capture. The DEFERRED placeholder tests below
+		-- now drive the real broadcast path through mocked Players + Network.
+		-- ---------------------------------------------------------------------
+
+		--- Builds a mock Network + Players with spies on fireClientUnreliable
+		--- + fireClient. Returns the captured calls for assertion.
+		local function buildBroadcastMocks(playerList: { any })
+			local urCalls: { { player: any, eventName: string, payload: any } } = {}
+			local reliableCalls: { { eventName: string, player: any, payload: any } } = {}
+			local network = {
+				fireClientUnreliable = function(player: any, eventName: string, payload: any)
+					table.insert(urCalls, { player = player, eventName = eventName, payload = payload })
+				end,
+				fireClient = function(eventName: string, player: any, payload: any)
+					table.insert(reliableCalls, { eventName = eventName, player = player, payload = payload })
+				end,
+			}
+			local players = {
+				GetPlayers = function(_self: any): { any }
+					return playerList
+				end,
+			}
+			return players, network, urCalls, reliableCalls
+		end
+
+		--- Mock player factory — minimal fields needed by _broadcastTick filter
+		--- (UserId for ownCrowds match) + _sendBootstrap (passed-through).
+		local function buildMockPlayer(userId: number)
+			return { UserId = userId } :: any
+		end
+
+		--- Mock CSM with controllable getAllActive return.
+		local function buildMockCsm(crowds: { any })
+			return {
+				getAllActive = function(): { any }
+					return crowds
+				end,
+			} :: any
+		end
+
+		-- AC-19 end-to-end: fireClientUnreliable receives buffer payload for
+		-- the receiver's relevant NPCs.
+		it("AC-19 — fireClientUnreliable fires per-player with buffer payload", function()
+			-- Arrange: 1 player owns crowd at origin radius=10; 1 NPC seeded
+			-- inside relevance window (5 studs from origin).
+			local mockPlayer = buildMockPlayer(1001)
+			local players, network, urCalls = buildBroadcastMocks({ mockPlayer })
+			local mockCsm = buildMockCsm({
+				{ crowdId = "1001", position = Vector3.new(0, 0, 0), radius = 10 },
+			})
+
+			game.Workspace:SetAttribute("ArenaWalkableAreaSq", 40000)
+			NPCSpawner.init({
+				runService = buildMockRunService(),
+				arenaArea = 40000,
+				arenaBounds = { -100, 100, -100, 100 },
+				csm = mockCsm,
+				players = players,
+				network = network,
+			})
+			NPCSpawner._setStateForTest("Ticking")
+
+			local part = Instance.new("Part")
+			NPCSpawner._seedNpcForTest("npc1", part, true, Vector3.new(5, 0, 0))
+
+			-- Act
+			NPCSpawner._broadcastTickForTest()
+
+			-- Assert: exactly 1 UREvent fired to mockPlayer with a buffer payload.
+			expect(#urCalls).to.equal(1)
+			expect(urCalls[1].player).to.equal(mockPlayer)
+			expect(typeof(urCalls[1].payload)).to.equal("buffer")
+			expect(buffer.len(urCalls[1].payload)).to.equal(BROADCAST_RECORD_SIZE)  -- 1 record
+		end)
+
+		-- Per-relevance filter end-to-end: NPC outside radius+cushion is excluded.
+		it("Per-relevance filter — NPC outside radius+cushion excluded from buffer", function()
+			local mockPlayer = buildMockPlayer(1001)
+			local players, network, urCalls = buildBroadcastMocks({ mockPlayer })
+			local mockCsm = buildMockCsm({
+				{ crowdId = "1001", position = Vector3.new(0, 0, 0), radius = 10 },
+			})
+
+			game.Workspace:SetAttribute("ArenaWalkableAreaSq", 40000)
+			NPCSpawner.init({
+				runService = buildMockRunService(),
+				arenaArea = 40000,
+				arenaBounds = { -100, 100, -100, 100 },
+				csm = mockCsm,
+				players = players,
+				network = network,
+			})
+			NPCSpawner._setStateForTest("Ticking")
+
+			-- 2 NPCs: one inside (5,0,0), one outside (50,0,0)
+			NPCSpawner._seedNpcForTest("nIn", Instance.new("Part"), true, Vector3.new(5, 0, 0))
+			NPCSpawner._seedNpcForTest("nOut", Instance.new("Part"), true, Vector3.new(50, 0, 0))
+
+			NPCSpawner._broadcastTickForTest()
+
+			-- Assert: payload contains 1 record only (the in-range NPC).
+			expect(#urCalls).to.equal(1)
+			expect(buffer.len(urCalls[1].payload)).to.equal(BROADCAST_RECORD_SIZE)
+		end)
+
+		-- Spectator path: no own crowds → no UREvent fired (early-out per source).
+		it("Spectator — no own crowds: no UREvent fired", function()
+			local mockSpectator = buildMockPlayer(9999)  -- userId not in any crowd
+			local players, network, urCalls = buildBroadcastMocks({ mockSpectator })
+			local mockCsm = buildMockCsm({
+				{ crowdId = "1001", position = Vector3.new(0, 0, 0), radius = 10 },
+			})
+
+			game.Workspace:SetAttribute("ArenaWalkableAreaSq", 40000)
+			NPCSpawner.init({
+				runService = buildMockRunService(),
+				arenaArea = 40000,
+				arenaBounds = { -100, 100, -100, 100 },
+				csm = mockCsm,
+				players = players,
+				network = network,
+			})
+			NPCSpawner._setStateForTest("Ticking")
+
+			NPCSpawner._seedNpcForTest("npc1", Instance.new("Part"), true, Vector3.new(5, 0, 0))
+
+			NPCSpawner._broadcastTickForTest()
+
+			-- Assert: spectator received no UREvent (empty payload not even fired
+			-- per source's `#ownCrowds == 0` early-continue at line 664-667).
+			expect(#urCalls).to.equal(0)
+		end)
+
+		-- Bootstrap end-to-end: NpcPoolBootstrap reliable carries snapshot.
+		it("Bootstrap on join — fireClient(NpcPoolBootstrap) fires with snapshot table", function()
+			local mockPlayer = buildMockPlayer(1001)
+			local players, network, _urCalls, reliableCalls = buildBroadcastMocks({ mockPlayer })
+
+			game.Workspace:SetAttribute("ArenaWalkableAreaSq", 40000)
+			NPCSpawner.init({
+				runService = buildMockRunService(),
+				arenaArea = 40000,
+				arenaBounds = { -100, 100, -100, 100 },
+				csm = buildMockCsm({}),
+				players = players,
+				network = network,
+			})
+			NPCSpawner._setStateForTest("Ticking")
+			NPCSpawner._seedNpcForTest("npc1", Instance.new("Part"), true, Vector3.new(0, 0, 0))
+			NPCSpawner._seedNpcForTest("npc2", Instance.new("Part"), true, Vector3.new(10, 0, 10))
+
+			-- Act
+			NPCSpawner._sendBootstrapForTest(mockPlayer)
+
+			-- Assert: 1 reliable call with snapshot of 2 NPCs.
+			expect(#reliableCalls).to.equal(1)
+			expect(reliableCalls[1].player).to.equal(mockPlayer)
+			expect(typeof(reliableCalls[1].payload)).to.equal("table")
+			expect(#reliableCalls[1].payload).to.equal(2)
+		end)
+
+		-- Multi-player broadcast: UREvent fires once per player; each receives
+		-- their own per-relevance-filtered buffer.
+		it("Multi-player — UREvent fires per-player, each with own filtered buffer", function()
+			local p1 = buildMockPlayer(1001)
+			local p2 = buildMockPlayer(2002)
+			local players, network, urCalls = buildBroadcastMocks({ p1, p2 })
+			local mockCsm = buildMockCsm({
+				{ crowdId = "1001", position = Vector3.new(0, 0, 0), radius = 10 },
+				{ crowdId = "2002", position = Vector3.new(200, 0, 0), radius = 10 },
+			})
+
+			game.Workspace:SetAttribute("ArenaWalkableAreaSq", 40000)
+			NPCSpawner.init({
+				runService = buildMockRunService(),
+				arenaArea = 40000,
+				arenaBounds = { -1000, 1000, -1000, 1000 },
+				csm = mockCsm,
+				players = players,
+				network = network,
+			})
+			NPCSpawner._setStateForTest("Ticking")
+
+			-- Place 1 NPC near each crowd. Each player should see only their own.
+			NPCSpawner._seedNpcForTest("nA", Instance.new("Part"), true, Vector3.new(5, 0, 0))
+			NPCSpawner._seedNpcForTest("nB", Instance.new("Part"), true, Vector3.new(205, 0, 0))
+
+			NPCSpawner._broadcastTickForTest()
+
+			-- Assert: 2 UREvents (one per player). Each has 1 record.
+			expect(#urCalls).to.equal(2)
+			for _, call in ipairs(urCalls) do
+				expect(buffer.len(call.payload)).to.equal(BROADCAST_RECORD_SIZE)
+			end
 		end)
 
 		-- Constants sanity: confirm the constants file matches the buffer layout offsets.
