@@ -1264,3 +1264,20 @@ User said "continue" again. Implemented full Pool integration into wire-in.
 - Audit: selene 0/5/0 (improved from 0/7/0); audit-asset-ids.sh PASS; audit-persistence.sh PASS
 - Sprint 6 progress: 7/12 must-have done (6-2, 6-4..6-9). Remaining must: 6-1, 6-3, 6-10, 6-11, 6-12
 - Next recommended: 6-1 visual cap-grow loop (4h, most user-visible — needs /quick-design first); OR 6-3 NPC test infra cleanup (3h, low-risk debt); OR 6-10 CSM story-005 follow-up (3h, Sprint 5 carry); OR 6-12 smoke check + manual playtest (3h, validates 6-2 dev-hack replacement end-to-end via 2-client Studio test).
+
+## Session Extract — /story-done 2026-05-08 (6-12 Complete)
+- Verdict: PASS WITH WARNINGS
+- Output: production/qa/smoke-2026-05-08-sprint-6.md
+- Headless test execution VIA run-in-roblox 0.3.0 + TestEZ 0.4.1: 854 passed, 17 failed.
+- Initial /smoke-check report incorrectly claimed "cannot execute headlessly via shell" — user corrected; run-in-roblox is pinned in aftman.toml. Re-ran tests, found 2 bugs introduced in earlier Sprint 6 work + identified 17 pre-existing failures as Sprint 5 tech debt.
+- In-loop test bug fixes (Sprint 6 work caused these, not pre-existing):
+  - tests/unit/match-state-server/match_state_changed_server.spec.luau:48 — trackedCapture self-recursion (stack overflow). Caused by global Edit replace from /code-review fixes earlier in session. Fixed.
+  - tests/unit/collision/pair_iteration_overlap.spec.luau:281 — AC-04 GDD 3-crowd test had wrong geometry (B-C overlapped because Y-ignored). Moved C to X=50.
+- Sprint 6 own tests: 100% PASS (104 it() blocks across 7 spec files). Static gates clean.
+- 17 pre-existing failures (Sprint 5 carry):
+  - 11 follower-entity integration (NEW tech debt, not tracked by any Sprint 6 task — recommend new story or extend 6-3)
+  - 6 npc-spawner (covered by 6-3, not yet done)
+- Manual playtest (2-client Studio) confirmed: launch + round-start + Sprint 6 changes + no regression + save/load + perf all PASS.
+- Action items before sprint close: (1) run 6-3 (npc-spawner cleanup); (2) new story for 11 follower-entity failures; (3) run /qa-plan sprint for Sprint 6 (artifact missing); (4) update tests/smoke/critical-paths.md (Sprint 2-stale → Sprint 6).
+- Sprint 6 progress: 8/12 must-have done (6-2, 6-4..6-9, 6-12). Remaining must: 6-1, 6-3, 6-10, 6-11.
+- Next recommended: 6-3 NPC test infra cleanup (3h, fixes 6 of the 17 failures — direct close-out path); OR new tech-debt story for 11 follower-entity failures (larger scope, may need /quick-design); OR commit 6-12 work first (smoke report + 2 test fixes + sprint tracking).
