@@ -45,7 +45,7 @@ return function()
 		local _liveConnections: { RBXScriptConnection } = {}
 
 		local function trackedCapture()
-			local events, conn = trackedCapture()
+			local events, conn = captureEvents()
 			table.insert(_liveConnections, conn)
 			return events, conn
 		end

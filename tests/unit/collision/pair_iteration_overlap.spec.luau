@@ -264,15 +264,18 @@ return function()
 		end)
 
 		-- AC-04 GDD example: 3-crowd setup A,B,C — verify only A-B overlaps.
-		-- B at (10,50,0) r=8 vs C at (20,0,0) r=8 → distSq=100+2500=2600, combinedSq=256, overlap=false.
-		-- A at (0,0,0) r=8 vs C at (20,0,0) r=8 → distSq=400, overlap=false.
-		-- A at (0,0,0) r=8 vs B at (10,50,0) r=8 → distSq=100, overlap=true.
+		-- A at (0,0,0) r=8, B at (10,50,0) r=8 → distSq=100 (Y=50 ignored), overlap=true.
+		-- A-C: distSq=50²=2500 (XZ=50 stud horizontal), overlap=false.
+		-- B-C: dx=40, dz=0 → distSq=1600, overlap=false.
 		-- Closes story-spec QA row "B-C overlap=false" with end-to-end integration.
-		it("AC-04 — GDD 3-crowd example: only A-B pair overlaps (B-C non-overlap)", function()
+		-- C is placed at X=50 (not X=20 as in the AC-04 helper test) because Y is
+		-- ignored — at X=20 the B-C pair (dx=10) would also overlap, defeating the
+		-- 3-crowd "only A-B" intent.
+		it("AC-04 — GDD 3-crowd example: only A-B pair overlaps (A-C + B-C non-overlap)", function()
 			local mockCsm = buildMockCsm({
 				buildCrowd("aaa", Vector3.new(0, 0, 0), 8),
 				buildCrowd("bbb", Vector3.new(10, 50, 0), 8),
-				buildCrowd("ccc", Vector3.new(20, 0, 0), 8),
+				buildCrowd("ccc", Vector3.new(50, 0, 0), 8),
 			})
 			CollisionResolver.init({ csm = mockCsm, peelDispatcher = buildMockPeelDispatcher() })
 
