@@ -273,14 +273,16 @@ local CrowdStateClient: any = {}
 --- @param payload any — { crowdId, hue, initialCount }
 local function _onCrowdCreated(payload: any): ()
 	local crowdId: string = tostring(payload.crowdId)
+	local initialPos = (typeof(payload.initialPosition) == "Vector3") and payload.initialPosition or Vector3.zero
 	local existing = _crowds[crowdId]
 	if existing == nil then
 		-- AC-19: no prior broadcast — create a minimal record; broadcast will fill
-		-- position/radius/tick when it arrives.
+		-- position/radius/tick when it arrives. initialPosition from server payload
+		-- (Sprint 5 unblock — Phase 8 broadcast stubbed, would otherwise carry pos).
 		_crowds[crowdId] = {
 			crowdId      = crowdId,
 			tick         = 0,
-			position     = Vector3.zero,
+			position     = initialPos,
 			radius       = 2.5,
 			count        = payload.initialCount,
 			hue          = payload.hue,
@@ -292,6 +294,10 @@ local function _onCrowdCreated(payload: any): ()
 		existing.hue = payload.hue
 		if existing.count == 0 then
 			existing.count = payload.initialCount
+		end
+		-- Only set position if existing record has no broadcast-derived value yet.
+		if existing.position == Vector3.zero and initialPos ~= Vector3.zero then
+			existing.position = initialPos
 		end
 	end
 	CrowdStateClient.CrowdCreated:Fire(crowdId)

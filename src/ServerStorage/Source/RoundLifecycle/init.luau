@@ -147,11 +147,21 @@ function RoundLifecycle.createAll(participatingPlayers: { Player }): ()
 
 	for i, player in participatingPlayers do
 		local crowdId = tostring(player.UserId)
+		-- Initial spawn position from player character HRP if available; falls back to
+		-- world origin. CSM story-005 (F2 position lag) takes over per-tick once round
+		-- ticks; this initial value just seeds the broadcast payload at sane spawn point.
+		local spawnPos = Vector3.new(0, 0, 0)
+		local char = player.Character
+		if char ~= nil then
+			local hrp = char:FindFirstChild("HumanoidRootPart")
+			if hrp ~= nil and hrp:IsA("BasePart") then
+				spawnPos = hrp.Position
+			end
+		end
 		-- Initial CrowdRecord shape mirrors CrowdStateServer.CrowdRecord.
-		-- Spawn position composition lives outside this story (story-002/CSM).
 		local initial = {
 			crowdId = crowdId,
-			position = Vector3.new(0, 0, 0),
+			position = spawnPos,
 			radiusMultiplier = 1.0,
 			radius = 5.0,
 			count = CROWD_START_COUNT,

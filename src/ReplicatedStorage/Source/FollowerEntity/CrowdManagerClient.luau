@@ -49,6 +49,7 @@
 
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local RunService = game:GetService("RunService")
+local Players = game:GetService("Players")
 
 local Packages = ReplicatedStorage.Packages
 local JanitorModule = require(Packages.janitor)
@@ -138,20 +139,25 @@ local function constructCrowd(crowdId: string): ()
 	end
 	_crowds[crowdId] = client
 
-	-- Initial spawn: read crowd record's count + grow to that size via setPoolSize.
-	-- setPoolSize internally fires _onCapGrowRequest(growCount); the cap-grow callback
-	-- enqueues N FadeIn requests through SpawnThrottleQueue. onRenderStepped drains
-	-- 4/frame, calling spawnFadeInAtCenter → Pool.grantBundle → bundle parented at
-	-- crowd center. Without this trigger, _positions stays empty and _update no-ops.
+	-- Initial spawn: seed crowd center + read record's count + grow to that size via
+	-- setPoolSize. setPoolSize internally fires _onCapGrowRequest(growCount); cap-grow
+	-- callback enqueues N FadeIn requests through SpawnThrottleQueue. onRenderStepped
+	-- drains 4/frame, calling spawnFadeInAtCenter → Pool.grantBundle → bundle CFrame'd
+	-- at _lastCrowdCenter. Without seeding, first-frame spawns land at Vector3.zero
+	-- (under any baseplate). Per-tick _update overwrites _lastCrowdCenter from
+	-- ownState.position on subsequent frames, but initial spawn fires before _update.
 	-- Source: bridges CRB story-003 reliable CrowdCreated → FE Sprint 4 Pool grant path.
 	local record = CrowdStateClient.get(crowdId)
-	if record ~= nil and record.count and record.count > 0 then
-		local ok, err = pcall(function()
-			(client :: any):setPoolSize(record.count)
-		end)
-		if not ok then
-			warn("[CrowdManagerClient] setPoolSize failed for crowdId=" .. crowdId
-				.. " count=" .. tostring(record.count) .. ": " .. tostring(err))
+	if record ~= nil then
+		(client :: any)._lastCrowdCenter = record.position
+		if record.count and record.count > 0 then
+			local ok, err = pcall(function()
+				(client :: any):setPoolSize(record.count)
+			end)
+			if not ok then
+				warn("[CrowdManagerClient] setPoolSize failed for crowdId=" .. crowdId
+					.. " count=" .. tostring(record.count) .. ": " .. tostring(err))
+			end
 		end
 	end
 end
@@ -188,6 +194,26 @@ end
 --- @param dt  number  — elapsed time since last frame (seconds)
 local function onRenderStepped(dt: number): ()
 	debug.profilebegin("FollowerEntityClient_Update")
+
+	-- Sprint 5 dev unblock: client-side prediction of crowd center to LocalPlayer HRP.
+	-- Phase 8 broadcastAll is stubbed so server never sends per-tick position. Without
+	-- this, crowd would stay at initial spawn forever. Production: broadcast smooths
+	-- this client-prediction; with broadcast stubbed, client owns prediction entirely.
+	local localPlayer = Players.LocalPlayer
+	if localPlayer ~= nil then
+		local char = localPlayer.Character
+		if char ~= nil then
+			local hrp = char:FindFirstChild("HumanoidRootPart")
+			if hrp ~= nil and hrp:IsA("BasePart") then
+				local ownCrowdId = tostring(localPlayer.UserId)
+				local rec = CrowdStateClient.get(ownCrowdId) :: any
+				if rec ~= nil then
+					rec.position = hrp.Position
+				end
+			end
+		end
+	end
+
 	-- 1. Throttle queue drain (Story 4-5 §AC-8)
 	local dispatched = _spawnQueue:dequeueUpTo(FollowerVisualConfig.SPAWN_THROTTLE_PER_FRAME)
 	for _, req in dispatched do

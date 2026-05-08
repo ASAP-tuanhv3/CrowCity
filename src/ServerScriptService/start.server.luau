@@ -62,11 +62,11 @@ local AbsorbSystem = require(ServerStorage.Source.AbsorbSystem)
 local CrowdStateServer = require(ServerStorage.Source.CrowdStateServer)
 local NPCSpawner = require(ServerStorage.Source.NPCSpawner)
 local ChestSystemStub = require(ServerStorage.Source._PhaseStubs.ChestSystemStub)
-local CSMStateEvaluateStub = require(ServerStorage.Source._PhaseStubs.CSMStateEvaluateStub)
 local MSMTimerCheckStub = require(ServerStorage.Source._PhaseStubs.MSMTimerCheckStub)
 local MSMEliminationConsumerStub = require(ServerStorage.Source._PhaseStubs.MSMEliminationConsumerStub)
-local CSMBroadcastAllStub = require(ServerStorage.Source._PhaseStubs.CSMBroadcastAllStub)
 local PeelDispatcherStub = require(ServerStorage.Source._PhaseStubs.PeelDispatcherStub)
+-- CSMStateEvaluateStub + CSMBroadcastAllStub replaced by real CrowdStateServer.stateEvaluate
+-- + CrowdStateServer.broadcastAll (Sprint 5 unblock — wired below).
 
 -- Initialise AbsorbSystem with production dependencies (DI per ADR-0006 + Story 5-10).
 -- Must be called before TickOrchestrator._registerPhases / .start().
@@ -83,12 +83,16 @@ TickOrchestrator._registerPhases({
 	{ phase = 2, name = "Relic",         callback = RelicSystemStub.tick },
 	{ phase = 3, name = "Absorb",        callback = AbsorbSystem.tick },
 	{ phase = 4, name = "Chest",         callback = ChestSystemStub.tick },
-	{ phase = 5, name = "CSM:Eval",      callback = CSMStateEvaluateStub.tick },
+	{ phase = 5, name = "CSM:Eval",      callback = CrowdStateServer.stateEvaluate },
 	{ phase = 6, name = "MSM:Timer",     callback = MSMTimerCheckStub.tick },
 	{ phase = 7, name = "MSM:Elim",      callback = MSMEliminationConsumerStub.tick },
-	{ phase = 8, name = "CSM:Cast",      callback = CSMBroadcastAllStub.tick },
+	{ phase = 8, name = "CSM:Cast",      callback = CrowdStateServer.broadcastAll },
 	{ phase = 9, name = "PeelDispatch",  callback = PeelDispatcherStub.tick },
 })
+
+-- CSM Players.PlayerRemoving handler — destroys crowd record on disconnect.
+-- Idempotent; safe to call once at boot. ADR-0004 §Write-Access Matrix.
+CrowdStateServer.start()
 
 -- ADR-0002 §Phase Registration L162-178: start() must follow _registerPhases.
 TickOrchestrator.start()
@@ -165,7 +169,13 @@ local function onPlayerAdded(player: Player)
 	FtueManagerServer.onPlayerAdded(player)
 	CharacterSpawner.startRespawnLoop(player)
 
-	-- Dev auto-start: spawn a crowd for the first player who joins.
+	-- Dev auto-start: spawn a crowd at the player's character spawn position.
+	-- Wait for character so RoundLifecycle.createAll can read HRP for spawn point.
+	if player.Character == nil then
+		player.CharacterAdded:Wait()
+	end
+	-- One frame for HRP to populate.
+	task.wait()
 	startRoundForPlayer(player)
 end
 

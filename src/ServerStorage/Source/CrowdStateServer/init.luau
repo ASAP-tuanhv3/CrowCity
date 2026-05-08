@@ -313,6 +313,11 @@ function CrowdStateServer.create(crowdId: string, initial: CrowdRecord): CrowdRe
 		crowdId = initial.crowdId,
 		hue = initial.hue,
 		initialCount = initial.count,
+		-- Include initial position so client can render followers at sane spawn
+		-- point before Phase 8 CrowdStateBroadcast lands. Phase 8 broadcasts then
+		-- take over per-tick position updates (story-008 wiring). Sprint 5 unblock:
+		-- Phase 8 still stubbed so this is the only source of position client-side.
+		initialPosition = initial.position,
 	}, nil)
 	return initial
 end
