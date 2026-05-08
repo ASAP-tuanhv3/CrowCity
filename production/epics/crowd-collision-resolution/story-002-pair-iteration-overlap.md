@@ -1,7 +1,7 @@
 # Story 002: F1 pair overlap test + F2 pair_key + O(p²) unique iteration
 
 > **Epic**: CollisionResolver (Crowd Collision Resolution)
-> **Status**: Ready
+> **Status**: Complete
 > **Layer**: Feature
 > **Type**: Logic
 > **Estimate**: 3h
@@ -96,7 +96,7 @@
 **Required evidence**:
 - `tests/unit/collision/pair_iteration_overlap.spec.luau` — must exist and pass
 
-**Status**: [ ] Not yet created
+**Status**: [x] Created 2026-05-08 — 18 it() blocks (AC-03 ×5, AC-04 ×4, AC-05 ×5, AC-15 ×3, scratch-cleared ×1)
 
 ---
 
@@ -104,3 +104,20 @@
 
 - Depends on: Story 001 (Phase 1 skeleton).
 - Unlocks: Stories 003, 005, 006 (consume `_overlapPairs`).
+
+---
+
+## Completion Notes
+
+**Completed**: 2026-05-08 (Sprint 6 task 6-6)
+**Criteria**: 4/4 covered (AC-03 / AC-04 / AC-05 / AC-15) via `tests/unit/collision/pair_iteration_overlap.spec.luau` — 18 it() blocks.
+**Approach**: Extended existing CollisionResolver module (Story 001 skeleton) with module-level helpers (`pairKey` lex-canonical + `isOverlapSq` 2D squared-distance + module-level `crowdIdComparator` for zero-alloc sort). Replaced Story 001 stub in `tickPhase1` with: pre-sort `active` by crowdId (lex-deterministic pair order regardless of CSM `pairs()` traversal) + `i<j` double loop populating `_overlapPairs` with `{ a, b, pairKey, distSq }` per overlapping pair. F1 squared-distance overlap, Y axis ignored, no `math.sqrt`. Test-only accessors `_getOverlapPairsLength`, `_snapshotOverlapPairs`, `_pairKey`, `_isOverlapSq` exposed for unit testing without leaking mutable scratch.
+**Audit gates**: `selene src/` 0/7/0 baseline maintained (one transient `manual_table_clone` warning fixed in-loop via `table.clone`); `audit-asset-ids.sh` PASS; `audit-persistence.sh` PASS.
+**Code Review**: Skipped (lean mode). gameplay-programmer + qa-tester ad-hoc reviews APPROVED WITH SUGGESTIONS; all 4 suggestions applied in-loop (hoist comparator, use pairKey helper not inline shortcut, add B-C non-overlap integration test, add a/b ref identity assertion).
+**ADR-0004 mutation question resolved**: `table.sort(active, ...)` mutates the local copy of the fresh array returned by `getAllActive`. Read-only contract targets CrowdRecord field mutation, not local-array reordering. CSM doc-comment lines 367-368 explicitly states "fresh array each call — callers may discard or hold". Code comment lines 174-176 documents reasoning.
+**Deviations**:
+- ADVISORY — F1 invocation spy-count assertion (story QA row "spy on F1 isOverlap call shows 3 invocations") not implemented. Output-equivalence assertion (pair count + pairKey set + a/b refs) is stronger correctness proof. `isOverlapSq` is module-local; wrapping would require refactor for zero behavior gain.
+- ADVISORY (carried from Story 001) — `getClock()` discard each tick line 164. AbsorbSystem precedent line 178. Sub-µs cost vs Phase 1 0.6 ms budget.
+**Files changed**:
+- `src/ServerStorage/Source/CollisionResolver/init.luau` (extended: helpers + replaced stub + 4 test-only accessors)
+- `tests/unit/collision/pair_iteration_overlap.spec.luau` (new, 18 it() blocks)

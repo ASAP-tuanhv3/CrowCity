@@ -54,7 +54,9 @@ PlayerDataServer.start(DefaultPlayerData, "PlayerData_v2", { ReceiptProcessor.re
 -- Stub status (2026-04-29): all 9 phases stubbed. Replace as epics land.
 -- ---------------------------------------------------------------------------
 local TickOrchestrator = require(ServerStorage.Source.TickOrchestrator)
-local CollisionResolverStub = require(ServerStorage.Source._PhaseStubs.CollisionResolverStub)
+-- CollisionResolverStub replaced by real CollisionResolver (CCR epic, Sprint 6 story 001).
+-- CollisionResolverStub.luau retained (close-out story removes it).
+local CollisionResolver = require(ServerStorage.Source.CollisionResolver)
 local RelicSystemStub = require(ServerStorage.Source._PhaseStubs.RelicSystemStub)
 -- AbsorbSystemStub replaced by real AbsorbSystem (absorb-system epic, Sprint 5 stories 5-10..5-14).
 -- AbsorbSystemStub.luau retained (close-out Story 011 removes it).
@@ -68,6 +70,15 @@ local PeelDispatcherStub = require(ServerStorage.Source._PhaseStubs.PeelDispatch
 -- CSMStateEvaluateStub + CSMBroadcastAllStub replaced by real CrowdStateServer.stateEvaluate
 -- + CrowdStateServer.broadcastAll (Sprint 5 unblock — wired below).
 
+-- Initialise CollisionResolver with production dependencies (DI per ADR-0006 + CCR Story 001).
+-- Must be called before TickOrchestrator._registerPhases / .start().
+-- ADR-0004: CollisionResolver is sole authorised caller of csm.getAllActive() in Phase 1.
+-- peelDispatcher = PeelDispatcherStub until Story 008 wires the real PeelDispatcher.
+CollisionResolver.init({
+	csm = CrowdStateServer,
+	peelDispatcher = PeelDispatcherStub,
+})
+
 -- Initialise AbsorbSystem with production dependencies (DI per ADR-0006 + Story 5-10).
 -- Must be called before TickOrchestrator._registerPhases / .start().
 -- ADR-0004: AbsorbSystem is sole authorised caller of csm.updateCount(crowdId, +1, "Absorb")
@@ -79,7 +90,7 @@ AbsorbSystem.init({
 })
 
 TickOrchestrator._registerPhases({
-	{ phase = 1, name = "Collision",     callback = CollisionResolverStub.tick },
+	{ phase = 1, name = "Collision",     callback = CollisionResolver.tickPhase1 },
 	{ phase = 2, name = "Relic",         callback = RelicSystemStub.tick },
 	{ phase = 3, name = "Absorb",        callback = AbsorbSystem.tick },
 	{ phase = 4, name = "Chest",         callback = ChestSystemStub.tick },

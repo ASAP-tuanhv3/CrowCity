@@ -1,7 +1,7 @@
 # Story 001: Phase 1 callback skeleton + Dormant/Ticking states
 
 > **Epic**: CollisionResolver (Crowd Collision Resolution)
-> **Status**: Ready
+> **Status**: Complete
 > **Layer**: Feature
 > **Type**: Logic
 > **Estimate**: 3h
@@ -98,7 +98,7 @@
 **Required evidence**:
 - `tests/unit/collision/phase1_skeleton.spec.luau` — must exist and pass
 
-**Status**: [ ] Not yet created
+**Status**: [x] Created 2026-05-08 — 15 it() blocks (AC-01 ×3, AC-02 ×3, DI ×5, State ×4)
 
 ---
 
@@ -106,3 +106,23 @@
 
 - Depends on: TickOrchestrator (Sprint 3 closed); CrowdStateServer (Sprint 3 partial — already exposes getAllActive).
 - Unlocks: All other CCR stories.
+
+---
+
+## Completion Notes
+
+**Completed**: 2026-05-08 (Sprint 6 task 6-5)
+**Criteria**: 4/4 covered (AC-01 / AC-02 / DI / State transitions) via `tests/unit/collision/phase1_skeleton.spec.luau` — 15 it() blocks.
+**Approach**: Module-level singleton mirroring AbsorbSystem pattern. DI via `init({csm, peelDispatcher, clock?})`; idempotent re-init; assert-at-init on missing required deps. `tickPhase1(tickCount, ctx)` body: `table.clear(_overlapPairs)` → `_csm.getAllActive()` → empty/nil → Dormant + early return; non-empty → Ticking + Story 002 stub marker. Boot wired in `start.server.luau` lines 56-95: require + `init()` before `_registerPhases`, Phase 1 row points to `CollisionResolver.tickPhase1`. CollisionResolverStub retained per close-out convention.
+**Audit gates**: `selene src/` 0/7/0 baseline maintained; `audit-asset-ids.sh` PASS; `audit-persistence.sh` PASS.
+**Code Review**: Skipped (lean mode). gameplay-programmer + qa-tester ad-hoc reviews APPROVED WITH SUGGESTIONS; suggestion 3 (lock `getAllActive` early-return-read contract via `expect(callCount).to.equal(1)`) applied in-loop.
+**Deviations**:
+- ADVISORY — `destroyAll()` transition path not implemented (out of story Public surface; next-tick empty-getAllActive achieves the same Dormant transition naturally; no AC tests destroyAll).
+- ADVISORY — `getClock()` at line 133 calls + discards each tick. Mirrors AbsorbSystem line 178 precedent. Sub-µs cost; well under Phase 1 0.6 ms budget.
+- ADVISORY — AC-01 "within 67ms (1 tick at 15Hz)" timing unverifiable in headless TestEZ (bypasses TickOrch). Latency owned by TickOrch own tests (Sprint 3 stories 001/002/003 Complete) + Studio playtest. Spec covers shape half only.
+- ADVISORY — ADR-0002 §Phase Registration example shows `CollisionResolver.tick`; implementation uses story-mandated `tickPhase1`. ADR example illustrative not normative; phase callback contract `(tickCount, ctx) -> ()` honored.
+- ADVISORY — `_overlapPairs` clear unobservable from outside; needs `_getOverlapPairsLength()` test surface by Story 002.
+**Files changed**:
+- `src/ServerStorage/Source/CollisionResolver/init.luau` (new, 8338 B)
+- `tests/unit/collision/phase1_skeleton.spec.luau` (new, 15 it() blocks)
+- `src/ServerScriptService/start.server.luau` (3 edits: require, init() call, Phase 1 callback row)

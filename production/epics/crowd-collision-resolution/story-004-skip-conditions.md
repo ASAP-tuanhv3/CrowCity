@@ -1,7 +1,7 @@
 # Story 004: Skip conditions — nil/Eliminated state guards + GraceWindow handling
 
 > **Epic**: CollisionResolver (Crowd Collision Resolution)
-> **Status**: Ready
+> **Status**: Complete
 > **Layer**: Feature
 > **Type**: Logic
 > **Estimate**: 2h
@@ -89,7 +89,7 @@
 **Required evidence**:
 - `tests/unit/collision/skip_conditions.spec.luau` — must exist and pass
 
-**Status**: [ ] Not yet created
+**Status**: [x] Created 2026-05-08 — 16 it() blocks (AC-06 ×5, GraceWindow ×3, Active+Active regression ×1, Mixed scenarios ×3, No-state-writes tripwire ×1, dual-nil edge ×1, single-nil non-poisoning ×1, with `_setStillOverlappingSpy` tripwire); static grep `transitionTo|setState` call-sites: 0 matches in source.
 
 ---
 
@@ -97,3 +97,29 @@
 
 - Depends on: Stories 001-002.
 - Unlocks: Stories 003 (gated drip), 005 (overlap-bit consumer).
+
+---
+
+## Completion Notes
+
+**Completed**: 2026-05-08 (Sprint 6 task 6-8)
+**Criteria**: 4/4 covered (AC-06 / GraceWindow drip suspended / GraceWindow ↔ GraceWindow / No state writes) via `tests/unit/collision/skip_conditions.spec.luau` — 16 it() blocks. Implementation note: Story 003's drip pass extended in-place rather than as separate skip-pass module — single drip loop now runs (a) csm.get nil-guard re-fetch, (b) state filter (Active+Active only), (c) drip math. Cleaner than two separate passes; pair entries remain in `_overlapPairs` regardless of skip outcome (Story 005 overlap-bit feed consumes the unfiltered set).
+**Approach**: Added re-fetch via `_csm.get(entry.a.crowdId)` / `_csm.get(entry.b.crowdId)` at top of drip loop. Nil-guard `continue` skips the pair. State-filter `continue` (positive-list `recA.state ~= "Active" or recB.state ~= "Active"`) skips drip while preserving the pair entry. Tripwire spy on mock CSM (`transitionTo` + `setState` + `setStillOverlapping`) closes the runtime surface; static grep audits the source surface.
+**Audit gates**: `selene src/` 0/7/0 baseline maintained; `audit-asset-ids.sh` PASS; `audit-persistence.sh` PASS; static grep `(transitionTo|setState)[A-Za-z_]*\s*\(` call-sites: 0 matches in CollisionResolver source (only doc-comment annotation at line 54 flagged — expected).
+**Code Review**: Skipped (lean mode). gameplay-programmer + qa-tester ad-hoc reviews CHANGES REQUIRED → APPROVED after fixes; 1 BLOCKING defect + 4 advisory suggestions all applied in-loop:
+1. **Defect fix**: scratch-clear test inline mock at `pair_iteration_overlap.spec.luau` lines 387-397 was missing `get` + `updateCount` — Story 004 drip pass would have errored at runtime. Added both methods (lookup-in-crowdList for `get`, no-op for `updateCount`).
+2. `_setStillOverlappingSpy` tripwire assertion added to no-state-writes test (closes full ADR-0004 §Write-Access Matrix surface for Story 004 scope; Story 005 owns the actual fire).
+3. Positive-list state filter comment added documenting design intent for Story 010+ state-machine extensions.
+4. `_getOverlapPairsLength == 3` assertion added to Mixed Active/Eliminated/Active test (locks Story 005 prerequisite — drip-skip must NOT remove pair entries).
+5. Dual-nil + 1-valid-pair test added (4 crowds, 2 simultaneous nil overrides, validates `continue` interaction across sequential skips before reaching valid pair).
+**Mock back-compat fixes** (so Story 002 / Story 003 tests still run after Story 004 introduces csm.get re-fetch):
+- `pair_iteration_overlap.spec.luau`: `buildMockCsm` extended with `get` (id-indexed lookup) + `updateCount` (no-op); `buildCrowd` adds `count = 50` field; inline mock at scratch-clear test fixed (defect above).
+- `drip_math.spec.luau`: `buildMockCsm` extended with `get` (id-indexed lookup); existing assertions preserved.
+**Deviations**:
+- ADVISORY — Static grep AC ("zero matches") not implementable as TestEZ unit test (no FS access). Runtime tripwire spy substitutes; grep gate run separately during audits.
+- ADVISORY (carried from Story 001) — `getClock()` discard each tick. AbsorbSystem precedent.
+**Files changed**:
+- `src/ServerStorage/Source/CollisionResolver/init.luau` (drip pass extended: csm.get nil-guard + state filter + positive-list comment)
+- `tests/unit/collision/skip_conditions.spec.luau` (new, 16 it() blocks)
+- `tests/unit/collision/pair_iteration_overlap.spec.luau` (mock CSM back-compat extension + scratch-clear inline mock fix + buildCrowd count field)
+- `tests/unit/collision/drip_math.spec.luau` (mock CSM back-compat extension)
