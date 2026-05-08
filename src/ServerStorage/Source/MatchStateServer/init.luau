@@ -123,6 +123,17 @@ local _crowdEliminatedConnection: RBXScriptConnection? = nil
 -- of each eliminationConsumer call.
 local _pendingElims: { string } = {}
 
+-- Server-only BindableEvent fired on every _transitionTo. Mirrors CSM's
+-- CrowdEliminatedServer pattern — server-side consumers (e.g. NPCSpawner)
+-- subscribe to receive intra-server lifecycle signals without going through
+-- the MatchStateChanged RemoteEvent (which is for client broadcast).
+-- Payload: (newState: MatchState, endsAt: number?).
+-- Story-007 (broadcast Participation) wires the client-side RemoteEvent
+-- separately; this server-side signal fires regardless and is ADR-0005
+-- compliant — it's a read-only notification, not a state-write API.
+local _matchStateChangedServer: BindableEvent = Instance.new("BindableEvent")
+_matchStateChangedServer.Name = "MatchStateServer_MatchStateChangedServer"
+
 -- Constants — MSM tuning knobs per GDD design/gdd/match-state-machine.md
 -- §Tuning Knobs L336-340 + control-manifest L105.
 -- Future: GDD L355 calls for `SharedConstants/MatchConfig.luau` extraction;
@@ -320,13 +331,15 @@ end
 -- ---------------------------------------------------------------------------
 
 --- Module-private state transition. Called by internal driver loops only
---- (story-002+ wires the timer + signal subscribers). Story-001 only
---- writes _state + _stateStartTime + _stateEndsAt; MatchStateChanged
---- broadcast wiring lives in story-007.
+--- (story-002+ wires the timer + signal subscribers). Writes _state +
+--- _stateStartTime + _stateEndsAt and fires the server-only
+--- MatchStateChangedServer BindableEvent for intra-server consumers.
+--- The MatchStateChanged RemoteEvent broadcast wiring lives in story-007.
 local function _transitionTo(newState: MatchState, endsAt: number?): ()
 	_state = newState
 	_stateStartTime = os.clock()
 	_stateEndsAt = endsAt
+	_matchStateChangedServer:Fire(newState, endsAt)
 end
 
 --- Counts the participating (truthy) entries in `_participation`.
@@ -396,6 +409,25 @@ end
 -- ---------------------------------------------------------------------------
 
 local MatchStateServer = {}
+
+--- Server-only BindableEvent. Fires on every `_transitionTo` call with payload
+--- `(newState: MatchState, endsAt: number?)`. Subscribe via:
+---   `MatchStateServer.MatchStateChangedServer.Event:Connect(handler)`
+--- Use cases: NPCSpawner createAll/destroyAll wiring, intra-server lifecycle
+--- side-effects that don't belong inside MSM. Read-only — never re-fire,
+--- never invoke state mutators from the handler.
+---
+--- **Result-state caveat**: `_handleResultEntry` writes `_state = "Result"`
+--- DIRECTLY (bypasses `_transitionTo`) to honor the grants-before-broadcast
+--- ordering invariant per ADR-0005 §Result-entry. Consequence: this
+--- BindableEvent does NOT fire for Result entry. Subsequent Result→Intermission
+--- transitions DO fire (those go through `_transitionTo`). Future server-side
+--- consumers that need a Result signal should subscribe to the
+--- `MatchStateChanged` reliable RemoteEvent (story-007) instead.
+---
+--- **Dispatch is deferred** (Roblox BindableEvent contract): handlers run on
+--- the next micro-task resumption, not synchronously inline with `:Fire`.
+MatchStateServer.MatchStateChangedServer = _matchStateChangedServer
 
 --- Returns the current match state. Read-only for external consumers.
 --- Callers: HUD, FTUE, spectator camera, Currency system.
@@ -476,6 +508,23 @@ end
 --- Returns the resolved round winner's crowdId, or nil if no winner has been
 --- set yet (or zero-participant Result). Set by T6/T7/T8 paths. Read by
 --- broadcast (story-005) + Currency.grantMatchRewards (story-005).
+--- T11 BindToClose entry point. Fires MatchStateChanged("ServerClosing") to
+--- all clients so the UI can react before ProfileStore's 30s grace finishes.
+--- Called by ShutdownCoordinator (sole caller) per ADR-0005 §BindToClose ownership.
+--- Does NOT call _transitionTo — at shutdown the state machine is already
+--- being torn down; the broadcast is the only observable outcome the client
+--- needs. NO currency grant during shutdown (ADR-0011 §Grace + manifest L106).
+--- Mirrors MatchStateServerStub.requestServerClosing semantics so the
+--- ShutdownCoordinator chain is unaffected by the stub→real swap.
+function MatchStateServer.requestServerClosing(): ()
+	local ok, err = pcall(function()
+		Network.fireAllClients(RemoteEventName.MatchStateChanged, "ServerClosing")
+	end)
+	if not ok then
+		warn("[MatchStateServer] MatchStateChanged ServerClosing broadcast failed: " .. tostring(err))
+	end
+end
+
 function MatchStateServer.getWinnerId(): string?
 	return _winnerId
 end

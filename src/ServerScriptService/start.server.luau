@@ -64,8 +64,10 @@ local AbsorbSystem = require(ServerStorage.Source.AbsorbSystem)
 local CrowdStateServer = require(ServerStorage.Source.CrowdStateServer)
 local NPCSpawner = require(ServerStorage.Source.NPCSpawner)
 local ChestSystemStub = require(ServerStorage.Source._PhaseStubs.ChestSystemStub)
-local MSMTimerCheckStub = require(ServerStorage.Source._PhaseStubs.MSMTimerCheckStub)
-local MSMEliminationConsumerStub = require(ServerStorage.Source._PhaseStubs.MSMEliminationConsumerStub)
+-- MSMTimerCheckStub + MSMEliminationConsumerStub + MatchStateServerStub replaced by
+-- real MatchStateServer (Sprint 6 task 6-2 — Lobby→Countdown→Active timer driver).
+-- Stub modules retained in _PhaseStubs/ for close-out story removal.
+local MatchStateServer = require(ServerStorage.Source.MatchStateServer)
 local PeelDispatcherStub = require(ServerStorage.Source._PhaseStubs.PeelDispatcherStub)
 -- CSMStateEvaluateStub + CSMBroadcastAllStub replaced by real CrowdStateServer.stateEvaluate
 -- + CrowdStateServer.broadcastAll (Sprint 5 unblock — wired below).
@@ -95,8 +97,8 @@ TickOrchestrator._registerPhases({
 	{ phase = 3, name = "Absorb",        callback = AbsorbSystem.tick },
 	{ phase = 4, name = "Chest",         callback = ChestSystemStub.tick },
 	{ phase = 5, name = "CSM:Eval",      callback = CrowdStateServer.stateEvaluate },
-	{ phase = 6, name = "MSM:Timer",     callback = MSMTimerCheckStub.tick },
-	{ phase = 7, name = "MSM:Elim",      callback = MSMEliminationConsumerStub.tick },
+	{ phase = 6, name = "MSM:Timer",     callback = MatchStateServer.timerCheck },
+	{ phase = 7, name = "MSM:Elim",      callback = MatchStateServer.eliminationConsumer },
 	{ phase = 8, name = "CSM:Cast",      callback = CrowdStateServer.broadcastAll },
 	{ phase = 9, name = "PeelDispatch",  callback = PeelDispatcherStub.tick },
 })
@@ -104,6 +106,11 @@ TickOrchestrator._registerPhases({
 -- CSM Players.PlayerRemoving handler — destroys crowd record on disconnect.
 -- Idempotent; safe to call once at boot. ADR-0004 §Write-Access Matrix.
 CrowdStateServer.start()
+
+-- MSM lifecycle wiring (Sprint 6 task 6-2): connects PlayerAdded/Removing for
+-- participation tracking + subscribes to CSM CrowdEliminatedServer for Phase 7
+-- elim consumer. Idempotent. ADR-0005 §Decision T1 driver entry.
+MatchStateServer.start()
 
 -- ADR-0002 §Phase Registration L162-178: start() must follow _registerPhases.
 TickOrchestrator.start()
@@ -126,11 +133,10 @@ TickOrchestrator.start()
 -- module via in-place edit of the require + register({...}) deps below.
 -- ---------------------------------------------------------------------------
 local ShutdownCoordinator = require(ServerStorage.Source.ShutdownCoordinator)
-local MatchStateServerStub = require(ServerStorage.Source._PhaseStubs.MatchStateServerStub)
 
 ShutdownCoordinator.register({
 	tickOrchestrator = TickOrchestrator,
-	matchStateServer = MatchStateServerStub,
+	matchStateServer = MatchStateServer,
 })
 -- ---------------------------------------------------------------------------
 
@@ -151,32 +157,69 @@ do
 end
 
 -- ---------------------------------------------------------------------------
--- Auto-start a round on first player join (dev convenience).
--- Production gameplay loop should drive this via MatchStateServer Lobby→Round
--- timer once MSM is fully wired (Sprint 6+).
+-- NPCSpawner round-lifecycle subscription (Sprint 6 task 6-2).
+-- MSM owns Lobby→Countdown→Active timing. NPCSpawner.createAll/destroyAll
+-- are not in MSM's scope (NPCSpawner per ADR-0008 is Feature-layer; MSM per
+-- ADR-0005 is Core-layer). Direct MSM→NPCSpawner import would violate the
+-- Core→Feature layer direction per control-manifest §Layer hierarchy. Bridge
+-- them here via the server-only MatchStateChangedServer BindableEvent.
+--
+--   Active (T4)   → NPCSpawner.createAll(participants)  — activate 300-Part pool
+--   Intermission  → NPCSpawner.destroyAll()             — park pool at Y=-10000
+--
+-- ADR-0008 §Caller Authority Matrix names "RoundLifecycle (T4)" as sole
+-- caller of NPCSpawner.createAll. This bridge is a de-facto deviation; ADR-0008
+-- amendment pending to recognise the boot-script bridge as the authorised
+-- caller given the Core→Feature import restriction.
+--
+-- Dispatch is DEFERRED per Roblox BindableEvent contract: this handler does
+-- NOT run synchronously with MSM's `_transitionTo("Active", ...)` call inside
+-- `timerCheck`. RoundLifecycle.createAll(participants) (called inside
+-- timerCheck at T4) and NPCSpawner.createAll(participants) (called from this
+-- handler) execute in different resumption contexts. Participant list is
+-- re-resolved here via Players:GetPlayers() + getParticipation filter; this
+-- list MUST remain semantically equivalent to MSM's internal
+-- `_participatingPlayers()` (both filter via Players:GetPlayerByUserId so
+-- a player who disconnects mid-gap is excluded from both — equivalent today;
+-- maintenance coupling point if MSM's participation model changes).
+--
+-- The `_npcSpawnerActive` guard prevents double-create on re-entry (idempotency
+-- against Active→Active no-op transitions, which shouldn't happen in MSM but
+-- defensive given ADR-0005 contract is enforced elsewhere).
 -- ---------------------------------------------------------------------------
-local RoundLifecycle = require(ServerStorage.Source.RoundLifecycle)
-local _roundStarted = false
+local _npcSpawnerActive = false
 
-local function startRoundForPlayer(player: Player)
-	if _roundStarted then return end
-	_roundStarted = true
-	local ok, err = pcall(RoundLifecycle.createAll, { player })
-	if not ok then
-		warn("[start] RoundLifecycle.createAll failed:", err)
-		_roundStarted = false
-		return
+MatchStateServer.MatchStateChangedServer.Event:Connect(function(newState: string, _endsAt: number?)
+	if newState == "Active" and not _npcSpawnerActive then
+		-- MSM at T4 already called RoundLifecycle.createAll(participants); resolve
+		-- the same participant list via MSM read API to keep the two calls in sync.
+		-- _participatingPlayers is module-private; use MSM.getParticipation iteration
+		-- via Players:GetPlayers + filter (MSM has set participation flags by Snap).
+		local participants: { Player } = {}
+		for _, plr in ipairs(Players:GetPlayers()) do
+			if MatchStateServer.getParticipation(plr) then
+				table.insert(participants, plr)
+			end
+		end
+		local ok, err = pcall(NPCSpawner.createAll, participants)
+		if not ok then
+			warn("[start] NPCSpawner.createAll failed on T4:", err)
+			return
+		end
+		_npcSpawnerActive = true
+		print("[start] T4 — NPCSpawner activated for", #participants, "participants")
+	elseif newState == "Intermission" and _npcSpawnerActive then
+		-- Reset guard BEFORE pcall so a destroyAll failure does not leave the
+		-- bridge stuck — next round's Active transition can retry createAll.
+		_npcSpawnerActive = false
+		local ok, err = pcall(NPCSpawner.destroyAll)
+		if not ok then
+			warn("[start] NPCSpawner.destroyAll failed on Intermission:", err)
+			return
+		end
+		print("[start] Intermission — NPCSpawner parked")
 	end
-	-- NPCSpawner.createAll fires at RoundLifecycle T4 per ADR-0008. Activates NPC
-	-- pool + connects own Heartbeat for movement+broadcast. Without this, no NPCs
-	-- exist on server (pool stays parked at Y=-10000), so no UREvent broadcast,
-	-- no client mirror, no Absorb candidates.
-	local okNpc, errNpc = pcall(NPCSpawner.createAll, { player })
-	if not okNpc then
-		warn("[start] NPCSpawner.createAll failed:", errNpc)
-	end
-	print("[start] Round started for", player.Name, "— crowd spawned")
-end
+end)
 
 local function onPlayerAdded(player: Player)
 	if not PlayerDataServer.hasLoaded(player) then
@@ -188,14 +231,11 @@ local function onPlayerAdded(player: Player)
 	FtueManagerServer.onPlayerAdded(player)
 	CharacterSpawner.startRespawnLoop(player)
 
-	-- Dev auto-start: spawn a crowd at the player's character spawn position.
-	-- Wait for character so RoundLifecycle.createAll can read HRP for spawn point.
-	if player.Character == nil then
-		player.CharacterAdded:Wait()
-	end
-	-- One frame for HRP to populate.
-	task.wait()
-	startRoundForPlayer(player)
+	-- MSM.start() (called above) wires PlayerAdded for participation tracking.
+	-- This handler covers the per-player template concerns (data load + character
+	-- spawn loop + FTUE). MSM's Lobby→Countdown→Active driver fires when the
+	-- MIN_PLAYERS_TO_START threshold (ADR-0005 = 2) is met. Solo Studio playtest
+	-- requires opening 2 clients via Test → Local Server.
 end
 
 safePlayerAdded(onPlayerAdded)
