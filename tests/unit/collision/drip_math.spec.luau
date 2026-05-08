@@ -88,6 +88,9 @@ return function()
 				updateCountSpy(crowdId, delta, source)
 				return 0  -- mock return; real CSM returns the new clamped count
 			end,
+			setStillOverlapping = function(_id: string, _flag: boolean): ()
+				-- no-op for Story 003 tests (drip-focused); Story 005 added the call
+			end,
 			_updateCountSpy = updateCountSpy,
 		}
 	end

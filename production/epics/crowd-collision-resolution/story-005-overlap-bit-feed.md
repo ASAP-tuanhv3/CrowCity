@@ -1,7 +1,7 @@
 # Story 005: Overlap-bit feed — setStillOverlapping post-drip
 
 > **Epic**: CollisionResolver (Crowd Collision Resolution)
-> **Status**: Ready
+> **Status**: Complete
 > **Layer**: Feature
 > **Type**: Logic
 > **Estimate**: 2h
@@ -87,7 +87,7 @@
 **Required evidence**:
 - `tests/unit/collision/overlap_bit_feed.spec.luau` — must exist and pass
 
-**Status**: [ ] Not yet created
+**Status**: [x] Created 2026-05-08 — 17 it() blocks (AC-09 ×6 incl ordering, AC-14 ×2, TR-019 ×2, AC-13 ×1, per-side ×3, scratch ×1, snapshot+fan-out ×1, single-crowd ×1).
 
 ---
 
@@ -95,3 +95,35 @@
 
 - Depends on: Stories 001-004.
 - Unlocks: CSM `setStillOverlapping` consumer paths (CSM Phase 5 stateEvaluate consumes).
+
+---
+
+## Completion Notes
+
+**Completed**: 2026-05-08 (Sprint 6 task 6-9)
+**Criteria**: 4/4 covered (AC-09 / AC-14 / TR-019 / AC-13 partial) via `tests/unit/collision/overlap_bit_feed.spec.luau` — 17 it() blocks.
+**Approach**: Restructured Story 003+004 drip pass into unified loop with per-side overlap-bit aggregation. New `_overlapCrowds: { [string]: boolean }` scratch dict cleared per tick. Per-side eligibility: nil → no contribute; Eliminated → no contribute; Active/GraceWindow → contribute. Aggregation BEFORE drip-skip guards (intentional — pairs that skip drip due to GraceWindow / nil-partner still contribute eligible sides). Post-drip fan-out loop iterates `active` (cached top-of-tick snapshot) and emits exactly one `setStillOverlapping(crowd.crowdId, _overlapCrowds[id] == true)` per active crowd. New `_snapshotOverlapCrowds` test accessor.
+**Audit gates**: `selene src/` 0/7/0 baseline maintained; `audit-asset-ids.sh` PASS; `audit-persistence.sh` PASS; static grep confirms `setStillOverlapping` has exactly one production call site (CollisionResolver line 420).
+**Code Review**: Skipped (lean mode). gameplay-programmer APPROVED; qa-tester GAPS (advisory). All 4 fixes applied in-loop:
+1. **DOC-001**: renamed misleading test title (was "B flag=false" but asserted true) — now clarifies per-side-not-per-pair eligibility
+2. **GAP-001**: added total-callCount + per-crowd-callCount assertions to Eliminated + 2 GraceWindow tests (guards against fan-out accidentally skipping non-Active crowds)
+3. **GAP-002**: removed unused `flagSeq` field from helper
+4. **GAP-003**: snapshot test now also asserts fan-out callCount + non-overlapping crowd's flag=false (closes aggregation-vs-consumer-path gap)
+**Resolved decisions**:
+- Aggregation positioning BEFORE drip-skip is correct — moving it AFTER would silently break GraceWindow + nil-partner pairs from contributing
+- Unconditional `setStillOverlapping(_, false)` for non-overlapping crowds is required — eliding `false` writes would leave CSM Phase 5 reading stale `stillOverlapping=true`, trapping crowds in GraceWindow indefinitely
+- `setStillOverlapping` IS in CCR's authorized write surface per ADR-0004 §Write-Access Matrix; Story 004's prior `_setStillOverlappingSpy.callCount() == 0` assertion was retroactively wrong (Story 005 makes it 12 across 3 ticks × 4 crowds — corrected in skip_conditions.spec)
+**Mock back-compat fixes** (4 spec files updated for Story 005 fan-out call):
+- `phase1_skeleton.spec.luau`: buildMockCsm + 2 inline mocks extended with `get` + `setStillOverlapping` no-ops
+- `pair_iteration_overlap.spec.luau`: buildMockCsm + scratch-clear inline mock extended with `setStillOverlapping`
+- `drip_math.spec.luau`: buildMockCsm extended with `setStillOverlapping`
+- `skip_conditions.spec.luau`: no-state-writes test updated — setStillOverlapping callCount now expected at 12 (Story 005 authorized write); transitionTo + setState remain at 0
+**Deviations**:
+- ADVISORY (carried from Story 001) — `getClock()` discard each tick. AbsorbSystem precedent.
+**Files changed**:
+- `src/ServerStorage/Source/CollisionResolver/init.luau` (drip pass restructured: per-side aggregation + post-drip fan-out + _overlapCrowds scratch + _snapshotOverlapCrowds accessor + header doc updates)
+- `tests/unit/collision/overlap_bit_feed.spec.luau` (new, 17 it() blocks)
+- `tests/unit/collision/phase1_skeleton.spec.luau` (mock back-compat: get + setStillOverlapping no-ops on 4 mock surfaces)
+- `tests/unit/collision/pair_iteration_overlap.spec.luau` (mock back-compat: setStillOverlapping no-ops on 2 mock surfaces)
+- `tests/unit/collision/drip_math.spec.luau` (mock back-compat: setStillOverlapping no-op on buildMockCsm)
+- `tests/unit/collision/skip_conditions.spec.luau` (no-state-writes test count corrected: 0 → 12)

@@ -60,12 +60,26 @@ return function()
 	-- -------------------------------------------------------------------------
 
 	--- Builds a mock CSM with a configurable getAllActive return value.
+	--- Provides no-op `get` + `setStillOverlapping` so Story 004 / Story 005
+	--- additions to tickPhase1 do not error against this Story 001 fixture.
 	local function buildMockCsm(crowds: { any }?): any
 		local getAllActiveSpy = spy()
+		local byId: { [string]: any } = {}
+		if crowds ~= nil then
+			for _, c in ipairs(crowds) do
+				byId[c.crowdId] = c
+			end
+		end
 		return {
 			getAllActive = function(): { any }
 				getAllActiveSpy()
 				return crowds or {}
+			end,
+			get = function(crowdId: string): any
+				return byId[crowdId]
+			end,
+			setStillOverlapping = function(_id: string, _flag: boolean): ()
+				-- no-op for Story 001 tests (no overlap-bit assertions here)
 			end,
 			_getAllActiveSpy = getAllActiveSpy,
 		}
@@ -184,6 +198,8 @@ return function()
 				getAllActive = function(): any
 					return nil
 				end,
+				get = function(_id: string): any return nil end,
+				setStillOverlapping = function(_id: string, _flag: boolean): () end,
 			}
 			local mockPeel = buildMockPeelDispatcher()
 			CollisionResolver.init({ csm = mockCsm, peelDispatcher = mockPeel })
@@ -204,6 +220,13 @@ return function()
 				getAllActive = function(): { any }
 					return crowdList
 				end,
+				get = function(crowdId: string): any
+					for _, v in ipairs(crowdList) do
+						if v.crowdId == crowdId then return v end
+					end
+					return nil
+				end,
+				setStillOverlapping = function(_id: string, _flag: boolean): () end,
 			}
 			local mockPeel = buildMockPeelDispatcher()
 			CollisionResolver.init({ csm = mockCsm, peelDispatcher = mockPeel })
@@ -368,6 +391,13 @@ return function()
 				getAllActive = function(): { any }
 					return crowdList
 				end,
+				get = function(crowdId: string): any
+					for _, v in ipairs(crowdList) do
+						if v.crowdId == crowdId then return v end
+					end
+					return nil
+				end,
+				setStillOverlapping = function(_id: string, _flag: boolean): () end,
 			}
 			local mockPeel = buildMockPeelDispatcher()
 			CollisionResolver.init({ csm = mockCsm, peelDispatcher = mockPeel })

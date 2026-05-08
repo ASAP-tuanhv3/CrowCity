@@ -96,6 +96,9 @@ return function()
 			updateCount = function(_id: string, _delta: number, _source: string): number
 				return 0  -- no-op for Story 002 (drip pass calls this; we don't assert on it)
 			end,
+			setStillOverlapping = function(_id: string, _flag: boolean): ()
+				-- no-op for Story 002 tests; Story 005 added this fan-out call
+			end,
 			_getAllActiveSpy = getAllActiveSpy,
 		}
 	end
@@ -405,6 +408,7 @@ return function()
 				updateCount = function(_id: string, _delta: number, _source: string): number
 					return 0  -- no-op for scratch-clear test
 				end,
+				setStillOverlapping = function(_id: string, _flag: boolean): () end,
 			}
 			CollisionResolver.init({ csm = mockCsm, peelDispatcher = buildMockPeelDispatcher() })
 

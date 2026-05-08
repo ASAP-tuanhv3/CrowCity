@@ -12,8 +12,9 @@
 	                   (TR-ccr-004 / TR-ccr-005 / TR-ccr-006 / TR-ccr-016 / TR-ccr-018)
 	  Story 004 (CCR): Skip conditions — nil/Eliminated guard + GraceWindow drip suspend
 	                   (TR-ccr-007 / TR-ccr-019)
-	  Story 005+ (CCR): overlap-bit feed (setStillOverlapping),
-	                    peel dispatch, client replication
+	  Story 005 (CCR): Overlap-bit feed — setStillOverlapping post-drip, exactly one
+	                   call per active crowd per tick (TR-ccr-008 / TR-ccr-016)
+	  Story 006+ (CCR): peel dispatch (pairEntered diff), client replication
 
 	Design doc: design/gdd/crowd-collision-resolution.md
 	ADR governance: ADR-0002 (TickOrchestrator), ADR-0004 (CSM Authority),
@@ -37,23 +38,31 @@
 	  - FORBIDDEN: csm.updateCount / setStillOverlapping calls in this story [Story 003+]
 	  - Phase 1 budget <= 0.6 ms/tick [ADR-0003]; skeleton << 0.05 ms (no pair work yet)
 
-	Story 004 scope: state-based skip conditions now live in the drip pass.
-	Stories 005+ extend with overlap-bit feed to CSM.setStillOverlapping (separate
-	post-drip pass), peel dispatch, client replication.
+	Story 005 scope: overlap-bit feed now live as a separate post-drip pass.
+	Stories 006+ extend with peel dispatch (pairEntered diff) and client replication.
 
-	Control Manifest (Story 003 + Story 004):
+	Control Manifest (Story 003 + Story 004 + Story 005):
 	  - SOLE caller of csm.updateCount(crowdId, ±delta, "Collision") for the
 	    "Collision" DeltaSource per ADR-0004 §Write-Access Matrix (4-caller rule).
+	  - SOLE caller of csm.setStillOverlapping(crowdId, flag) per ADR-0004
+	    §Write-Access Matrix. Exactly one call per active crowd per tick (last-
+	    write-wins). Called AFTER drip completes (GDD §C Rule 6 ordering).
 	  - F3 delta_per_tick clamped [DELTA_PER_TICK_MIN, DELTA_PER_TICK_MAX] = [1, 4]
 	    via SharedConstants/CollisionResolverConstants. NEVER hardcoded magic numbers.
 	  - Equal-count rule: count_delta=0 → BOTH crowds receive updateCount(-1, "Collision");
 	    no `+` calls; mutual drain at floor delta. Never a single-side call.
 	  - Drip restricted to pairs where BOTH re-fetched records are state="Active"
 	    (TR-ccr-007). Eliminated / GraceWindow / nil records skip drip but remain
-	    eligible for overlap-bit reporting in Story 005 (TR-ccr-019).
+	    eligible for overlap-bit reporting (TR-ccr-019).
+	  - Overlap-bit aggregation per side, not per pair:
+	      nil-side          → does NOT contribute (record gone)
+	      Eliminated side   → does NOT contribute
+	      Active side       → contributes
+	      GraceWindow side  → contributes (TR-ccr-019: GraceWindow overlap-bit
+	                          drives CSM Phase 5 timer expiry)
 	  - FORBIDDEN: any state-transition call from CCR — `transitionTo*` / `setState*`
 	    are CSM-owned (ADR-0004 §Write-Access Matrix). CCR calls only `updateCount`
-	    + `setStillOverlapping` (Story 005).
+	    + `setStillOverlapping`.
 	  - FORBIDDEN: side-side count clamp (e.g., `if count > 1 then ...`) — CSM F5
 	    owns the clamp at floor 1; CollisionResolver passes the unclamped delta.
 --]]
@@ -107,10 +116,17 @@ local _state: "Dormant" | "Ticking" = "Dormant"
 
 --- Internal scratch table — cleared at top of each tickPhase1 call.
 --- Story 002 populates with overlapping pairs; Story 003 drip pass consumes
---- structured fields (entry.a, entry.b, entry.a.count, etc.). Story 005+ extend
---- with overlap-bit feed and pairEntered diff.
+--- structured fields (entry.a, entry.b, entry.a.count, etc.). Story 006+ will
+--- extend with pairEntered diff.
 --- Never exposed outside the module; never references csm.getAllActive() result directly.
 local _overlapPairs: { CollisionPair } = {}
+
+--- Internal scratch set — cleared at top of each tickPhase1 call.
+--- Story 005 populates during the drip+aggregation pass: per-side eligibility
+--- decided during _overlapPairs iteration (nil/Eliminated do not contribute;
+--- Active/GraceWindow do). The post-drip overlap-bit feed reads this set.
+--- Never exposed outside the module.
+local _overlapCrowds: { [string]: boolean } = {}
 
 -- ---------------------------------------------------------------------------
 -- Internal helpers
@@ -224,17 +240,25 @@ end
 ---   5. Else state = "Ticking"; pre-sort `active` by crowdId; iterate unique unordered
 ---      pairs (i<j) running F1 overlap test (squared-distance, Y ignored). Accumulate
 ---      every overlapping pair into _overlapPairs as { a, b, pairKey, distSq }.
----   6. Story 003 + Story 004: drip pass — for each entry in _overlapPairs:
----      a. Re-fetch records via csm.get(crowdId) — defensive vs PlayerRemoving race.
----         If either nil → skip pair entirely (Story 004 AC-06).
----      b. Skip drip unless BOTH re-fetched states are "Active" (Story 004 TR-ccr-007).
----         Eliminated / GraceWindow / mixed → skip drip; pair entry remains in
----         _overlapPairs for Story 005 overlap-bit feed.
+---   6. Story 003 + Story 004 + Story 005: drip + overlap-bit pass —
+---      for each entry in _overlapPairs:
+---      a. Re-fetch records via csm.get(crowdId). Per-side eligibility for
+---         overlap-bit contribution (Story 005): nil → no contribution;
+---         Eliminated → no contribution; Active or GraceWindow → contributes
+---         (TR-ccr-019). Aggregated into _overlapCrowds set.
+---      b. Drip eligibility (Story 004 TR-ccr-007): only when BOTH sides are
+---         non-nil and state="Active". Otherwise skip drip; overlap-bit
+---         contribution from step (a) is independent of drip-skip.
 ---      c. Active+Active drip: compute F3 delta_per_tick from counts and call
 ---         csm.updateCount(±delta, "Collision") per attacker/defender/equal rule.
+---   7. Story 005: overlap-bit feed — iterate `active` once and call
+---      csm.setStillOverlapping(crowd.crowdId, _overlapCrowds[crowd.crowdId] == true)
+---      for every active crowd. Exactly one call per crowd per tick. Called
+---      AFTER drip per GDD §C Rule 6 ordering (drip results in count mutations
+---      that must NOT be observed by overlap-bit aggregation — but the aggregation
+---      is decided by the pair geometry from Story 002, not by post-drip counts,
+---      so the order is informational rather than load-bearing here).
 ---
---- No setStillOverlapping calls yet (Story 005 — separate post-drip pass over
---- _overlapPairs, independent of state filter).
 --- No peel dispatch / FireClient calls in this story (Story 008+).
 ---
 --- @param tickCount number — monotone tick counter from TickOrchestrator.
@@ -247,9 +271,11 @@ function CollisionResolver.tickPhase1(tickCount: number, _ctx: any): ()
 	-- Guard: init() must have been called (DI established).
 	assert(_initialized, "CollisionResolver.tickPhase1: called before init() — call CollisionResolver.init(deps) at boot")
 
-	-- Reset internal scratch table each tick.
+	-- Reset internal scratch tables each tick.
 	-- Story 002 populates _overlapPairs with overlapping (a, b) candidate pairs.
+	-- Story 005 populates _overlapCrowds during the drip+aggregation pass below.
 	table.clear(_overlapPairs)
+	table.clear(_overlapCrowds)
 
 	-- Read active crowds — SOLE CSM call in Phase 1.
 	-- ADR-0004 read-only contract: we NEVER mutate the returned table or its records.
@@ -301,20 +327,20 @@ function CollisionResolver.tickPhase1(tickCount: number, _ctx: any): ()
 		end
 	end
 
-	-- Story 003 + Story 004 — F3 drip pass with skip conditions. Iterates
-	-- _overlapPairs in pair-iteration order (alphabetic by canonical pairKey from
-	-- the lex-sorted active array, so the updateCount call sequence is
-	-- deterministic for snapshot-based tests).
+	-- Story 003 + Story 004 + Story 005 — F3 drip + overlap-bit aggregation pass.
+	-- Iterates _overlapPairs in pair-iteration order (alphabetic by canonical
+	-- pairKey from the lex-sorted active array, so the updateCount call sequence
+	-- is deterministic for snapshot-based tests).
 	--
-	-- Skip conditions (Story 004 — TR-ccr-007):
-	--   csm.get(crowdId) == nil   → skip pair entirely (PlayerRemoving race guard)
-	--   either state == Eliminated → skip drip (defensive; getAllActive excludes
-	--                                Eliminated by contract, but record may flip
-	--                                state mid-tick — Story 005 still reports
-	--                                overlap-bit for the surviving side)
-	--   either state == GraceWindow → skip drip (TR-ccr-019; drip restricted to
-	--                                Active+Active per GDD §Rule 5; the GraceWindow
-	--                                timer ticks independently in CSM Phase 5)
+	-- Per-side overlap-bit eligibility (Story 005 — TR-ccr-008 / TR-ccr-019):
+	--   nil-side          → does NOT contribute (record gone)
+	--   Eliminated side   → does NOT contribute
+	--   Active side       → contributes (sets _overlapCrowds[crowdId] = true)
+	--   GraceWindow side  → contributes (drives CSM Phase 5 timer expiry next tick)
+	--
+	-- Drip eligibility (Story 004 — TR-ccr-007): only when BOTH sides are
+	-- non-nil and state="Active". Otherwise skip drip; overlap-bit contribution
+	-- from the per-side pass above is INDEPENDENT of drip-skip.
 	--
 	-- Per-pair drip (TR-ccr-004 + TR-ccr-005, Active+Active only):
 	--   countA > countB:  csm.updateCount(a, +delta, "Collision");
@@ -327,29 +353,38 @@ function CollisionResolver.tickPhase1(tickCount: number, _ctx: any): ()
 	-- floor 1 (ADR-0004); CollisionResolver passes the unclamped delta.
 	for _, entry in ipairs(_overlapPairs) do
 		-- Re-fetch records via csm.get for defensive nil-guard. Within a single
-		-- synchronous Phase 1 callback no yield can happen, but the explicit re-fetch
-		-- (i) matches the GDD §C Rule 4 prose and (ii) makes the nil-skip path
-		-- testable via a CSM mock that returns nil for specific crowdIds.
+		-- synchronous Phase 1 callback no yield can happen, but the explicit
+		-- re-fetch (i) matches the GDD §C Rule 4 prose and (ii) makes the
+		-- nil-skip path testable via a CSM mock that returns nil for specific
+		-- crowdIds.
 		local recA = _csm.get(entry.a.crowdId)
 		local recB = _csm.get(entry.b.crowdId)
+
+		-- Per-side overlap-bit aggregation (Story 005). nil → no contribution;
+		-- Eliminated → no contribution; Active or GraceWindow → contribute.
+		if recA ~= nil and recA.state ~= "Eliminated" then
+			_overlapCrowds[recA.crowdId] = true
+		end
+		if recB ~= nil and recB.state ~= "Eliminated" then
+			_overlapCrowds[recB.crowdId] = true
+		end
+
+		-- Drip eligibility (Story 004). Either nil → skip drip entirely.
 		if recA == nil or recB == nil then
-			-- Pair skipped: record disappeared between getAllActive and drip pass.
-			-- Story 005 overlap-bit feed will encounter the same nil and also skip.
 			continue
 		end
 
-		-- State filter (Story 004): drip only when BOTH crowds are Active.
-		-- GraceWindow / Eliminated → skip drip; pair entry remains in _overlapPairs
-		-- for Story 005 overlap-bit feed (overlap-bit reporting is independent of
-		-- the drip-skip filter — see TR-ccr-019).
+		-- State filter: drip only when BOTH crowds are Active.
+		-- GraceWindow / Eliminated → skip drip; pair entry remains in
+		-- _overlapPairs and the per-side aggregation above already applied.
 		--
 		-- POSITIVE-LIST CHECK BY DESIGN: any state other than "Active" skips drip.
-		-- If a future state is added to the CrowdRecord union (e.g. Story 010+ adds
-		-- "Stunned" / "Invincible"), this line is the explicit forcing function
-		-- that drip-eligibility must be opted-into per state. Negative-list checks
-		-- (skip GraceWindow + Eliminated only) would silently grant drip to
-		-- unrecognised future states — which is the wrong default for a state
-		-- machine that drives gameplay-critical mutations.
+		-- If a future state is added to the CrowdRecord union (e.g. Story 010+
+		-- adds "Stunned" / "Invincible"), this line is the explicit forcing
+		-- function that drip-eligibility must be opted-into per state. Negative-
+		-- list checks (skip GraceWindow + Eliminated only) would silently grant
+		-- drip to unrecognised future states — which is the wrong default for a
+		-- state machine that drives gameplay-critical mutations.
 		if recA.state ~= "Active" or recB.state ~= "Active" then
 			continue
 		end
@@ -370,6 +405,19 @@ function CollisionResolver.tickPhase1(tickCount: number, _ctx: any): ()
 				_csm.updateCount(recA.crowdId, -delta, "Collision")
 			end
 		end
+	end
+
+	-- Story 005 — overlap-bit feed (TR-ccr-008 / TR-ccr-016).
+	-- Iterate ALL active crowds (cached `active` array, lex-sorted from Story 002
+	-- pre-sort) and emit exactly ONE setStillOverlapping call per crowd. Crowds
+	-- absent from any overlapping pair receive `false` (CSM consumer reads this
+	-- as the "no overlap this tick" signal that exits GraceWindow per CSM §F7).
+	--
+	-- Order: this loop runs AFTER all drip calls per GDD §C Rule 6. The
+	-- setStillOverlapping fan-out is sole-caller per ADR-0004 §Write-Access
+	-- Matrix; no cosmetic / read-only consumer may invoke it.
+	for _, crowd in ipairs(active) do
+		_csm.setStillOverlapping(crowd.crowdId, _overlapCrowds[crowd.crowdId] == true)
 	end
 end
 
@@ -394,6 +442,7 @@ function CollisionResolver._resetForTests(): ()
 	_initialized = false
 	_state = "Dormant"
 	table.clear(_overlapPairs)
+	table.clear(_overlapCrowds)
 end
 
 --- **TEST ONLY** — never call from production code.
@@ -433,6 +482,13 @@ end
 --- pair-iteration loop body.
 function CollisionResolver._computeDeltaPerTick(countA: number, countB: number): number
 	return computeDeltaPerTick(countA, countB)
+end
+
+--- **TEST ONLY** — exposes the per-tick overlap-bit aggregation snapshot.
+--- Story 005 tests inspect which crowds were marked overlapping during the
+--- most recent tickPhase1 invocation. Returns a fresh shallow copy.
+function CollisionResolver._snapshotOverlapCrowds(): { [string]: boolean }
+	return table.clone(_overlapCrowds)
 end
 
 return CollisionResolver

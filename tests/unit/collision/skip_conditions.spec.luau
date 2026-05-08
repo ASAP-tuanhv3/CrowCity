@@ -337,9 +337,11 @@ return function()
 
 			expect(mockCsm._transitionToSpy.callCount()).to.equal(0)
 			expect(mockCsm._setStateSpy.callCount()).to.equal(0)
-			-- Story 005 owns setStillOverlapping; Story 004 must not pre-empt it.
-			-- Closes full ADR-0004 §Write-Access Matrix surface for this story.
-			expect(mockCsm._setStillOverlappingSpy.callCount()).to.equal(0)
+			-- setStillOverlapping IS authorized for CCR (sole caller per ADR-0004
+			-- §Write-Access Matrix). Story 005 added the fan-out — exactly one
+			-- call per active crowd per tick. Across 3 ticks × 4 crowds, expect
+			-- 12 calls. The forbidden surface is transitionTo / setState only.
+			expect(mockCsm._setStillOverlappingSpy.callCount()).to.equal(12)
 		end)
 
 		-- -----------------------------------------------------------------------
