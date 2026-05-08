@@ -89,6 +89,17 @@ return function()
 			csm          = buildMockCsm(),
 			tweenService = mockTs or buildSpyTweenService(),
 		})
+		-- Note: leaves _state = "Dormant". Tests using _seedNpcForTest +
+		-- reclaim paths must call NPCSpawner._setStateForTest("Ticking")
+		-- explicitly (see ADR-0008 §Respawn Contract). Tests calling
+		-- NPCSpawner.createAll() get Ticking transition naturally.
+	end
+
+	--- Seed an NPC AND transition the spawner to Ticking. Combo for tests
+	--- that exercise reclaim → respawn path via _seedNpcForTest fixture.
+	local function seedActive(npcId: string, part: Part, pos: Vector3)
+		NPCSpawner._seedNpcForTest(npcId, part, true, pos)
+		NPCSpawner._setStateForTest("Ticking")
 	end
 
 	-- -------------------------------------------------------------------------
@@ -109,7 +120,7 @@ return function()
 			initForTest(mockTs)
 
 			local part = makePart()
-			NPCSpawner._seedNpcForTest("n0", part, true, Vector3.new(5, 0, 5))
+			seedActive("n0", part, Vector3.new(5, 0, 5))
 
 			-- Act: reclaim → schedules respawn → after delay, _doRespawn runs.
 			NPCSpawner.reclaim("n0")
@@ -145,7 +156,7 @@ return function()
 			initForTest(mockTs)
 
 			local part = makePart()
-			NPCSpawner._seedNpcForTest("n7", part, true, Vector3.new(20, 0, 20))
+			seedActive("n7", part, Vector3.new(20, 0, 20))
 			NPCSpawner.reclaim("n7")
 
 			-- Verify not in list right after reclaim.
@@ -176,7 +187,7 @@ return function()
 			initForTest(mockTs)
 
 			local part = makePart()
-			NPCSpawner._seedNpcForTest("n10", part, true, Vector3.new(0, 0, 0))
+			seedActive("n10", part, Vector3.new(0, 0, 0))
 
 			-- First reclaim → first respawn fires.
 			NPCSpawner.reclaim("n10")
@@ -248,7 +259,7 @@ return function()
 			initForTest(mockTs)
 
 			local part = makePart()
-			NPCSpawner._seedNpcForTest("n99", part, true, Vector3.new(0, 0, 0))
+			seedActive("n99", part, Vector3.new(0, 0, 0))
 			NPCSpawner.reclaim("n99")
 
 			-- Immediately after reclaim (before respawn fires), _fadeTween should be nil.

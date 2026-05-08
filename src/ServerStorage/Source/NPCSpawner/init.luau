@@ -165,6 +165,13 @@ local _cachedSnapshot: { NpcRecord }? = nil
 --- Whether init() has completed. Guards against double-init (defect surface per story spec).
 local _initialized = false
 
+--- Init epoch token. Incremented on every init() AND on every _resetForTests().
+--- The pool-allocation `task.defer` callbacks scheduled by init() capture the
+--- token value at schedule time and check equality before pushing parts; any
+--- defer fired AFTER a reset (or a re-init) is rejected at the top, preventing
+--- pool growth across tests. Sprint 6 task 6-3 — TestEZ isolation fix.
+local _initToken: number = 0
+
 --- Current lifecycle state.
 local _state: SpawnerState = "Dormant"
 
@@ -842,8 +849,19 @@ function NPCSpawner.init(deps: {
 	local folder = npcPoolFolder :: Folder
 	local batchCount = NPC_POOL_SIZE / NPC_BATCH_SIZE  -- 12 batches
 
+	-- Init epoch — capture current token before scheduling defers. Any defer
+	-- that fires AFTER a _resetForTests or re-init will see a mismatched token
+	-- and exit without pushing to the (potentially-different) _pool. Without
+	-- this guard, TestEZ runs across multiple specs leaked Parts into the
+	-- shared module-level _pool array, growing it 3x/8x by the third+ test.
+	_initToken += 1
+	local myToken = _initToken
+
 	for _ = 1, batchCount do
 		task.defer(function()
+			if _initToken ~= myToken then
+				return  -- this batch was scheduled by an obsolete init; reject
+			end
 			for _ = 1, NPC_BATCH_SIZE do
 				local part = createBareNpcPart(folder)
 				table.insert(_pool, part)
@@ -1106,6 +1124,21 @@ function NPCSpawner._resetForTests(): ()
 		end
 	end
 
+	-- Invalidate any pool-allocation defers scheduled by a prior init() that
+	-- have not yet fired. Sprint 6 task 6-3 — TestEZ isolation fix. Without
+	-- this bump, leaked defers would push parts onto the freshly-cleared _pool,
+	-- inflating it 3x/8x across multi-test runs and breaking AC-01 assertions.
+	_initToken += 1
+
+	-- Destroy the orphaned pool folder + parts in ServerStorage so the next
+	-- init() recreates a clean folder. Without this, parts created by prior
+	-- init() defers that DID complete would accumulate as orphan Instances
+	-- in ServerStorage._NpcPool across multi-test runs.
+	local existingFolder = ServerStorage:FindFirstChild("_NpcPool")
+	if existingFolder ~= nil then
+		existingFolder:Destroy()
+	end
+
 	_pool = {}
 	_npcById = {}
 	_activeList = {}
@@ -1160,6 +1193,16 @@ end
 --- Returns the current _cachedSnapshot (or nil if dirty).
 function NPCSpawner._getCachedSnapshot(): { NpcRecord }?
 	return _cachedSnapshot
+end
+
+--- **TEST ONLY** — never call from production code.
+--- Sets the spawner state directly so tests that exercise respawn paths
+--- (which guard `_state == "Ticking"` per ADR-0008 §Respawn Contract) can
+--- complete without going through createAll. Production sets _state via
+--- start() / createAll / destroyAll. Type system enforces SpawnerState union;
+--- no runtime assert needed (caller can't pass an invalid string under strict).
+function NPCSpawner._setStateForTest(state: SpawnerState): ()
+	_state = state
 end
 
 --- **TEST ONLY** — never call from production code.

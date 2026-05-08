@@ -89,6 +89,20 @@ return function()
 			csm          = mockCsm or buildMockCsm(),
 			tweenService = mockTs or buildMockTweenService(),
 		})
+		-- Note: leaves _state = "Dormant". Tests that exercise respawn paths
+		-- via _seedNpcForTest (which skips createAll) must call
+		-- NPCSpawner._setStateForTest("Ticking") explicitly because
+		-- _doRespawn guards `_state == "Ticking"` per ADR-0008 §Respawn Contract.
+		-- Tests that call NPCSpawner.createAll() get Ticking transition naturally
+		-- and must NOT pre-set Ticking here (createAll asserts !Ticking).
+	end
+
+	--- Seed an NPC AND transition the spawner to Ticking. Use this combo for
+	--- tests that exercise reclaim → respawn path via _seedNpcForTest fixture
+	--- (those tests bypass createAll, which would otherwise transition state).
+	local function seedActive(npcId: string, part: Part, pos: Vector3)
+		NPCSpawner._seedNpcForTest(npcId, part, true, pos)
+		NPCSpawner._setStateForTest("Ticking")
 	end
 
 	-- -------------------------------------------------------------------------
@@ -107,7 +121,7 @@ return function()
 			-- Arrange
 			initForTest()
 			local part = makePart()
-			NPCSpawner._seedNpcForTest("n42", part, true, Vector3.new(5, 0, 5))
+			seedActive("n42", part, Vector3.new(5, 0, 5))
 
 			-- Act
 			NPCSpawner.reclaim("n42")
@@ -133,7 +147,7 @@ return function()
 
 			-- Seed NPC to reclaim without full createAll.
 			local part = makePart()
-			NPCSpawner._seedNpcForTest("n0", part, true, Vector3.new(0, 0, 0))
+			seedActive("n0", part, Vector3.new(0, 0, 0))
 
 			-- Act: reclaim (schedules respawn).
 			NPCSpawner.reclaim("n0")
@@ -154,7 +168,7 @@ return function()
 			-- Arrange
 			initForTest(buildMockCsm({}))
 			local part = makePart()
-			NPCSpawner._seedNpcForTest("n5", part, true, Vector3.new(10, 0, 10))
+			seedActive("n5", part, Vector3.new(10, 0, 10))
 
 			-- Confirm active before reclaim.
 			local before = NPCSpawner.getAllActiveNPCs()
@@ -202,7 +216,7 @@ return function()
 
 			-- Seed + reclaim (schedules respawn).
 			local part = makePart()
-			NPCSpawner._seedNpcForTest("n20", part, true, Vector3.new(50, 0, 50))
+			seedActive("n20", part, Vector3.new(50, 0, 50))
 			NPCSpawner.reclaim("n20")
 
 			-- After respawn fires (Studio scheduler), NPC should have valid position.
@@ -240,7 +254,7 @@ return function()
 			initForTest(mockCsm)
 
 			local part = makePart()
-			NPCSpawner._seedNpcForTest("n30", part, true, Vector3.new(0, 0, 0))
+			seedActive("n30", part, Vector3.new(0, 0, 0))
 
 			-- Act: reclaim → respawn with fallback expected.
 			local ok = pcall(function()
