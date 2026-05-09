@@ -1326,3 +1326,16 @@ User said "continue" again. Implemented full Pool integration into wire-in.
 - **POSSIBLE TECH DEBT**: scan tests/ for any other `*_test.luau` files that might be silently skipped by TestEZ runner. Quick grep: only urevent_replication_test.luau used the pattern; all others use `.spec.luau`.
 - Sprint 6 progress: 11/12 must-have done (6-2..6-11, 6-12). Remaining: 6-1 only.
 - Next: 6-1 Visual cap-grow loop (4h, sprint goal — needs /quick-design first); OR commit current work first.
+
+## Session Extract — /story-done 2026-05-09 (6-1 Complete)
+- Verdict: COMPLETE
+- Task: 6-1 Client cap-grow on broadcast count delta (no story file; small wiring scope)
+- Visual absorb loop CLOSED end-to-end: NPC absorbed → AbsorbSystem updateCount(+1) → CSM Phase 8 broadcast → CrowdStateClient mirror → FollowerEntityClient._update detects delta → setPoolSize → cap-grow callback enqueues FadeIn → throttle queue drains 4/frame → visible follower count grows.
+- Source change: FollowerEntityClient._update reads ownState.count, compares to _lastSeenCount; if differs, calls self:setPoolSize(newCount). setPoolSize itself syncs _lastSeenCount to prevent initial-seed double-fire from CrowdManagerClient pattern at line 155.
+- New spec: tests/unit/follower-entity/cap_grow_on_count_delta.spec.luau (7 it() blocks).
+- Audit: selene 0/5/0; audit-asset-ids.sh PASS; audit-persistence.sh PASS
+- Test results: 884 → 891 passed (+7). 11 follower-entity failures unchanged (out of any Sprint 6 scope).
+- Sprint 6 progress: **12/12 must-have done**. Sprint complete on critical path.
+- Sprint goal MET: "Close visualization → gameplay loop in vertical slice (NPC absorb visibly grows crowd)" — confirmed via integration of CCR Phase 1 + CSM broadcast + FE Client setPoolSize.
+- Test failure progression over Sprint 6: 17 → 11 (all 6 npc-spawner fixed in 6-3; 11 follower-entity remain as NEW tracked tech debt).
+- Next: commit 6-1; then sprint close-out via /sprint-close or /team-qa sprint for QA sign-off; address 11 follower-entity tech debt + ADR-0008 amendment in next sprint.
