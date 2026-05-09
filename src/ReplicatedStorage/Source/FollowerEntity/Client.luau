@@ -214,6 +214,12 @@ function FollowerEntityClient.new(crowdId: string, janitor: Janitor): ClassType
 	self._lastCrowdCenter    = Vector3.zero
 	self._teleportFlag       = false
 	self._tier               = LODTierMath.TIER_0
+	-- Story 6-1: tracks last-seen broadcast count so _update can detect deltas
+	-- and call setPoolSize(record.count) → cap-grow callback enqueues N FadeIn
+	-- spawns through the throttle queue. Initial spawn at CrowdCreated already
+	-- calls setPoolSize(record.count); _lastSeenCount captures that initial
+	-- value so subsequent broadcast-driven deltas don't double-grow.
+	self._lastSeenCount      = nil :: number?
 	-- Lifecycle
 	self._destroyed          = false
 	self._getCrowdState      = nil
@@ -469,6 +475,10 @@ function FollowerEntityClient.setPoolSize(self: ClassType, n: number): ()
 	if self._destroyed then
 		return
 	end
+	-- Story 6-1: keep _lastSeenCount in sync so the per-frame _update
+	-- count-delta check doesn't double-fire on the initial CrowdManagerClient
+	-- setPoolSize(record.count) call. Both call paths converge here.
+	self._lastSeenCount = n
 	local action = PoolResize.computeResizeAction(
 		self._followerStates,
 		self._positions,
@@ -542,6 +552,20 @@ function FollowerEntityClient._update(self: ClassType, dt: number, t: number?): 
 
 	local ownCenter = ownState.position
 	local targetHue = ownState.hue
+
+	-- Story 6-1: broadcast-count delta → cap-grow / cap-shrink. CSM Phase 8
+	-- broadcasts updated record.count at 15 Hz; client `setPoolSize` resolves
+	-- the visual delta via PoolResize.computeResizeAction (cap-grow enqueues
+	-- N FadeIn spawns through throttle queue; cap-shrink evicts perimeter-
+	-- first). Compare against last-seen count to skip no-op frames.
+	-- This closes the visual absorb loop end-to-end: NPC absorbed →
+	-- AbsorbSystem updateCount(+1, "Collision") → CSM broadcast → here →
+	-- visible follower count grows by 1.
+	local newCount = ownState.count
+	if newCount ~= nil and newCount ~= self._lastSeenCount then
+		self._lastSeenCount = newCount
+		self:setPoolSize(newCount)
+	end
 
 	-- 1. Teleport detection (Story 4-10)
 	if LODTierMath.shouldTeleportSnap(
