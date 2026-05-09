@@ -1339,3 +1339,14 @@ User said "continue" again. Implemented full Pool integration into wire-in.
 - Sprint goal MET: "Close visualization → gameplay loop in vertical slice (NPC absorb visibly grows crowd)" — confirmed via integration of CCR Phase 1 + CSM broadcast + FE Client setPoolSize.
 - Test failure progression over Sprint 6: 17 → 11 (all 6 npc-spawner fixed in 6-3; 11 follower-entity remain as NEW tracked tech debt).
 - Next: commit 6-1; then sprint close-out via /sprint-close or /team-qa sprint for QA sign-off; address 11 follower-entity tech debt + ADR-0008 amendment in next sprint.
+
+## Session Extract — /story-done 2026-05-10 (7-2 Complete)
+- Verdict: COMPLETE
+- Story: 7-2 AbsorbSystem diagnostic logging (no story file; sprint-7 entry)
+- Tech debt logged: None
+- Source: AbsorbSystem.tick now logs `[AbsorbSystem] tick N crowds=M npcs=K` once/sec at 15 Hz when DIAGNOSTIC_LOGGING_ENABLED. Two log sites: crowds=0 path (preserves AC-10, says `npcs=skipped`) + post-npcSnapshot read (covers AC-11 + happy path). Test seam: `_setDiagnosticLoggingForTest(enabled, logCallback?)`. Production default: false (zero alloc).
+- New spec: tests/unit/absorb/diagnostic_logging.spec.luau (7 it() blocks; +2 added per code-review Gap A + Gap C)
+- Audit: selene 0/5/0; audit-asset-ids.sh PASS; audit-persistence.sh PASS
+- Test results: 891 → 898 passed (+7). 11 carry-forward unchanged.
+- Sprint 7 progress: 1/11 must-have done. BUG-001 prereq landed → 7-1 BUG-001 fix unblocked.
+- Next: /story-readiness for 7-1 (BUG-001 fix) — diagnostic instrumentation now available for Studio root-cause investigation.

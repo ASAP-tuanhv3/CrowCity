@@ -6,7 +6,7 @@ goal: "Close 6 conditions from Sprint 6 sign-off. Confirm visual absorb loop wor
 start: "2026-05-23"
 end: "2026-06-05"
 generated: "2026-05-09"
-updated: "2026-05-09"
+updated: "2026-05-10"
 
 # Sprint 6 closed 2026-05-09 (APPROVED WITH CONDITIONS — BUG-001 S1 + BUG-002 S2 open).
 # Sprint 6 status archive: production/sprints/sprint-6.md + production/qa/qa-signoff-sprint-6-2026-05-09.md.
@@ -26,11 +26,11 @@ stories:
     name: "AbsorbSystem diagnostic logging (BUG-001 prereq)"
     file: ""
     priority: must-have
-    status: ready-for-dev
+    status: done
     owner: ""
     estimate_days: 0.125
     blocker: ""
-    completed: ""
+    completed: "2026-05-10"
 
   - id: "7-3"
     name: "BUG-002 root-cause + fix — follower clump despite boid wired"
