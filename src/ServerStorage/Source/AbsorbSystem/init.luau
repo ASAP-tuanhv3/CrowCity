@@ -102,6 +102,16 @@ local _clock: (() -> number)? = nil
 --- Guard: true after init() completes. Prevents tick from running without DI.
 local _initialized = false
 
+--- Story 7-2: production default for diagnostic logging. Always false in
+--- production. Override only via AbsorbSystem._setDiagnosticLoggingForTest.
+--- Diagnostic disambiguates BUG-001 root causes (silent no-op paths at
+--- AC-10 / AC-11 early returns) when investigating in Studio playtest.
+local DIAGNOSTIC_LOGGING_DEFAULT: boolean = false
+local _diagnosticLoggingEnabled: boolean = DIAGNOSTIC_LOGGING_DEFAULT
+
+--- Story 7-2: log sink function. Default: print. Tests inject a spy.
+local _diagnosticLogFn: (string) -> () = print
+
 -- ---------------------------------------------------------------------------
 -- Internal helpers
 -- ---------------------------------------------------------------------------
@@ -173,8 +183,6 @@ end
 --- @param tickCount number — monotone tick counter from TickOrchestrator.
 --- @param _ctx any — TickContext (unused by AbsorbSystem; required by phase signature).
 function AbsorbSystem.tick(tickCount: number, _ctx: any): ()
-	-- Suppress "unused variable" lint; tickCount consumed only for future instrumentation.
-	local _ = tickCount
 	local __ = getClock()  -- clock accessible for instrumentation; unused in MVP
 
 	-- Guard: init() must have been called (DI established).
@@ -187,6 +195,14 @@ function AbsorbSystem.tick(tickCount: number, _ctx: any): ()
 	local allCrowds: { any } = _csm.getAllActive()
 
 	if allCrowds == nil or #allCrowds == 0 then
+		-- Story 7-2: diagnostic log — crowds=0 path. AC-10 preserved: getAllActiveNPCs
+		-- NOT called; log emits literal "npcs=skipped" instead of a count.
+		if _diagnosticLoggingEnabled and tickCount % 15 == 0 then
+			_diagnosticLogFn(string.format(
+				"[AbsorbSystem] tick %d crowds=0 npcs=skipped",
+				tickCount
+			))
+		end
 		-- AC-10: zero crowds → inner NPC loop body NEVER entered (getAllActiveNPCs NOT called).
 		return
 	end
@@ -195,6 +211,17 @@ function AbsorbSystem.tick(tickCount: number, _ctx: any): ()
 	--    The returned table is frozen — mutation raises a Lua error.
 	--    Iteration proceeds over this snapshot even though reclaim() mutates spawner state.
 	local npcSnapshot: { any } = _npcSpawner.getAllActiveNPCs()
+
+	-- Story 7-2: diagnostic log — both arrays read. Fires regardless of whether
+	-- npcSnapshot is empty so AC-11 silent no-op is observable in Studio.
+	if _diagnosticLoggingEnabled and tickCount % 15 == 0 then
+		_diagnosticLogFn(string.format(
+			"[AbsorbSystem] tick %d crowds=%d npcs=%d",
+			tickCount,
+			#allCrowds,
+			#npcSnapshot
+		))
+	end
 
 	if npcSnapshot == nil or #npcSnapshot == 0 then
 		-- AC-11: 1 Active crowd + empty NPC snapshot → no Absorbed signals, no errors.
@@ -330,12 +357,26 @@ function AbsorbSystem._resetForTests(): ()
 	_network = nil
 	_clock = nil
 	_initialized = false
+	_diagnosticLoggingEnabled = DIAGNOSTIC_LOGGING_DEFAULT
+	_diagnosticLogFn = print
 end
 
 --- **TEST ONLY** — never call from production code.
 --- Returns whether init() has completed. Tests use this to verify DI assertion timing.
 function AbsorbSystem._isInitialized(): boolean
 	return _initialized
+end
+
+--- **TEST ONLY** — never call from production code.
+--- Story 7-2: controls diagnostic logging flag and redirects log output to a
+--- spy callback. Pass nil for logCallback to restore default `print` sink.
+--- Test seam for `tests/unit/absorb/diagnostic_logging.spec.luau`.
+function AbsorbSystem._setDiagnosticLoggingForTest(
+	enabled: boolean,
+	logCallback: ((string) -> ())?
+): ()
+	_diagnosticLoggingEnabled = enabled
+	_diagnosticLogFn = logCallback or print
 end
 
 return AbsorbSystem
