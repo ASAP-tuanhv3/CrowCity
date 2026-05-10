@@ -96,7 +96,13 @@ local R_RESPAWN_AVG           = NPCSpawnerConstants.R_RESPAWN_AVG
 
 -- ADR-0008 §Replication Contract: per-NPC relevance filter cushion.
 -- NPCs within (crowd.radius + RELEVANCE_CUSHION) of a client's crowd are broadcast.
-local RELEVANCE_CUSHION = 25
+-- BUG-002 polish 2026-05-10: bumped 25 → 100 studs. User feedback — orange
+-- NPCs only appearing within ~29 studs made navigation a guessing game.
+-- Trade: arena 200×200 = 40000 sq studs; π × 104² ≈ 34000 sq studs covered
+-- per crowd = ~85% of arena visible at any time. Bandwidth ~30 KB/s over the
+-- 3 KB/s ADR-0008 budget. Acceptable for Studio dev; revisit at production
+-- mobile/multi-client soak (MVP-Integration sprint per ADR-0003).
+local RELEVANCE_CUSHION = 100
 
 -- ADR-0008 §Replication Contract buffer layout (8 bytes per NPC):
 --   offset 0: npcId  u8    (0-299)
