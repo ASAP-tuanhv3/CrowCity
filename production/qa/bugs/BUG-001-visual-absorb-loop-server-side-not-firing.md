@@ -1,11 +1,68 @@
 # BUG-001 — Visual Absorb Loop: Server-Side updateCount Not Firing
 
 **Severity**: S1 (BLOCKING — Sprint 6 goal not met)
-**Status**: Open
+**Status**: In Progress (Sprint 7 story 7-1) — headless chain locked, Studio repro pending
 **Reported**: 2026-05-09 by tuanhv3 (manual QA in Studio Local Server, 2 clients)
-**Sprint**: 6
-**Story refs**: 6-1 (Client cap-grow on broadcast count delta), 6-12 (Smoke + manual playtest)
+**Sprint**: 6 (filed) / 7 (fix)
+**Story refs**: 6-1 (Client cap-grow on broadcast count delta), 6-12 (Smoke + manual playtest), 7-1 (fix)
 **Test case**: TC-S1-03 in `production/qa/test-cases-sprint-6-2026-05-09.md`
+
+## 2026-05-10 Update — Sprint 7 Story 7-1 Investigation
+
+**Headless chain proven correct.** Integration test
+`tests/integration/absorb-system/visual_absorb_loop_e2e.spec.luau` exercises
+the full server-side chain (CSM.create → NPCSpawner._activeList populated →
+AbsorbSystem.tick fires updateCount on overlap). All 8 it() blocks PASS:
+- AC-1 happy path: NPC inside radius → count grows by 1
+- AC-2 negative: NPC outside radius → count unchanged
+- AC-3 empty pool: silent no-op
+- AC-4 empty crowds: AC-10 preserved (getAllActiveNPCs not called)
+- AC-5 multi-NPC: count grows by 3 in one tick
+- AC-6 GraceWindow allowed (5-13 AC-8)
+- AC-7 Eliminated skipped (5-13 AC-7)
+- AC-8 diagnostic log captures live state (7-2 integration)
+
+**Conclusion**: BUG-001 is NOT a wiring defect in core logic. Bug lives in
+Studio-only path (character HRP timing, real workspace instantiation, or
+something else only observable in live Studio playtest).
+
+**Diagnostic surface added** (Story 7-1 deliverable):
+- `AbsorbSystem.setDiagnosticLogging(enabled: boolean)` — production-safe API
+- Workspace attribute boot toggle: set `AbsorbDiagnosticLogging = true` in
+  Studio workspace properties → server enables diagnostic at boot, logs
+  `[AbsorbSystem] tick N crowds=M npcs=K` once/sec
+
+## Studio Repro Recipe (post Story 7-1)
+
+1. Open Studio. In Explorer, select Workspace.
+2. In Properties pane, click "Add Attribute". Name: `AbsorbDiagnosticLogging`,
+   Type: `bool`, Value: `true`.
+3. Run Test → Local Server → 2 players.
+4. Wait for `[start] AbsorbSystem diagnostic logging ENABLED via workspace attribute`.
+5. Walk Client 1 character into a white NPC. Watch server output for:
+   - `[AbsorbSystem] tick N crowds=1 npcs=300` (or similar) — confirms
+     both pools populated. If `crowds=0` or `npcs=0` appear once Active
+     state reached, root cause matches BUG-001 hypothesis #1 or #4.
+   - `[CSM] updateCount` log — confirms absorb fired. If absent despite
+     non-zero crowds + npcs, the F1 overlap geometry is failing (player
+     character not actually within crowd.radius — see Studio command-bar
+     repro below).
+6. To verify CLIENT-side cap-grow chain works in isolation (proves Story
+   6-1 implementation is correct independent of upstream), run in Studio
+   command bar (server-side):
+
+   ```luau
+   local CSM = require(game.ServerStorage.Source.CrowdStateServer)
+   for _, c in ipairs(CSM.getAllActive()) do
+       print("crowd", c.crowdId, "pos:", c.position, "radius:", c.radius, "count:", c.count)
+       CSM.updateCount(c.crowdId, 1, "Absorb")
+   end
+   ```
+
+   Expected: each Active crowd's count grows by 1, broadcast fires, client
+   FollowerEntityClient calls setPoolSize(newCount), one new follower fades
+   in around each player. If THIS works, Story 6-1 is correct and BUG-001
+   is upstream.
 
 ## Summary
 

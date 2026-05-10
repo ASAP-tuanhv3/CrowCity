@@ -1350,3 +1350,14 @@ User said "continue" again. Implemented full Pool integration into wire-in.
 - Test results: 891 → 898 passed (+7). 11 carry-forward unchanged.
 - Sprint 7 progress: 1/11 must-have done. BUG-001 prereq landed → 7-1 BUG-001 fix unblocked.
 - Next: /story-readiness for 7-1 (BUG-001 fix) — diagnostic instrumentation now available for Studio root-cause investigation.
+
+## Session Extract — /dev-story 2026-05-10 (7-1 PARTIAL)
+- Story: 7-1 BUG-001 fix — visual absorb loop server-side updateCount
+- Files changed: src/ServerStorage/Source/AbsorbSystem/init.luau, src/ServerScriptService/start.server.luau, production/qa/bugs/BUG-001-visual-absorb-loop-server-side-not-firing.md, tests/integration/absorb-system/visual_absorb_loop_e2e.spec.luau (new)
+- Test written: tests/integration/absorb-system/visual_absorb_loop_e2e.spec.luau (8 it() blocks, all PASS headless)
+- Key finding: BUG-001 does NOT reproduce in headless. Full chain (CSM.create → NPCSpawner._activeList → AbsorbSystem.tick → updateCount) works correctly when bypassing real-world setup. Bug must be in Studio-only path (character HRP timing, real workspace instantiation, or geometry).
+- Deliverable shift: locked headless chain (8/8 tests) + added production diagnostic API (AbsorbSystem.setDiagnosticLogging) + workspace attribute boot toggle (AbsorbDiagnosticLogging) + Studio repro recipe in BUG-001 doc. Studio confirmation TC-S1-03 deferred to user playtest.
+- Audit: selene 0/5/0; audit-asset-ids PASS; audit-persistence PASS
+- Test results: 898 → 906 passed (+8). 11 carry-forward unchanged.
+- Blockers: Studio playtest confirmation required to fully close BUG-001
+- Next: /code-review then /story-done 7-1 (close as PARTIAL with deferred Studio confirmation), OR proceed to other Sprint 7 stories while user runs Studio repro in parallel
