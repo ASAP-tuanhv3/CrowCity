@@ -365,9 +365,13 @@ export type Placement = {
 --- by finalCount desc, then eliminated by eliminationTime desc (most recent
 --- first). Placement field assigned by sort position (1 = winner).
 ---
---- Asserts that `setWinner` was called first (when participants non-empty)
---- per ADR-0005 §Result-entry ordering invariant.
---- ADR-0005 §Decision; arch §5.3 L630.
+--- Allows nil _winnerId for double-elimination edge: when both (or all)
+--- crowds reach Eliminated state on the same tick, MSM eliminationConsumer
+--- enters the Result path with `#active == 0` and sets _winnerId=nil.
+--- Placements still rank by composite key (peakCount/survived/finalCount/
+--- eliminationTime); no record gets isWinner=true. Previously this case
+--- asserted, leaving Phase 7 in a perpetual error loop with no Active→Result
+--- transition. ADR-0005 §Decision; arch §5.3 L630.
 function RoundLifecycle.getPlacements(): { Placement }
 	-- Empty participants → empty placements (zero-participant Result edge).
 	local recordCount = 0
@@ -377,11 +381,6 @@ function RoundLifecycle.getPlacements(): { Placement }
 	if recordCount == 0 then
 		return {}
 	end
-
-	assert(
-		_winnerId ~= nil or recordCount == 0,
-		"RoundLifecycle.getPlacements: setWinner must be called before getPlacements when participants are non-empty"
-	)
 
 	local placements: { Placement } = {}
 	for _, record in _crowds do

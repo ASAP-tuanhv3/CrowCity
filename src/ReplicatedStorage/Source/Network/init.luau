@@ -18,7 +18,13 @@ local waitForAllRemotesAsync = require(ReplicatedStorage.Source.Utility.Network.
 local getInstance = require(ReplicatedStorage.Source.Utility.getInstance)
 local t = require(ReplicatedStorage.Dependencies.t)
 
-local REMOTE_REPLICATION_TIMEOUT_SECONDS = 2
+-- Studio Local Server with 2+ simulated clients can take 5+ seconds to replicate
+-- the Remotes folder to the second client. 2 sec was too tight — caused
+-- startClientAsync to assert silently, leaving client boot in degraded state
+-- (no CrowdStateClient subscribers → frozen broadcasts on Player 2). Bumped to
+-- 30 sec — production replication is sub-second; only Studio dev sessions hit
+-- the slow path.
+local REMOTE_REPLICATION_TIMEOUT_SECONDS = 30
 local REMOTE_FOLDER_PARENT = ReplicatedStorage
 local REMOTE_FOLDER_NAME = "Remotes"
 
