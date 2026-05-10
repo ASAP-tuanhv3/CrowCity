@@ -367,10 +367,26 @@ function AbsorbSystem._isInitialized(): boolean
 	return _initialized
 end
 
+--- Toggles diagnostic logging at runtime. Production-safe API — callable from
+--- start.server.luau boot wiring (e.g. via workspace attribute) OR from the
+--- Studio command bar during playtest investigation:
+---
+---   require(game.ServerStorage.Source.AbsorbSystem).setDiagnosticLogging(true)
+---
+--- When enabled, AbsorbSystem.tick emits one log line per second at 15 Hz
+--- showing `[AbsorbSystem] tick N crowds=M npcs=K`. Production default: false
+--- (zero allocation in hot path). Story 7-1: introduced as the production
+--- entry point so BUG-001 root-cause investigation does not require touching
+--- test-only seams.
+function AbsorbSystem.setDiagnosticLogging(enabled: boolean): ()
+	_diagnosticLoggingEnabled = enabled
+end
+
 --- **TEST ONLY** — never call from production code.
---- Story 7-2: controls diagnostic logging flag and redirects log output to a
+--- Story 7-2: controls diagnostic logging flag AND redirects log output to a
 --- spy callback. Pass nil for logCallback to restore default `print` sink.
 --- Test seam for `tests/unit/absorb/diagnostic_logging.spec.luau`.
+--- Production callers should use AbsorbSystem.setDiagnosticLogging instead.
 function AbsorbSystem._setDiagnosticLoggingForTest(
 	enabled: boolean,
 	logCallback: ((string) -> ())?

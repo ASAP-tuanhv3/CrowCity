@@ -91,6 +91,17 @@ AbsorbSystem.init({
 	network = Network,
 })
 
+-- Story 7-1 (BUG-001 investigation): boot-time diagnostic toggle. Reads
+-- `workspace:GetAttribute("AbsorbDiagnosticLogging")` once at server boot.
+-- When true, AbsorbSystem.tick logs `[AbsorbSystem] tick N crowds=M npcs=K`
+-- once/sec. Disabled in production (default attribute false/nil).
+-- Set the attribute in Studio Explorer (workspace properties) before play
+-- to surface BUG-001 root cause (silent no-op paths at AC-10/AC-11).
+if workspace:GetAttribute("AbsorbDiagnosticLogging") == true then
+	AbsorbSystem.setDiagnosticLogging(true)
+	print("[start] AbsorbSystem diagnostic logging ENABLED via workspace attribute")
+end
+
 TickOrchestrator._registerPhases({
 	{ phase = 1, name = "Collision",     callback = CollisionResolver.tickPhase1 },
 	{ phase = 2, name = "Relic",         callback = RelicSystemStub.tick },
