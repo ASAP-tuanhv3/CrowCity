@@ -73,17 +73,32 @@ export type CrowdRecord = {
 -- Internal helpers
 -- ----------------------------------------------------------------------
 
--- Split a 64-bit non-negative integer into low and high u32 halves for
--- buffer encoding. Roblox UserIds are well within Luau's f64 safe-integer
--- range (2^53), so this split is bit-exact.
+-- Split a Roblox UserId into two u32 halves for buffer encoding.
+-- Production UserIds are positive (< 2^53). Studio Local Server uses
+-- NEGATIVE UserIds (-1, -2, ...). Encode negatives as sign-extended pair:
+-- low = (n + 2^32) clamped to [0, 2^32), high = 2^32 - 1.
+-- Without this branch, buffer.writeu32 fails (negative) or wraps silently,
+-- producing garbage crowdId on decode → client cache key mismatch → followers
+-- frozen on the other player's view in Studio dev.
+local U32_MOD = 4294967296  -- 2^32
+local U32_MAX = 4294967295  -- 2^32 - 1
+
 local function splitU64(n: number): (number, number)
-	local high = math.floor(n / 4294967296)
-	local low = n - (high * 4294967296)
+	if n < 0 then
+		-- Sign-extended representation: high = all-ones, low = 32-bit two's complement.
+		return n + U32_MOD, U32_MAX
+	end
+	local high = math.floor(n / U32_MOD)
+	local low = n - (high * U32_MOD)
 	return low, high
 end
 
 local function joinU64(low: number, high: number): number
-	return (high * 4294967296) + low
+	-- Sign-extended detection: high all-ones AND low has top bit set means negative.
+	if high == U32_MAX and low >= 2147483648 then
+		return low - U32_MOD
+	end
+	return (high * U32_MOD) + low
 end
 
 local function isValidState(state: number): boolean
