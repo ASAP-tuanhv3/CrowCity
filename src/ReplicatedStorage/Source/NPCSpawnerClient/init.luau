@@ -120,7 +120,7 @@ local function _createMirrorPart(folder: Folder, npcId: string): Part
 	part.CastShadow = false
 	part.Transparency = 1
 	part.Size = Vector3.new(2, 5, 2)
-	part.Color = Color3.fromRGB(180, 180, 180)
+	part.Color = Color3.fromRGB(255, 140, 0)
 	part.CFrame = PARK_SENTINEL
 	part.Parent = folder
 	return part

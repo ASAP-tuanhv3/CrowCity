@@ -327,27 +327,41 @@ return function()
 		end)
 
 		-- Bootstrap end-to-end: NpcPoolBootstrap reliable carries snapshot.
-		it("Bootstrap on join — fireClient(NpcPoolBootstrap) fires with snapshot table", function()
+		it("Bootstrap on join — fireClient(NpcPoolBootstrap) fires with relevance-filtered snapshot", function()
+			-- Story 7-1 BUG-001 follow-up: bootstrap filters to NPCs in this
+			-- player's crowd relevance window. Without the filter, ~280 stale
+			-- mirror parts persist at bootstrap positions for the rest of the
+			-- round. With the filter, out-of-range NPCs stay parked client-side
+			-- (NPCSpawnerClient._parkAll runs first; absent npcIds remain parked).
 			local mockPlayer = buildMockPlayer(1001)
 			local players, network, _urCalls, reliableCalls = buildBroadcastMocks({ mockPlayer })
+			-- Crowd at origin radius 10 — relevance window = 35 studs (10 + cushion 25).
+			local mockCsm = buildMockCsm({
+				{ crowdId = "1001", position = Vector3.new(0, 0, 0), radius = 10 },
+			})
 
 			game.Workspace:SetAttribute("ArenaWalkableAreaSq", 40000)
 			NPCSpawner.init({
 				runService = buildMockRunService(),
 				arenaArea = 40000,
 				arenaBounds = { -100, 100, -100, 100 },
-				csm = buildMockCsm({}),
+				csm = mockCsm,
 				players = players,
 				network = network,
 			})
 			NPCSpawner._setStateForTest("Ticking")
+			-- Inside relevance window (10 studs from origin < 35).
 			NPCSpawner._seedNpcForTest("npc1", Instance.new("Part"), true, Vector3.new(0, 0, 0))
 			NPCSpawner._seedNpcForTest("npc2", Instance.new("Part"), true, Vector3.new(10, 0, 10))
+			-- Outside relevance window (100 studs from origin > 35) — should NOT
+			-- be in snapshot.
+			NPCSpawner._seedNpcForTest("npc3", Instance.new("Part"), true, Vector3.new(100, 0, 0))
 
 			-- Act
 			NPCSpawner._sendBootstrapForTest(mockPlayer)
 
-			-- Assert: 1 reliable call with snapshot of 2 NPCs.
+			-- Assert: 1 reliable call. Snapshot includes npc1 + npc2 (in range);
+			-- npc3 (out of range) excluded.
 			expect(#reliableCalls).to.equal(1)
 			expect(reliableCalls[1].player).to.equal(mockPlayer)
 			expect(typeof(reliableCalls[1].payload)).to.equal("table")
@@ -387,6 +401,106 @@ return function()
 			for _, call in ipairs(urCalls) do
 				expect(buffer.len(call.payload)).to.equal(BROADCAST_RECORD_SIZE)
 			end
+		end)
+
+		-- Story 7-1 BUG-001 fix: when reclaim removes an npcId from _activeList,
+		-- the next _broadcastTick MUST emit a despawn record for that npcId so
+		-- the client mirror parks (Transparency=1, sentinel CFrame). Without
+		-- this, the client mirror visual stays at the last received state and
+		-- the absorbed NPC appears to remain in the world.
+		it("Story 7-1 — reclaim emits despawn record (flags=0, transp=255) next broadcast", function()
+			-- Arrange: 1 player + 1 crowd + 1 NPC inside relevance window.
+			local mockPlayer = buildMockPlayer(1001)
+			local players, network, urCalls = buildBroadcastMocks({ mockPlayer })
+			local mockCsm = buildMockCsm({
+				{ crowdId = "1001", position = Vector3.new(0, 0, 0), radius = 10 },
+			})
+
+			game.Workspace:SetAttribute("ArenaWalkableAreaSq", 40000)
+			NPCSpawner.init({
+				runService = buildMockRunService(),
+				arenaArea = 40000,
+				arenaBounds = { -100, 100, -100, 100 },
+				csm = mockCsm,
+				players = players,
+				network = network,
+			})
+			NPCSpawner._setStateForTest("Ticking")
+
+			local part = Instance.new("Part")
+			NPCSpawner._seedNpcForTest("n42", part, true, Vector3.new(5, 0, 0))
+
+			-- Pre-condition: first broadcast should fire active record.
+			NPCSpawner._broadcastTickForTest()
+			expect(#urCalls).to.equal(1)
+			local activeFlags = buffer.readu8(urCalls[1].payload, 5)  -- offset 5 = flags
+			expect(bit32.band(activeFlags, 1)).to.equal(1)  -- bit 0 = active
+
+			-- Act: reclaim the NPC, then drive next broadcast.
+			NPCSpawner.reclaim("n42")
+			NPCSpawner._broadcastTickForTest()
+
+			-- Assert: second UREvent fired with despawn record. flags=0
+			-- (bit 0 = 0 inactive, bit 1 = 0 not fading). transparency=255
+			-- (parked, fully invisible). Position uses pre-park value (5, 0, 0)
+			-- so client mirror knows where it was last seen.
+			expect(#urCalls).to.equal(2)
+			local payload = urCalls[2].payload
+			expect(buffer.len(payload)).to.equal(BROADCAST_RECORD_SIZE)
+			local idNum = buffer.readu8(payload, 0)
+			local qxU = buffer.readu16(payload, 1)
+			local qzU = buffer.readu16(payload, 3)
+			local flags = buffer.readu8(payload, 5)
+			local transpU8 = buffer.readu8(payload, 6)
+			expect(idNum).to.equal(42)  -- "n42" → 42
+			expect(qxU - 32768).to.equal(5)  -- pre-park X
+			expect(qzU - 32768).to.equal(0)  -- pre-park Z
+			expect(flags).to.equal(0)  -- bit 0 = 0 inactive, bit 1 = 0 not fading
+			expect(transpU8).to.equal(255)  -- fully transparent (parked)
+
+			-- Tick after drain: no more despawn record fired (one-shot).
+			NPCSpawner._broadcastTickForTest()
+			expect(#urCalls).to.equal(2)  -- count unchanged: empty _activeList + drained _recentlyReclaimed
+		end)
+
+		-- Story 7-1 edge: reclaim on last NPC — broadcast must still fire even
+		-- though _activeList is empty after reclaim. Without the guard relax,
+		-- _broadcastTick would early-return and the client never gets the
+		-- despawn signal for the final NPC.
+		it("Story 7-1 — reclaim of last NPC: despawn-only broadcast fires", function()
+			-- Arrange: 1 player, 1 crowd, 1 NPC.
+			local mockPlayer = buildMockPlayer(1001)
+			local players, network, urCalls = buildBroadcastMocks({ mockPlayer })
+			local mockCsm = buildMockCsm({
+				{ crowdId = "1001", position = Vector3.new(0, 0, 0), radius = 10 },
+			})
+
+			game.Workspace:SetAttribute("ArenaWalkableAreaSq", 40000)
+			NPCSpawner.init({
+				runService = buildMockRunService(),
+				arenaArea = 40000,
+				arenaBounds = { -100, 100, -100, 100 },
+				csm = mockCsm,
+				players = players,
+				network = network,
+			})
+			NPCSpawner._setStateForTest("Ticking")
+
+			NPCSpawner._seedNpcForTest("n0", Instance.new("Part"), true, Vector3.new(3, 0, 0))
+
+			-- Drain initial broadcast so it doesn't pollute the assertion.
+			NPCSpawner._broadcastTickForTest()
+			expect(#urCalls).to.equal(1)
+
+			-- Act: reclaim the only NPC, then broadcast.
+			NPCSpawner.reclaim("n0")
+			NPCSpawner._broadcastTickForTest()
+
+			-- Assert: despawn-only broadcast fired (active list empty).
+			expect(#urCalls).to.equal(2)
+			expect(buffer.len(urCalls[2].payload)).to.equal(BROADCAST_RECORD_SIZE)
+			local flags = buffer.readu8(urCalls[2].payload, 5)
+			expect(flags).to.equal(0)
 		end)
 
 		-- Constants sanity: confirm the constants file matches the buffer layout offsets.

@@ -150,6 +150,25 @@ export type NpcRecord = {
 --- Source: ADR-0008 §Architecture (_pool: { Part } × 300).
 local _pool: { Part } = {}
 
+--- Story 7-1 BUG-001 fix: NPCs reclaimed since last _broadcastTick. Each entry
+--- captures the npcId + LAST KNOWN active position (captured pre-park so the
+--- relevance filter can route the despawn signal to the correct player). Drained
+--- (cleared) at the END of every _broadcastTick. Without this list the client
+--- mirror has no signal that an absorbed NPC was reclaimed — server iterates
+--- only `_activeList` in broadcast, so a reclaimed NPC silently exits broadcast
+--- scope and the client mirror stays visible at its last received position.
+type ReclaimedEntry = { npcId: string, position: Vector3 }
+local _recentlyReclaimed: { ReclaimedEntry } = {}
+
+--- Story 7-1 BUG-001 follow-up: per-UserId last-broadcast NPC set. When an NPC
+--- leaves a player's relevance window (player walked away — NPC still alive on
+--- server), the next broadcast omits that npcId. Without this set, the client
+--- mirror is never told to park — visual stays at the last received position
+--- forever. We compare current relevant set vs last set; npcIds present in last
+--- but not current get a one-shot park signal (flags=0 + transparency=255 at
+--- last-known position).
+local _lastBroadcastSet: { [number]: { [string]: Vector3 } } = {}
+
 --- All NPC records (active and parked), indexed by npcId.
 --- Built in createAll(); cleared in destroyAll(). Keys are "n0".."n299".
 local _npcById: { [string]: NpcRecord } = {}
@@ -318,7 +337,7 @@ local function createBareNpcPart(folder: Folder): Part
 	part.CastShadow = false
 	part.Transparency = 1       -- parked; hidden until respawn fades in
 	part.Size = Vector3.new(2, 5, 2)
-	part.Color = Color3.fromRGB(180, 180, 180)
+	part.Color = Color3.fromRGB(255, 140, 0)
 	part.Name = "NpcPart"
 	part.Parent = folder
 	return part
@@ -513,6 +532,13 @@ local function _reclaimInternal(npcId: string): ()
 		table.remove(_activeList)
 	end
 
+	-- 4b. Story 7-1 BUG-001 fix: queue despawn signal for next _broadcastTick.
+	-- Capture the LIVE position BEFORE step 5 parks it — this is needed for the
+	-- per-player relevance filter (the absorbing player's crowd is close to the
+	-- pre-park position by definition; relevance check matches there, never at
+	-- the sentinel). Drained at end of next _broadcastTick.
+	table.insert(_recentlyReclaimed, { npcId = npcId, position = npc.position })
+
 	-- 5. Park Part at sentinel position.
 	npc.part.CFrame = PARK_CFRAME
 	npc.position = Vector3.new(0, PARK_Y, 0)
@@ -614,7 +640,10 @@ end
 --- filter, buffer-encode delta payload, fire NpcStateBroadcast UREvent.
 --- Source: ADR-0008 §Replication Contract; TR-npc-spawner-015; Story 009.
 local function _broadcastTick(): ()
-	if #_activeList == 0 then
+	-- Story 7-1: empty active list is OK if there are pending despawns to flush.
+	-- Without this guard relax, despawn-only ticks (e.g. last NPC absorbed)
+	-- would skip broadcast and never reach the client.
+	if #_activeList == 0 and #_recentlyReclaimed == 0 then
 		return
 	end
 
@@ -665,16 +694,20 @@ local function _broadcastTick(): ()
 			end
 		end
 
-		-- Build relevant NPC list.
-		local relevantIds: { string } = {}
+		-- Build relevant NPC list. Each entry tracks whether it's an active-state
+		-- broadcast or a despawn signal (Story 7-1 BUG-001 fix). Despawn entries
+		-- use the npc's pre-park position for relevance filtering.
+		type RelevantEntry = { npcId: string, isDespawn: boolean, position: Vector3 }
+		local relevantEntries: { RelevantEntry } = {}
+
+		if #ownCrowds == 0 then
+			-- Spectator / lobby client: no crowds → no NPC updates (active or despawn).
+			continue
+		end
+
 		for _, npcId in ipairs(_activeList) do
 			local npc = _npcById[npcId]
 			if npc == nil then
-				continue
-			end
-
-			if #ownCrowds == 0 then
-				-- Spectator / lobby client: no crowds → no NPC updates.
 				continue
 			end
 
@@ -691,49 +724,102 @@ local function _broadcastTick(): ()
 			end
 
 			if relevant then
-				table.insert(relevantIds, npcId)
+				table.insert(relevantEntries, {
+					npcId = npcId,
+					isDespawn = false,
+					position = npc.position,
+				})
 			end
 		end
 
-		if #relevantIds == 0 then
+		-- Story 7-1: append despawn signals for NPCs reclaimed this tick. SKIPS
+		-- the relevance filter — every player must receive every despawn so client
+		-- mirrors that left the player's relevance window earlier (NPC walked away,
+		-- or NPC absorbed by another player while this client was far) still get
+		-- the despawn signal and park the mirror. Without this, stale mirrors
+		-- accumulate visibly across the arena. Bandwidth cost is negligible
+		-- (absorb rate per ADR-0008 §F2 is bounded; despawn entries are 8 bytes
+		-- each, capped well under the 16 KB packet budget per ADR-0010).
+		for _, reclaimed in ipairs(_recentlyReclaimed) do
+			table.insert(relevantEntries, {
+				npcId = reclaimed.npcId,
+				isDespawn = true,
+				position = reclaimed.position,
+			})
+		end
+
+		-- Story 7-1 follow-up: park NPCs that LEFT this player's relevance window.
+		-- Compare current relevant active set vs lastBroadcastSet. NPCs present
+		-- last tick but not this tick → emit one-shot park signal at LAST known
+		-- position (so mirror knows to park there, not at sentinel — sentinel
+		-- could mislead future re-entry logic). Without this, the mirror visual
+		-- freezes at last broadcast position forever and creates "ghost" NPCs.
+		local userId = player.UserId
+		local lastSet = _lastBroadcastSet[userId] or {}
+		local currentSet: { [string]: Vector3 } = {}
+		for _, entry in ipairs(relevantEntries) do
+			if not entry.isDespawn then
+				currentSet[entry.npcId] = entry.position
+			end
+		end
+		for npcId, lastPos in pairs(lastSet) do
+			if currentSet[npcId] == nil then
+				-- Was relevant last tick, not this tick → emit park signal.
+				-- Skip if this npcId was already added as a despawn (reclaim path).
+				local alreadyDespawned = false
+				for _, e in ipairs(relevantEntries) do
+					if e.isDespawn and e.npcId == npcId then
+						alreadyDespawned = true
+						break
+					end
+				end
+				if not alreadyDespawned then
+					table.insert(relevantEntries, {
+						npcId = npcId,
+						isDespawn = true,
+						position = lastPos,
+					})
+				end
+			end
+		end
+		_lastBroadcastSet[userId] = currentSet
+
+		if #relevantEntries == 0 then
 			continue
 		end
 
 		-- Buffer-encode delta payload: BROADCAST_RECORD_SIZE bytes per NPC.
 		-- Layout per ADR-0008 §Replication Contract:
 		--   u8 npcId, i16 posX (quantized), i16 posZ (quantized), u8 flags, u8 transparency, u8 reserved
-		local buf = buffer.create(#relevantIds * BROADCAST_RECORD_SIZE)
-		for i, npcId in ipairs(relevantIds) do
-			local npc = _npcById[npcId]
-			if npc == nil then
-				continue
-			end
-
+		local buf = buffer.create(#relevantEntries * BROADCAST_RECORD_SIZE)
+		for i, entry in ipairs(relevantEntries) do
 			-- Derive integer npcId from string "nN" → N.
-			local idNum = tonumber(string.sub(npcId, 2)) or 0
+			local idNum = tonumber(string.sub(entry.npcId, 2)) or 0
 			local base = (i - 1) * BROADCAST_RECORD_SIZE
 
 			-- Quantize position to i16: clamp to ±2048, scale to integer.
-			-- 1 unit = 1 stud for MVP simplicity (i16 range ±32767 >> ±2048).
-			local qx = math.clamp(math.round(npc.position.X), -32767, 32767)
-			local qz = math.clamp(math.round(npc.position.Z), -32767, 32767)
-
-			-- i16 stored as offset-encoded u16: add 32768 to shift into u16 range.
+			local qx = math.clamp(math.round(entry.position.X), -32767, 32767)
+			local qz = math.clamp(math.round(entry.position.Z), -32767, 32767)
 			local qxU = qx + 32768
 			local qzU = qz + 32768
 
-			-- flags: bit 0 = active; bit 1 = transparency changing (fade active)
+			-- Story 7-1: flags + transparency depend on entry kind.
+			-- Active entry: bit 0 = 1 (active), bit 1 = fade-in-progress; transparency from npc.
+			-- Despawn entry: bit 0 = 0 (inactive), bit 1 = 0; transparency = 255 (parked).
 			local flags = 0
-			if npc.active then
-				flags = flags + 1  -- bit 0
+			local transpU8 = 255
+			if not entry.isDespawn then
+				local npc = _npcById[entry.npcId]
+				if npc ~= nil then
+					if npc.active then
+						flags = flags + 1  -- bit 0 = active
+					end
+					if npc._fadeTween ~= nil then
+						flags = flags + 2  -- bit 1 = transparency changing
+					end
+					transpU8 = math.clamp(math.round(npc.transparency * 255), 0, 255)
+				end
 			end
-			local fadingActive = npc._fadeTween ~= nil
-			if fadingActive then
-				flags = flags + 2  -- bit 1
-			end
-
-			-- Transparency: 0=opaque, 255=invisible.
-			local transpU8 = math.clamp(math.round(npc.transparency * 255), 0, 255)
 
 			buffer.writeu8(buf,  base + BROADCAST_OFFSET_NPCID, idNum)
 			buffer.writeu16(buf, base + BROADCAST_OFFSET_POSX,  qxU)
@@ -747,6 +833,13 @@ local function _broadcastTick(): ()
 		-- Network module; tests = mock w/ fireClientUnreliable spy.
 		local network = _network or Network
 		network.fireClientUnreliable(player, UnreliableRemoteEventName.NpcStateBroadcast, buf)
+	end
+
+	-- Story 7-1: drain reclaimed list AFTER all per-player broadcasts so every
+	-- player sees the despawn this tick exactly once. Cleared even if some
+	-- players had no relevant entries (no point holding stale despawns).
+	if #_recentlyReclaimed > 0 then
+		_recentlyReclaimed = {}
 	end
 end
 
@@ -774,12 +867,53 @@ end
 --- full active-NPC snapshot. Called from createAll() and PlayerAdded handler.
 --- Source: ADR-0008 §Replication Contract (reliable bootstrap); Story 009.
 local function _sendBootstrap(player: Player): ()
-	-- Build full snapshot of all active NPCs (npcId + position + transparency).
-	-- Payload is a table (reliable — bandwidth not critical for once-per-join).
+	-- Build snapshot of NPCs in this player's relevance window only.
+	-- Story 7-1 BUG-001 follow-up: full-pool bootstrap leaves ~280 stale mirror
+	-- parts at bootstrap positions for the rest of the round (only relevant
+	-- NPCs get position updates via NpcStateBroadcast). Filtering bootstrap
+	-- to the relevance window means out-of-range NPCs stay parked (client
+	-- _parkAll resets them; absent from snapshot → never unparked). When they
+	-- walk into range later, NpcStateBroadcast adds them via the spawn path.
 	local snapshot: { { npcId: string, posX: number, posZ: number, transparency: number } } = {}
+
+	-- Resolve player's own crowd(s) for relevance filtering.
+	type CrowdEntry = { pos: Vector3, radius: number }
+	local ownCrowds: { CrowdEntry } = {}
+	local csm = getCsm()
+	if csm ~= nil then
+		local ok, allCrowds = pcall(function()
+			return csm.getAllActive()
+		end)
+		if ok and allCrowds ~= nil then
+			for _, crowd in ipairs(allCrowds) do
+				if crowd.crowdId ~= nil and crowd.position ~= nil and crowd.radius ~= nil then
+					local userId = tonumber(tostring(crowd.crowdId))
+					if userId == player.UserId then
+						table.insert(ownCrowds, { pos = crowd.position, radius = crowd.radius })
+					end
+				end
+			end
+		end
+	end
+
 	for _, npcId in ipairs(_activeList) do
 		local npc = _npcById[npcId]
-		if npc ~= nil and npc.active then
+		if npc == nil or not npc.active then
+			continue
+		end
+		-- If player has no crowd yet (mid-creation race), include nothing — first
+		-- broadcast tick will populate via spawn path once crowd registers.
+		local relevant = false
+		for _, crowd in ipairs(ownCrowds) do
+			local dx = npc.position.X - crowd.pos.X
+			local dz = npc.position.Z - crowd.pos.Z
+			local dist = math.sqrt(dx * dx + dz * dz)
+			if dist <= crowd.radius + RELEVANCE_CUSHION then
+				relevant = true
+				break
+			end
+		end
+		if relevant then
 			table.insert(snapshot, {
 				npcId = npcId,
 				posX = npc.position.X,
@@ -788,6 +922,15 @@ local function _sendBootstrap(player: Player): ()
 			})
 		end
 	end
+
+	-- Seed _lastBroadcastSet so the next broadcast tick treats these as already
+	-- "live" (no spurious park signal next tick). Without this seed, the first
+	-- broadcast would re-emit park entries for everything in the bootstrap.
+	local seedSet: { [string]: Vector3 } = {}
+	for _, rec in ipairs(snapshot) do
+		seedSet[rec.npcId] = Vector3.new(rec.posX, 0, rec.posZ)
+	end
+	_lastBroadcastSet[player.UserId] = seedSet
 
 	-- _network DI seam: production = real Network; tests = mock spy.
 	local network = _network or Network
@@ -1042,9 +1185,12 @@ function NPCSpawner.destroyAll(): ()
 		npc.transparency = 1
 	end
 
-	-- 3. Clear active list, record dict, snapshot cache.
+	-- 3. Clear active list, record dict, snapshot cache, reclaimed queue,
+	--    last-broadcast set (per-player relevance tracking — Story 7-1 follow-up).
 	_npcById = {}
 	_activeList = {}
+	_recentlyReclaimed = {}
+	_lastBroadcastSet = {}
 	_cachedSnapshot = nil
 
 	-- 4. Reset RNG injection so next round gets a fresh one if not re-injected.
@@ -1165,6 +1311,8 @@ function NPCSpawner._resetForTests(): ()
 	_pool = {}
 	_npcById = {}
 	_activeList = {}
+	_recentlyReclaimed = {}
+	_lastBroadcastSet = {}
 	_cachedSnapshot = nil
 	_state = "Dormant"
 	_accumulator = 0
