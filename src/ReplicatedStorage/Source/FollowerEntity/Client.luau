@@ -375,7 +375,20 @@ function FollowerEntityClient.spawnFadeInAtCenter(self: ClassType): ()
 			return
 		end
 	end
-	appendFollowerRow(self, FOLLOWER_STATE_FADEIN, self._lastCrowdCenter, nil, nil, bundle)
+	-- BUG-002 fix: jitter spawn position around crowd center within boid
+	-- separation radius. Without jitter, all followers spawn at the same
+	-- point — boid F_separation force evaluates to zero (P_i - P_j == 0
+	-- for every neighbor; EPSILON guard prevents NaN but doesn't perturb
+	-- direction), F_cohesion centroid == self position (zero), F_lead
+	-- ownCenter == self position (zero). Total V = zero forever → followers
+	-- clump at crowd center. Polar offset with random angle + radius
+	-- ∈ [0.5×, 1.0×] SEPARATION_RADIUS guarantees non-zero pairwise
+	-- displacement, letting boid forces propagate.
+	local angle = math.random() * 2 * math.pi
+	local r = FollowerBoidsConfig.SEPARATION_RADIUS * (0.5 + math.random() * 0.5)
+	local jitter = Vector3.new(math.cos(angle) * r, 0, math.sin(angle) * r)
+	local spawnPos = self._lastCrowdCenter + jitter
+	appendFollowerRow(self, FOLLOWER_STATE_FADEIN, spawnPos, nil, nil, bundle)
 	if bundle ~= nil then
 		-- FadeIn starts fully transparent; alpha tween fades it in over SPAWN_FADE_DURATION
 		bundle.body.Transparency = 1
@@ -647,6 +660,11 @@ function FollowerEntityClient._update(self: ClassType, dt: number, t: number?): 
 				local F_coh = Boids.cohesion(
 					self._positions[i], self._positions, FollowerBoidsConfig.NEIGHBOR_RADIUS
 				)
+				-- BUG-002 fix: all followers aim for crowd center (single target).
+				-- Spawn-time jitter (in spawnFadeInAtCenter) gives initial spread,
+				-- so F_sep has non-zero displacement. Equilibrium = cluster around
+				-- center with separation between followers. Tight follow, not
+				-- formation slots.
 				local F_lead = Boids.followLeader(self._positions[i], ownCenter)
 				local V = Boids.finalVelocity(
 					F_sep, F_coh, F_lead,
@@ -655,6 +673,14 @@ function FollowerEntityClient._update(self: ClassType, dt: number, t: number?): 
 					FollowerBoidsConfig.FOLLOW_LEADER_WEIGHT,
 					FollowerBoidsConfig.MAX_SPEED
 				)
+				-- BUG-002 polish: per-follower speed variance breaks the "rigid block"
+				-- look. Without this, all followers move at identical clamped speed
+				-- and the formation looks like one solid object translating. Derive
+				-- a stable [0.7, 1.0] multiplier from _swayPhaseOffset (already
+				-- randomized per-follower at spawn). Some followers reach slot
+				-- faster, some lag → natural ripple/swarm motion.
+				local speedMul = 0.7 + 0.3 * (self._swayPhaseOffset[i] / (2 * math.pi))
+				V = V * speedMul
 				local prevPos = self._positions[i]
 				local newPos = Boids.applyVelocity(prevPos, V, dt)
 				self._positions[i] = newPos
@@ -793,6 +819,53 @@ function FollowerEntityClient._update(self: ClassType, dt: number, t: number?): 
 		end
 		-- FOLLOWER_STATE_DONE slots are skipped (no-op).
 	end
+
+	-- BUG-002 hard overlap resolution: boid F_sep uses inverse-square with
+	-- MAX_SPEED clamp, so two followers can stay slightly overlapped under
+	-- competing F_lead pull. This O(n²) post-pass enforces a strict minimum
+	-- distance between any two Active follower positions in the XZ plane.
+	-- Pushes both apart by half the deficit (symmetric resolution). Body size
+	-- = 2 studs cube; MIN_OVERLAP_DIST = 4.0 gives generous gap.
+	-- Y-axis flattened: all followers share the crowd's Y so vertical drift
+	-- from boid noise + walk-bob doesn't produce stepped heights.
+	local MIN_OVERLAP_DIST = 4.0
+	local FLAT_Y = ownCenter.Y
+	for i = 1, #self._positions do
+		if self._followerStates[i] ~= FOLLOWER_STATE_ACTIVE then continue end
+		-- Flatten Y first so subsequent dist check works in XZ plane.
+		local p = self._positions[i]
+		if p.Y ~= FLAT_Y then
+			self._positions[i] = Vector3.new(p.X, FLAT_Y, p.Z)
+		end
+	end
+	for i = 1, #self._positions do
+		if self._followerStates[i] ~= FOLLOWER_STATE_ACTIVE then continue end
+		for j = i + 1, #self._positions do
+			if self._followerStates[j] ~= FOLLOWER_STATE_ACTIVE then continue end
+			local pi = self._positions[i]
+			local pj = self._positions[j]
+			-- XZ-only distance (Y now equal, but defensive).
+			local dx = pi.X - pj.X
+			local dz = pi.Z - pj.Z
+			local dist = math.sqrt(dx * dx + dz * dz)
+			if dist < MIN_OVERLAP_DIST and dist > 0.001 then
+				local push = (MIN_OVERLAP_DIST - dist) * 0.5
+				local invDist = 1.0 / dist
+				local pushX = dx * invDist * push
+				local pushZ = dz * invDist * push
+				self._positions[i] = Vector3.new(pi.X + pushX, FLAT_Y, pi.Z + pushZ)
+				self._positions[j] = Vector3.new(pj.X - pushX, FLAT_Y, pj.Z - pushZ)
+			end
+		end
+	end
+	-- Final CFrame write for resolved positions (LOD 0 render path).
+	for i = 1, #self._positions do
+		if self._followerStates[i] ~= FOLLOWER_STATE_ACTIVE then continue end
+		local b = self._bundles[i]
+		if b ~= nil then
+			b.body.CFrame = CFrame.new(self._positions[i])
+		end
+	end
 end
 
 -- ---------------------------------------------------------------------------
@@ -828,6 +901,20 @@ function FollowerEntityClient.destroy(self: ClassType): ()
 		return
 	end
 	self._destroyed = true
+	-- BUG-002 cleanup: return ALL granted bundles to pool BEFORE janitor:Destroy.
+	-- Without this, bundles stay in Workspace at last CFrame (visible orphans
+	-- from prior rounds). Pool exhausts after a few rounds. Iterate all slots
+	-- regardless of state — Active, Despawning, FadeIn, SlideIn, Peeling all
+	-- have a granted bundle that must be reclaimed. DONE slots have nil bundle.
+	if self._pool ~= nil then
+		for i = 1, #self._bundles do
+			local bundle = self._bundles[i]
+			if bundle ~= nil then
+				(self._pool :: PoolType):returnBundle(bundle)
+				self._bundles[i] = nil
+			end
+		end
+	end
 	self._janitor:Destroy()
 end
 

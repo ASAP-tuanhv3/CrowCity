@@ -23,18 +23,23 @@
 -- Awareness + cohesion radius (studs).
 -- GDD §F2: neighbors within this radius contribute to cohesion centroid.
 -- Safe range: [3.0, 12.0]. Too high → heavy O(n²) per-frame; too low → crowd scatters.
-local NEIGHBOR_RADIUS: number = 6.0
+local NEIGHBOR_RADIUS: number = 16.0
 
 -- Inter-follower repulsion radius (studs).
 -- GDD §F1: neighbors within this radius contribute to separation force.
 -- MUST remain < NEIGHBOR_RADIUS — startup assertion enforces this.
 -- Safe range: [1.0, NEIGHBOR_RADIUS). Too high → crowd sparse; too low → visual clipping.
-local SEPARATION_RADIUS: number = 2.5
+-- BUG-002 tune 2026-05-10: 2.5 → 5.0 → 8.0 progressive widening. Larger
+-- repulsion radius gives visible swarm spread instead of tight clump.
+local SEPARATION_RADIUS: number = 8.0
 
 -- Weight applied to the normalised separation force in F4 composition.
 -- GDD §F4: V_raw += F_sep.Unit * SEPARATION_WEIGHT  (only if F_sep.Magnitude > 0)
 -- Safe range: [0.5, 4.0]. Too high → crowd sprawls wide; too low → followers pile up.
-local SEPARATION_WEIGHT: number = 1.5
+-- BUG-002 tune 2026-05-10: 1.5 → 4.0 → 6.0 (above spec range; pragmatic).
+-- Raw F_lead term scales with distance, so push needs higher weight to keep
+-- followers visibly distinct under aggressive leader pull.
+local SEPARATION_WEIGHT: number = 6.0
 
 -- Weight applied to the normalised cohesion force in F4 composition.
 -- GDD §F4: V_raw += F_coh.Unit * COHESION_WEIGHT  (only if F_coh.Magnitude > 0)

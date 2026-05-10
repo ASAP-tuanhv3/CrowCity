@@ -37,7 +37,9 @@ local WALK_FREQ_HZ: number = 1.5
 -- Walk-bob amplitude (studs Y offset).
 -- GDD §F8: y_bob magnitude in studs.
 -- Safe range: [0.05, 0.3]. Too high → cartoon flailing; too low → static-looking crowd.
-local WALK_BOB_AMP: number = 0.15
+-- BUG-002 polish 2026-05-10: disabled (was 0.15). User feedback — varying
+-- heights in cluster looks broken. All followers same Y plane.
+local WALK_BOB_AMP: number = 0.0
 
 -- Threshold (studs/frame) below which a follower is considered "standing still".
 -- GDD §AC-3: |d_delta| < THRESHOLD for 3 consecutive frames → freeze d, freeze y_bob.

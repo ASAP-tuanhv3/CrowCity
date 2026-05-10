@@ -165,6 +165,11 @@ function Boids.finalVelocity(
 	local V_raw = Vector3.zero
 
 	-- Per-component zero-vector guard: skip .Unit on any zero-magnitude force.
+	-- F_sep + F_coh: unit-normalized (constant push/pull magnitude regardless
+	-- of density). F_lead: RAW vector × weight — distance to leader-slot drives
+	-- speed (far = fast catch-up, close = settle). MAX_SPEED clamp below applies
+	-- the design ceiling. Without raw F_lead, follower max speed = sum-of-weights
+	-- (5.5 stud/sec) which can't track player walk speed (16 stud/sec).
 	if F_sep.Magnitude > 0 then
 		V_raw = V_raw + F_sep.Unit * sepWeight
 	end
@@ -172,7 +177,7 @@ function Boids.finalVelocity(
 		V_raw = V_raw + F_coh.Unit * cohWeight
 	end
 	if F_lead.Magnitude > 0 then
-		V_raw = V_raw + F_lead.Unit * leadWeight
+		V_raw = V_raw + F_lead * leadWeight
 	end
 
 	-- Zero V_raw guard: if all forces are absent or cancel, signal hold-position via zero.
