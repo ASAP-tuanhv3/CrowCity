@@ -6,7 +6,7 @@ goal: "Close 6 conditions from Sprint 6 sign-off. Confirm visual absorb loop wor
 start: "2026-05-23"
 end: "2026-06-05"
 generated: "2026-05-09"
-updated: "2026-05-10"
+updated: "2026-05-11"
 # 7-1 BUG-001 fix landed 2026-05-10 — multi-layer fix:
 #   - BufferCodec/CrowdState splitU64 negative UserId support (root cause)
 #   - NPCSpawner client mirror despawn replication
@@ -43,21 +43,21 @@ stories:
     name: "BUG-002 root-cause + fix — follower clump despite boid wired"
     file: "production/qa/bugs/BUG-002-followers-clumped-no-spread-despite-boid-forces-wired.md"
     priority: must-have
-    status: ready-for-dev
+    status: done
     owner: ""
     estimate_days: 0.5
     blocker: ""
-    completed: ""
+    completed: "2026-05-11"
 
   - id: "7-4"
     name: "E2E integration smoke — synthetic absorb → broadcast count delta"
     file: ""
     priority: must-have
-    status: ready-for-dev
+    status: done
     owner: ""
     estimate_days: 0.5
     blocker: ""
-    completed: ""
+    completed: "2026-05-11"
 
   - id: "7-5"
     name: "11 follower-entity integration failures — fix or document ceiling"

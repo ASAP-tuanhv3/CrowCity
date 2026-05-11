@@ -1361,3 +1361,10 @@ User said "continue" again. Implemented full Pool integration into wire-in.
 - Test results: 898 → 906 passed (+8). 11 carry-forward unchanged.
 - Blockers: Studio playtest confirmation required to fully close BUG-001
 - Next: /code-review then /story-done 7-1 (close as PARTIAL with deferred Studio confirmation), OR proceed to other Sprint 7 stories while user runs Studio repro in parallel
+
+## Session Extract — /story-done 2026-05-11 (7-3 + 7-4 Complete)
+- 7-3 BUG-002 follower clump: COMPLETE. Multi-layer fix landed across 6 prior commits + test fixes. Studio playtest confirmed by tuanhv3. BUG-002 doc updated with Status: Closed + 7-fix-layer breakdown.
+- 7-4 E2E integration smoke: COMPLETE. tests/integration/absorb-system/visual_absorb_loop_e2e.spec.luau (8 it() blocks) covers full server-side chain happy path + AC-10/AC-11 + GraceWindow + Eliminated + 7-2 diagnostic integration. Locks BUG-001 class regression.
+- Sprint 7 progress: 4/11 must-have done. Remaining: 7-5 / 7-6 / 7-7 / 7-8 / 7-9 / 7-10 / 7-11.
+- TestEZ baseline: 908 passed, 11 carry-forward failures (story 7-5).
+- Next: /dev-story 7-5 (11 follower-entity integration failures — fix or ceiling story).

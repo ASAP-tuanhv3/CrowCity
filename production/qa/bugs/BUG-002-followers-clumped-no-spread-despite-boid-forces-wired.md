@@ -1,11 +1,63 @@
 # BUG-002 — Followers Clumped Like a Ball Despite Boid Forces Wired
 
 **Severity**: S2 (Visual/Feel — sprint goal not directly blocked but quality issue)
-**Status**: Open
+**Status**: Closed 2026-05-11 (Sprint 7 story 7-3 fix landed; Studio playtest confirmed by tuanhv3)
 **Reported**: 2026-05-09 by tuanhv3 (manual QA in Studio Local Server, 2 clients)
-**Sprint**: 6
-**Story refs**: 6-1 (visual loop) — observed during TC-S1-03 / TC-S1-04
+**Sprint**: 6 (filed) / 7 (fix)
+**Story refs**: 6-1 (visual loop) — observed during TC-S1-04; 7-3 (fix)
 **Test case**: TC-S1-04 in `production/qa/test-cases-sprint-6-2026-05-09.md`
+
+## 2026-05-11 Resolution — Sprint 7 Story 7-3
+
+Root cause: ALL 10 followers spawned at exact `_lastCrowdCenter` point.
+F_separation = (0,0,0)/EPSILON = 0 (overlap → no displacement, EPSILON
+guard prevented NaN but didn't perturb direction). F_cohesion centroid ==
+self position. F_lead with all targeting same single ownCenter point →
+followers converged. Compounding bug: F_lead.Unit × weight capped V at
+sum-of-weights (5.5 stud/sec) — below player walk speed (16) — so even
+without clump, followers couldn't keep up.
+
+Fix landed across 5 commits (fa9edc9, 46ea4d7, 99cf674, 88df8c8, 5dc3f41):
+
+1. **Spawn jitter** — polar offset within SEPARATION_RADIUS at spawn so
+   initial positions differ. F_sep displacement non-zero → boid forces
+   propagate. `_spawnOffsets[i]` records per-follower offset for teleport-
+   snap preservation.
+
+2. **Raw F_lead in finalVelocity** — `F_lead × weight` instead of
+   `F_lead.Unit × weight`. Distance to leader now drives speed (far = fast
+   catch-up, close = settle). MAX_SPEED clamp at 16 applies. Followers
+   can track player walk speed.
+
+3. **Per-follower speed variance** — `[0.7, 1.0]` multiplier derived from
+   `_swayPhaseOffset`. Faster reach slot first, slower trail. Natural
+   ripple instead of rigid block.
+
+4. **Hard overlap resolution** — post-boid O(n²) pass enforces
+   MIN_OVERLAP_DIST = 4.0 in XZ plane. Symmetric push (half deficit each).
+   Final CFrame write for same-frame resolution.
+
+5. **Y flatten** — all Active follower positions snapped to ownCenter.Y.
+   WALK_BOB_AMP zeroed (0.15 → 0.0). Cluster on same horizontal plane.
+
+6. **Bundle return on destroy** — FollowerEntityClient.destroy() now
+   iterates `_bundles` and calls `Pool.returnBundle` for each before
+   janitor cleanup. Prevents stranded follower visuals across rounds.
+
+7. **NPC visibility range** — `RELEVANCE_CUSHION` 25 → 100 so player can
+   see where to walk for NPCs (~85% of arena coverage).
+
+Tuning bumps:
+- `SEPARATION_RADIUS` 2.5 → 8.0
+- `SEPARATION_WEIGHT` 1.5 → 6.0
+- `NEIGHBOR_RADIUS` 6.0 → 16.0
+
+Tests updated: 8 boid/walk-bob/relevance tests reflect new behavior.
+Baseline: 908 passed, 11 failed (carry-forward follower-entity tech debt).
+
+Studio playtest confirmed by tuanhv3: 10 followers visibly distinct,
+separated ≥ 4 studs, cluster follows player with natural ripple, all on
+same Y plane, NPCs visible across most of arena.
 
 ## Summary
 
