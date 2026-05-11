@@ -2,7 +2,7 @@
 
 > **Engine**: Roblox (continuously-updated live service; engine-ref pinned 2026-04-20)
 > **Last Updated**: 2026-04-27
-> **Manifest Version**: 2026-04-27
+> **Manifest Version**: 2026-05-11 (amended NPCSpawner caller authority per ADR-0008-A1)
 > **ADRs Covered**: ADR-0001, ADR-0002, ADR-0003, ADR-0004, ADR-0005, ADR-0006, ADR-0008, ADR-0010, ADR-0011 (9 Accepted; ADR-0007 + ADR-0009 deferrable)
 > **Status**: Active — regenerate with `/create-control-manifest` when ADRs change
 
@@ -194,6 +194,7 @@ This manifest = programmer quick-reference. Why behind each rule = referenced AD
 ### Required Patterns
 
 - **NPCSpawner at `ServerStorage/Source/NPCSpawner/init.luau`** owns 300-Part neutral pool — source: ADR-0008
+- **NPCSpawner `createAll` / `destroyAll` sole caller**: Boot wiring bridge in `src/ServerScriptService/start.server.luau` (subscribes to MatchStateChangedServer; fires on Active / Intermission transitions). Original ADR-0008 named RoundLifecycle — superseded by ADR-0008-A1 (Core→Feature import restriction per ADR-0006) — source: ADR-0008-A1
 - **NPCSpawner own `RunService.Heartbeat:Connect`** — single connection — non-gameplay-tick exemption per ADR-0002 §Related Decisions L289 — source: ADR-0008
 - **NPCSpawner read-only CSM consumer**: `getAllCrowdPositions()` only (during respawn position selection R10a) — source: ADR-0008
 - **Pre-allocate 300 Parts at `createAll` chunked 25/batch via `task.defer`** — no mid-round `Instance.new` — source: ADR-0008

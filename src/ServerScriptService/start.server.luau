@@ -178,10 +178,12 @@ end
 --   Active (T4)   → NPCSpawner.createAll(participants)  — activate 300-Part pool
 --   Intermission  → NPCSpawner.destroyAll()             — park pool at Y=-10000
 --
--- ADR-0008 §Caller Authority Matrix names "RoundLifecycle (T4)" as sole
--- caller of NPCSpawner.createAll. This bridge is a de-facto deviation; ADR-0008
--- amendment pending to recognise the boot-script bridge as the authorised
--- caller given the Core→Feature import restriction.
+-- ADR-0008-A1 §Updated Caller Authority Matrix (2026-05-11) names this
+-- Boot wiring bridge as the SOLE authorised caller of NPCSpawner.createAll
+-- and NPCSpawner.destroyAll. Original ADR-0008 §Caller Authority Matrix
+-- (RoundLifecycle as caller) was superseded — Core→Feature import
+-- restriction per ADR-0006 made the original path infeasible.
+-- See: docs/architecture/adr-0008-A1-npcspawner-caller-bridge-amendment.md
 --
 -- Dispatch is DEFERRED per Roblox BindableEvent contract: this handler does
 -- NOT run synchronously with MSM's `_transitionTo("Active", ...)` call inside

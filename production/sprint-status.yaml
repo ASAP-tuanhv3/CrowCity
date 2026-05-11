@@ -71,23 +71,23 @@ stories:
 
   - id: "7-6"
     name: "ADR-0008 amendment — NPCSpawner caller authority drift"
-    file: ""
+    file: "docs/architecture/adr-0008-A1-npcspawner-caller-bridge-amendment.md"
     priority: must-have
-    status: ready-for-dev
+    status: done
     owner: ""
     estimate_days: 0.375
     blocker: ""
-    completed: ""
+    completed: "2026-05-11"
 
   - id: "7-7"
     name: "Refresh tests/smoke/critical-paths.md — Sprint 3-6 mechanics"
-    file: ""
+    file: "tests/smoke/critical-paths.md"
     priority: must-have
-    status: ready-for-dev
+    status: done
     owner: ""
     estimate_days: 0.25
     blocker: ""
-    completed: ""
+    completed: "2026-05-11"
 
   - id: "7-8"
     name: "Sprint 7 smoke + manual playtest — re-validate visual absorb loop"

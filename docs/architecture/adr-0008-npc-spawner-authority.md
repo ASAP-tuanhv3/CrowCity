@@ -4,10 +4,16 @@
 
 **Accepted 2026-04-26** (closes C2 conflict from `/architecture-review` 2026-04-26; ADR-0003 §Network bandwidth table amended in-place; NPC Spawner GDD R5 + §Interactions + §Dependencies + AC-05 + §DI requirements synced via `/propagate-design-change` 2026-04-26 — see `docs/architecture/change-impact-2026-04-26-npc-cadence.md`; no remaining amendment dependencies).
 
+**Amended 2026-05-11** by ADR-0008-A1 (Caller Authority Matrix): Boot wiring
+bridge in `start.server.luau` replaces RoundLifecycle as sole caller of
+`createAll` / `destroyAll`. Layer hierarchy fix per ADR-0006. See
+`docs/architecture/adr-0008-A1-npcspawner-caller-bridge-amendment.md`.
+
 Status history:
 - 2026-04-26 — Proposed (initial)
 - 2026-04-26 — GDD sync via `/propagate-design-change`: NPC Spawner GDD 6 edits remove obsolete "ServerTickAccumulator" references; cadence lock now consistent across ADR + GDD
 - **2026-04-26 — ACCEPTED** (stories may now reference this ADR per `/story-readiness`)
+- **2026-05-11 — AMENDED** by ADR-0008-A1 (Caller Authority Matrix bridge clarification)
 
 ## Date
 
