@@ -68,6 +68,8 @@ local ServerStorage = game:GetService("ServerStorage")
 
 local Network = require(ReplicatedStorage.Source.Network)
 local RemoteEventName = require(ReplicatedStorage.Source.Network.RemoteName.RemoteEventName)
+local RemoteFunctionName = require(ReplicatedStorage.Source.Network.RemoteName.RemoteFunctionName)
+local RemoteValidator = require(ServerStorage.Source.RemoteValidator)
 local RoundLifecycle = require(ServerStorage.Source.RoundLifecycle)
 local CrowdStateServer = require(ServerStorage.Source.CrowdStateServer)
 local CurrencyStub = require(ServerStorage.Source._PhaseStubs.CurrencyStub)
@@ -334,12 +336,26 @@ end
 --- (story-002+ wires the timer + signal subscribers). Writes _state +
 --- _stateStartTime + _stateEndsAt and fires the server-only
 --- MatchStateChangedServer BindableEvent for intra-server consumers.
---- The MatchStateChanged RemoteEvent broadcast wiring lives in story-007.
-local function _transitionTo(newState: MatchState, endsAt: number?): ()
+--- Story 7-10: also fires the client-facing MatchStateChanged reliable
+--- RemoteEvent via _fireMatchStateChanged (single broadcast chokepoint).
+local function _transitionTo(newState: MatchState, endsAt: number?, meta: { [string]: any }?): ()
 	_state = newState
 	_stateStartTime = os.clock()
 	_stateEndsAt = endsAt
 	_matchStateChangedServer:Fire(newState, endsAt)
+	-- Story 7-10: also broadcast to clients with full payload schema.
+	-- Wrapped in pcall — fire failures must not break state-machine integrity.
+	local ok, err = pcall(function()
+		Network.fireAllClients(RemoteEventName.MatchStateChanged, {
+			state = newState,
+			serverTimestamp = _stateStartTime,
+			stateEndsAt = endsAt,
+			meta = meta or {},
+		})
+	end)
+	if not ok then
+		warn("[MatchStateServer] MatchStateChanged broadcast failed: " .. tostring(err))
+	end
 end
 
 --- Counts the participating (truthy) entries in `_participation`.
@@ -390,7 +406,26 @@ local function _setParticipation(player: Player, flag: boolean): ()
 		return
 	end
 
+	-- Always write the explicit entry — keeps T10 reset's `for k in _participation`
+	-- iteration aware of every player who has ever interacted, even if the
+	-- value is unchanged. (Without explicit entry, a never-participated player
+	-- would be skipped by T10 and stay implicitly false post-Intermission.)
 	_participation[userId] = flag
+
+	-- Story 7-10: ParticipationChanged reliable RemoteEvent fanout. Per-player
+	-- (owning player only). SKIP signal when flag unchanged — avoid spurious
+	-- broadcasts on idempotent writes. Wrapped in pcall — broadcast failures
+	-- must not break the state-machine driver below.
+	if current ~= flag then
+		local ok, err = pcall(function()
+			Network.fireClient(RemoteEventName.ParticipationChanged, player, {
+				participating = flag,
+			})
+		end)
+		if not ok then
+			warn("[MatchStateServer] ParticipationChanged broadcast failed: " .. tostring(err))
+		end
+	end
 
 	-- Post-write driver: T1 (Lobby → Countdown:Ready) and F5 revert.
 	-- Forward-declared via assignment below to allow _transitionTo reference
@@ -517,8 +552,15 @@ end
 --- Mirrors MatchStateServerStub.requestServerClosing semantics so the
 --- ShutdownCoordinator chain is unaffected by the stub→real swap.
 function MatchStateServer.requestServerClosing(): ()
+	-- Story 7-10: full schema payload {state, serverTimestamp, stateEndsAt, meta}.
+	-- stateEndsAt = nil for ServerClosing (no timer — shutdown is immediate).
 	local ok, err = pcall(function()
-		Network.fireAllClients(RemoteEventName.MatchStateChanged, "ServerClosing")
+		Network.fireAllClients(RemoteEventName.MatchStateChanged, {
+			state = "ServerClosing",
+			serverTimestamp = os.clock(),
+			stateEndsAt = nil,
+			meta = {},
+		})
 	end)
 	if not ok then
 		warn("[MatchStateServer] MatchStateChanged ServerClosing broadcast failed: " .. tostring(err))
@@ -588,6 +630,26 @@ end
 --- AFKToggle: stub — full validation per ADR-0010 4-check guard lives in
 ---            story-007. Story-001 wire accepts the flag verbatim via
 ---            _setParticipation (which honors Snap freeze).
+--- Story 7-10: extracted AFKToggle handler — production path is wrapped by
+--- Network.connectEvent in start(); tests invoke this directly via the
+--- `_handleAFKToggleForTest` seam to bypass Network requirement.
+--- Performs full ADR-0010 4-check guard. Silent reject on any check failure.
+local function _handleAFKToggle(player: Player, payload: any): ()
+	if not RemoteValidator.checkIdentity(player) then return end
+	if not RemoteValidator.checkState(function()
+		return _state == "Lobby" or _state == "Countdown:Ready"
+	end) then return end
+	if not RemoteValidator.checkParameters(payload, { participating = "boolean" }) then return end
+	if not RemoteValidator.checkRate(player, RemoteEventName.AFKToggle) then return end
+	_setParticipation(player, payload.participating)
+end
+
+--- Story 7-10: extracted GetParticipation handler. Stateless; safe to expose
+--- to tests as the read API. Returns boolean (nil entry → false).
+local function _handleGetParticipation(player: Player): boolean
+	return _participation[player.UserId] == true
+end
+
 function MatchStateServer.start(): ()
 	if _playerAddedConnection ~= nil then
 		return -- idempotent
@@ -631,18 +693,41 @@ function MatchStateServer.start(): ()
 		end
 	)
 
-	-- AFKToggle handler wiring DEFERRED to story-007. Story-001 spec calls for
-	-- a "stub" — interpreted here as field + getter present, full Network.
-	-- connectEvent wiring deferred. Reasons: (1) story-007 owns the ADR-0010
-	-- 4-check validation guard which must wrap the handler; wiring without
-	-- validation here would create a security gap during the story-001 → 007
-	-- window, (2) Network.connectEvent requires Network.startServer to have
-	-- already created the RemoteEvent instance, which fails in headless
-	-- TestEZ context where Network is not booted. _afkToggleConnection stays
-	-- nil until story-007 wires the validated handler.
-	-- TODO(story-007): wire Network.connectEvent(RemoteEventName.AFKToggle,
-	-- afkValidatedHandler, Network.t.tuple(Network.t.instanceIsA("Player"),
-	-- Network.t.boolean)) per ADR-0010 §4-Check Guard.
+	-- Story 7-10: AFKToggle handler with ADR-0010 4-check guard.
+	-- Wrapped in pcall — Network.connectEvent requires Network.startServer
+	-- to have run; in headless TestEZ context Network is not booted and the
+	-- connect throws. Production boot order: Network.startServer →
+	-- MatchStateServer.start() so connect succeeds. Failure logged but does
+	-- not crash module init.
+	local connectOk, connectErr = pcall(function()
+		_afkToggleConnection = Network.connectEvent(
+			RemoteEventName.AFKToggle,
+			function(player: Player, payload: any)
+				_handleAFKToggle(player, payload)
+			end,
+			function(_player, _payload) return true end  -- typing handled by RemoteValidator
+		)
+	end)
+	if not connectOk then
+		warn("[MatchStateServer] AFKToggle connect failed (likely no Network in test context): "
+			.. tostring(connectErr))
+	end
+
+	-- Story 7-10: GetParticipation RemoteFunction — stateless reconcile for
+	-- mid-state-join clients. Returns boolean; nil _participation entry → false.
+	local bindOk, bindErr = pcall(function()
+		Network.bindFunction(
+			RemoteFunctionName.GetParticipation,
+			function(player: Player): boolean
+				return _handleGetParticipation(player)
+			end,
+			function(_player) return true end
+		)
+	end)
+	if not bindOk then
+		warn("[MatchStateServer] GetParticipation bind failed (likely no Network in test context): "
+			.. tostring(bindErr))
+	end
 end
 
 -- ---------------------------------------------------------------------------
@@ -778,6 +863,19 @@ end
 --- OnServerEvent:Connect result (RBXScriptConnection).
 function MatchStateServer._getAFKToggleConnection(): RBXScriptConnection?
 	return _afkToggleConnection
+end
+
+--- **TEST ONLY** — Story 7-10. Invokes the AFKToggle 4-check handler directly,
+--- bypassing the Network.connectEvent wrapper. Production callers use the
+--- Network path; tests use this to exercise the validation guard without
+--- requiring Network.startServer to have run.
+function MatchStateServer._handleAFKToggleForTest(player: any, payload: any): ()
+	_handleAFKToggle(player, payload)
+end
+
+--- **TEST ONLY** — Story 7-10. Invokes the GetParticipation handler directly.
+function MatchStateServer._handleGetParticipationForTest(player: any): boolean
+	return _handleGetParticipation(player)
 end
 
 return MatchStateServer

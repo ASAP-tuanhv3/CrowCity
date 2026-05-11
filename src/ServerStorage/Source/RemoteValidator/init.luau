@@ -96,6 +96,10 @@ end
 -- ----------------------------------------------------------------------
 
 function RemoteValidator.checkIdentity(player: any): boolean
+	-- Test override path: production callers leave override nil.
+	if RemoteValidator._identityCheckOverride ~= nil then
+		return (RemoteValidator._identityCheckOverride :: (any) -> boolean)(player)
+	end
 	-- AC-3: only the engine-set `Player` argument is trusted. Payload-embedded
 	-- userId fields are never consulted here. typeof("Player") catches both
 	-- nil and non-Player passes (table, string, number, payload-derived data).
@@ -222,6 +226,18 @@ Players.PlayerRemoving:Connect(onPlayerRemoving)
 
 function RemoteValidator._resetForTest()
 	RemoteValidator._buckets = {}
+	RemoteValidator._identityCheckOverride = nil
+end
+
+--- **TEST ONLY** — Story 7-10. When set, checkIdentity returns this function's
+--- result instead of the production `typeof(player) == "Instance"` check.
+--- Production paths use real Player Instances; tests use plain tables and
+--- need a permissive override for the validation chain.
+--- Set to nil (or call _resetForTest) to restore production behavior.
+RemoteValidator._identityCheckOverride = nil :: ((player: any) -> boolean)?
+
+function RemoteValidator._setIdentityCheckOverrideForTest(fn: ((player: any) -> boolean)?)
+	RemoteValidator._identityCheckOverride = fn
 end
 
 return RemoteValidator
