@@ -42,13 +42,20 @@ return function()
 	-- -------------------------------------------------------------------------
 
 	--- Creates a minimal valid CrowdRecord for seeding CrowdStateClient cache.
+	-- BUG-002 / Sprint 7 fix: count = 0 so constructCrowd does NOT auto-fire
+	-- setPoolSize(N) → cap-grow throttle queue. These integration tests inject
+	-- followers via `_debugSeedActiveFollowers` directly and expect that exact
+	-- count back. With count > 0, constructCrowd enqueues N FadeIn spawns AND
+	-- the seed appends another N Active rows → followerStates length doubles,
+	-- breaking assertions. Tests that explicitly need cap-grow path use
+	-- setPoolSize locally.
 	local function makeCrowdRecord(crowdId: string): CrowdStateClient.CrowdRecord
 		return {
 			crowdId      = crowdId,
 			tick         = 1,
 			position     = Vector3.new(0, 0, 0),
 			radius       = 5.0,
-			count        = 5,
+			count        = 0,
 			hue          = 1,
 			state        = "Active",
 			activeRelics = {} :: { string },
