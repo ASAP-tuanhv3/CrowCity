@@ -1,6 +1,6 @@
 ## QA Sign-Off Report: Sprint 7
 **Date**: 2026-05-11
-**QA Lead sign-off**: APPROVED WITH CONDITIONS (1 advisory condition — see below)
+**QA Lead sign-off**: APPROVED (headless rerun green — 950 passed / 0 failed / 1 skipped)
 
 ---
 
@@ -18,7 +18,7 @@
 | 7-8 | Sprint 7 smoke + playtest | Visual/Feel | — | Smoke report on disk (`smoke-2026-05-11.md`): PASS WITH WARNINGS | PASS WITH NOTES |
 | 7-9 | Absorb story-006 V/A consumers | Visual/Feel | PASS (9 it — `audio_batching_streak.spec.luau`) | — | PASS |
 | 7-10 | MSM story-007 Participation broadcast + AFKToggle | Integration | PASS (11 it — `afktoggle_validation.spec.luau` 7 it + `getparticipation.spec.luau` 4 it) | — | PASS |
-| 7-11 | RL story-003 Eliminated subscription + DC freeze | Integration + Logic | PRESENT (13 it — `eliminated_subscription.spec.luau` 7 it + `dc_freeze.spec.luau` 6 it @ commit `77c4361`) — not yet headlessly executed | — | PASS PENDING HEADLESS RERUN |
+| 7-11 | RL story-003 Eliminated subscription + DC freeze | Integration + Logic | PASS (13 it — `eliminated_subscription.spec.luau` 7 it + `dc_freeze.spec.luau` 6 it @ commit `77c4361`) — headless rerun green 2026-05-11 | — | PASS |
 
 All 11 must-have stories are Status: Done in `production/sprint-status.yaml`. All Logic and Integration stories have test spec files at their declared paths. 2 itFIXME-deferred specs are tracked at `docs/tech-debt/follower-entity-integration-failures.md` and carried to MVP-Integration-1.
 
@@ -56,43 +56,36 @@ Sprint 6 closed APPROVED WITH CONDITIONS with 6 open conditions. All 6 are now c
 
 | Gate | Result |
 |---|---|
-| Automated test suite (last green run) | 938 passed / 0 failed / 1 skipped — commit `a72f5f5` (2026-05-11) |
-| Story 7-11 specs (13 new it() blocks @ `77c4361`) | NOT YET HEADLESSLY EXECUTED — deferred to next session |
+| Automated test suite (final green run) | 950 passed / 0 failed / 1 skipped — post-`77c4361` (2026-05-11) |
+| Story 7-11 specs (13 new it() blocks @ `77c4361`) | GREEN — headless rerun confirmed all 13 PASS |
 | BUG-001 end-to-end (Studio Local Server) | PASS — 2026-05-10 |
 | BUG-002 follower spread (Studio Local Server) | PASS — 2026-05-11 |
 | `selene src/` | Clean (no new errors vs. Sprint 6 baseline) |
 | `bash tools/audit-asset-ids.sh` | PASS |
 | `bash tools/audit-persistence.sh` | PASS |
 
-Last confirmed baseline: 938 passed / 0 failed. Story 7-11 contributes +13 it() blocks; expected next run ~951 passed / 0 failed.
+Final baseline: 950 passed / 0 failed / 1 skipped. Sprint 7 contributed +12 net it() blocks over the 938 baseline (+13 new for 7-11 minus 1 retired skip elsewhere).
 
 ---
 
 ### Open Advisory Items (non-blocking)
 
-1. **Story 7-11 headless rerun** [ADVISORY]: 13 new it() blocks in `eliminated_subscription.spec.luau` (7 it) and `dc_freeze.spec.luau` (6 it) were committed at `77c4361` minutes before this sign-off. Headless `run-in-roblox` run was blocked this session to preserve flow per user directive. Must confirm ~951 passed / 0 failed next session. Logic is verified by code review + spec structure; headless confirmation is a formal evidence step only.
-2. **2 deferred follower-entity integration specs** [ADVISORY]: `itFIXME` markers on pool-active-count-post-shrink and hue-dirty-flag-write-skip tests. Repro recipes and defer rationale documented at `docs/tech-debt/follower-entity-integration-failures.md`. Carried to milestone MVP-Integration-1.
+1. **2 deferred follower-entity integration specs** [ADVISORY]: `itFIXME` markers on pool-active-count-post-shrink and hue-dirty-flag-write-skip tests. Repro recipes and defer rationale documented at `docs/tech-debt/follower-entity-integration-failures.md`. Carried to milestone MVP-Integration-1.
 
-Neither item is a blocking defect. No S1 or S2 bugs are open.
+No S1 or S2 bugs are open. No blocking defects.
 
----
-
-### Verdict: APPROVED WITH CONDITIONS
-
-**Rationale**: All 11 must-have Sprint 7 stories are Status: Done. All Logic and Integration stories have test specs at their declared paths. The sprint's primary goal — confirming the visual absorb loop works end-to-end in Studio — is ACHIEVED: BUG-001 (S1) and BUG-002 (S2), both filed in Sprint 6 and blocking its close, are closed with user-confirmed Studio playtest evidence on 2026-05-10 and 2026-05-11 respectively. All 6 Sprint 6 conditions are closed. Automated test coverage is the strongest it has been: the 938-passing baseline from commit `a72f5f5` represents zero new regressions across all Sprint 7 implementation commits. The E2E integration smoke gate (story 7-4) now structurally prevents the BUG-001 class of bug — silent integration gaps that pass all unit tests — from recurring undetected.
-
-The single condition is advisory: Story 7-11's 13 spec blocks are written and committed but not yet executed headlessly. This is a verification-of-evidence step, not a fix. The underlying logic was implemented and code-reviewed this session.
-
-This sprint is cleared for `/gate-check` once Condition 1 is resolved.
+**RESOLVED**: Story 7-11 headless rerun completed 2026-05-11 — 950 passed / 0 failed / 1 skipped. All 13 new it() blocks pass. Advisory condition cleared.
 
 ---
 
-### Condition (must clear next session before /gate-check)
+### Verdict: APPROVED
 
-1. **7-11 headless rerun [ADVISORY]**: Run `run-in-roblox` headless suite next session and confirm suite advances from 938 to ~951 passed / 0 failed. Record result in session log and update story 7-11 test evidence. If any of the 13 new it() blocks fail, file a bug and resolve before calling sprint fully green.
+**Rationale**: All 11 must-have Sprint 7 stories are Status: Done. All Logic and Integration stories have test specs at their declared paths and ALL pass headlessly. The sprint's primary goal — confirming the visual absorb loop works end-to-end in Studio — is ACHIEVED: BUG-001 (S1) and BUG-002 (S2), both filed in Sprint 6 and blocking its close, are closed with user-confirmed Studio playtest evidence on 2026-05-10 and 2026-05-11 respectively. All 6 Sprint 6 conditions are closed. Final automated test baseline: 950 passed / 0 failed / 1 skipped — zero new regressions across all Sprint 7 implementation commits. The E2E integration smoke gate (story 7-4) now structurally prevents the BUG-001 class of bug — silent integration gaps that pass all unit tests — from recurring undetected.
+
+Sprint 7 cleared for `/gate-check`.
 
 ---
 
 ### Next Step
 
-Run `/gate-check` after Condition 1 is resolved (headless rerun next session confirms 7-11 specs PASS). Gate-check will evaluate whether the project is ready to advance from current production phase — absorb loop confirmed working end-to-end is the milestone unlock criterion that was blocked since Sprint 6.
+Run `/gate-check` to evaluate stage advancement. Absorb loop confirmed working end-to-end is the milestone unlock criterion that was blocked since Sprint 6 — that block is now cleared.

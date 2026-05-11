@@ -10,9 +10,10 @@ updated: "2026-05-11"
 # 7-11 RL story-003 Eliminated subscription + DC freeze landed 2026-05-11.
 # 7-8 Sprint 7 smoke PASS WITH WARNINGS — closure-day evidence accepted
 # (Studio Local Server 2-player BUG-001 verified 2026-05-10; BUG-002 2026-05-11).
-# Advisory: re-run headless TestEZ suite next session to verify 7-11 specs.
 # Report: production/qa/smoke-2026-05-11.md. All 11/11 must-have done.
-# Ready for /team-qa sprint sign-off gate.
+# /team-qa sprint sign-off: APPROVED (headless rerun 2026-05-11 — 950/0/1).
+# Report: production/qa/qa-signoff-sprint-7-2026-05-11.md.
+# Ready for /gate-check.
 # 7-1 BUG-001 fix landed 2026-05-10 — multi-layer fix:
 #   - BufferCodec/CrowdState splitU64 negative UserId support (root cause)
 #   - NPCSpawner client mirror despawn replication
