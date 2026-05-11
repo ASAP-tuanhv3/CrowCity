@@ -103,11 +103,11 @@ stories:
     name: "Absorb story-006 V/A consumers (Sprint 5/6 carry)"
     file: "production/epics/absorb-system/story-006-vfx-audio-consumers.md"
     priority: must-have
-    status: ready-for-dev
+    status: done
     owner: ""
     estimate_days: 0.5
     blocker: ""
-    completed: ""
+    completed: "2026-05-11"
 
   - id: "7-10"
     name: "MSM story-007 — broadcast Participation + AFKToggle 4-Check (Sprint 5/6 carry)"
