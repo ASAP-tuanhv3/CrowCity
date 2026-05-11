@@ -8,7 +8,11 @@ end: "2026-06-05"
 generated: "2026-05-09"
 updated: "2026-05-11"
 # 7-11 RL story-003 Eliminated subscription + DC freeze landed 2026-05-11.
-# Last must-have carry-forward closed. 7-8 smoke + sign-off gate remaining.
+# 7-8 Sprint 7 smoke PASS WITH WARNINGS — closure-day evidence accepted
+# (Studio Local Server 2-player BUG-001 verified 2026-05-10; BUG-002 2026-05-11).
+# Advisory: re-run headless TestEZ suite next session to verify 7-11 specs.
+# Report: production/qa/smoke-2026-05-11.md. All 11/11 must-have done.
+# Ready for /team-qa sprint sign-off gate.
 # 7-1 BUG-001 fix landed 2026-05-10 — multi-layer fix:
 #   - BufferCodec/CrowdState splitU64 negative UserId support (root cause)
 #   - NPCSpawner client mirror despawn replication
@@ -93,13 +97,13 @@ stories:
 
   - id: "7-8"
     name: "Sprint 7 smoke + manual playtest — re-validate visual absorb loop"
-    file: ""
+    file: "production/qa/smoke-2026-05-11.md"
     priority: must-have
-    status: ready-for-dev
+    status: done
     owner: ""
     estimate_days: 0.375
     blocker: ""
-    completed: ""
+    completed: "2026-05-11"
 
   - id: "7-9"
     name: "Absorb story-006 V/A consumers (Sprint 5/6 carry)"
