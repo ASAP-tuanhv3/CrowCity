@@ -122,9 +122,11 @@ return function()
 		end)
 
 		it("test_boids_separation_neighbor_outside_radius_excluded", function()
-			-- Arrange: neighbor at distance 5, separationRadius = 2.5 → excluded
+			-- Arrange: neighbor at distance 12, separationRadius = 8.0 → excluded.
+			-- BUG-002 tune 2026-05-10: SEPARATION_RADIUS bumped 2.5 → 8.0 so
+			-- neighbor distance updated from 5 to 12 to stay outside.
 			local P_i = Vector3.new(0, 0, 0)
-			local neighbors = { Vector3.new(5, 0, 0) }
+			local neighbors = { Vector3.new(12, 0, 0) }
 
 			-- Act
 			local result = Boids.separation(P_i, neighbors, Config.SEPARATION_RADIUS, Config.EPSILON)
@@ -183,10 +185,12 @@ return function()
 		end)
 
 		it("test_boids_cohesion_neighbor_outside_radius_excluded", function()
-			-- Arrange: one neighbor inside (3,0,0) and one outside (10,0,0)
+			-- Arrange: one neighbor inside (3,0,0) and one outside (20,0,0)
+			-- BUG-002 tune 2026-05-10: NEIGHBOR_RADIUS bumped 6.0 → 16.0 so
+			-- outside neighbor moved from (10,0,0) to (20,0,0).
 			-- Only neighbor at (3,0,0) contributes: centroid = (3,0,0), F_coh = (3,0,0)
 			local P_i = Vector3.new(0, 0, 0)
-			local neighbors = { Vector3.new(3, 0, 0), Vector3.new(10, 0, 0) }
+			local neighbors = { Vector3.new(3, 0, 0), Vector3.new(20, 0, 0) }
 
 			-- Act
 			local result = Boids.cohesion(P_i, neighbors, Config.NEIGHBOR_RADIUS)
@@ -250,11 +254,15 @@ return function()
 	describe("F4 final velocity", function()
 
 		it("test_boids_final_velocity_AC20_nominal_inputs_match_expected", function()
-			-- Arrange: AC-20a — GDD §F4 worked example
+			-- Arrange: AC-20a — GDD §F4 worked example (uses EXPLICIT weights so the
+			-- documented math stays stable when Config values are tuned).
+			-- BUG-002 2026-05-10: F_lead now uses RAW vector (not .Unit) in
+			-- finalVelocity so distance to leader drives speed. Worked example
+			-- uses |F_lead|=1.0 so raw == Unit — same result either way.
 			-- F_sep = (-1,0,0), F_coh = (1,0,0), F_lead = (0.6,0,0.8)
-			-- F_sep.Unit = (-1,0,0) × 1.5 = (-1.5, 0, 0)
-			-- F_coh.Unit = ( 1,0,0) × 1.0 = ( 1.0, 0, 0)
-			-- F_lead magnitude = sqrt(0.36+0+0.64) = 1.0 → Unit = (0.6,0,0.8) × 3.0 = (1.8, 0, 2.4)
+			-- F_sep.Unit × 1.5 = (-1.5, 0, 0)
+			-- F_coh.Unit × 1.0 = ( 1.0, 0, 0)
+			-- F_lead RAW × 3.0 = (1.8, 0, 2.4) (|F_lead|=1.0 → raw==Unit here)
 			-- V_raw = (-1.5+1.0+1.8, 0, 0+0+2.4) = (1.3, 0, 2.4)
 			-- ‖V_raw‖ = sqrt(1.69 + 5.76) = sqrt(7.45) ≈ 2.729
 			-- clamp(2.729, 0, 16) = 2.729 → V_final ≈ (1.3, 0, 2.4) (unchanged, below max)
@@ -262,13 +270,15 @@ return function()
 			local F_coh  = Vector3.new(1, 0, 0)
 			local F_lead = Vector3.new(0.6, 0, 0.8)
 
+			-- Explicit weights (1.5/1.0/3.0/16) — decoupled from Config to keep this
+			-- worked-example test stable against tuning changes.
 			-- Act
 			local V_final = Boids.finalVelocity(
 				F_sep, F_coh, F_lead,
-				Config.SEPARATION_WEIGHT,
-				Config.COHESION_WEIGHT,
-				Config.FOLLOW_LEADER_WEIGHT,
-				Config.MAX_SPEED
+				1.5,   -- SEPARATION_WEIGHT (worked-example constant)
+				1.0,   -- COHESION_WEIGHT
+				3.0,   -- FOLLOW_LEADER_WEIGHT
+				16     -- MAX_SPEED
 			)
 
 			-- Assert: V_final ≈ (1.3, 0, 2.4) within ±0.001 per component
@@ -304,8 +314,8 @@ return function()
 
 		it("test_boids_final_velocity_per_component_zero_guard", function()
 			-- Arrange: F_sep zero, F_coh zero, only F_lead non-zero.
-			-- Only F_lead contributes → V_raw = F_lead.Unit * FOLLOW_LEADER_WEIGHT
-			-- F_lead = (0, 0, 4) → Unit = (0,0,1) → V_raw = (0,0,3.0)
+			-- BUG-002 2026-05-10: F_lead is RAW × FOLLOW_LEADER_WEIGHT (not .Unit).
+			-- F_lead = (0, 0, 4) × 3.0 = (0, 0, 12). Below MAX_SPEED=16, no clamp.
 			local F_sep  = Vector3.zero
 			local F_coh  = Vector3.zero
 			local F_lead = Vector3.new(0, 0, 4)
@@ -319,10 +329,10 @@ return function()
 				Config.MAX_SPEED
 			)
 
-			-- Assert: only Z component from F_lead * FOLLOW_LEADER_WEIGHT = 3.0
+			-- Assert: only Z component from F_lead × FOLLOW_LEADER_WEIGHT = 12.
 			expect(approxEqual(result.X, 0.0, 0.001)).to.equal(true)
 			expect(approxEqual(result.Y, 0.0, 0.001)).to.equal(true)
-			expect(approxEqual(result.Z, Config.FOLLOW_LEADER_WEIGHT, 0.001)).to.equal(true)
+			expect(approxEqual(result.Z, 4 * Config.FOLLOW_LEADER_WEIGHT, 0.001)).to.equal(true)
 			expect(isFinite(result)).to.equal(true)
 		end)
 
@@ -415,10 +425,12 @@ return function()
 	describe("FollowerBoidsConfig constants", function()
 
 		it("test_boids_config_constants_match_story_values", function()
-			-- Assert all 7 knobs match the values specified in story-003 §AC.
-			expect(Config.NEIGHBOR_RADIUS).to.equal(6.0)
-			expect(Config.SEPARATION_RADIUS).to.equal(2.5)
-			expect(Config.SEPARATION_WEIGHT).to.equal(1.5)
+			-- BUG-002 tune 2026-05-10: NEIGHBOR_RADIUS / SEPARATION_RADIUS /
+			-- SEPARATION_WEIGHT bumped from story-003 §AC values to enable
+			-- visible swarm spread with raw F_lead. Other 4 unchanged.
+			expect(Config.NEIGHBOR_RADIUS).to.equal(16.0)
+			expect(Config.SEPARATION_RADIUS).to.equal(8.0)
+			expect(Config.SEPARATION_WEIGHT).to.equal(6.0)
 			expect(Config.COHESION_WEIGHT).to.equal(1.0)
 			expect(Config.FOLLOW_LEADER_WEIGHT).to.equal(3.0)
 			expect(Config.MAX_SPEED).to.equal(16)

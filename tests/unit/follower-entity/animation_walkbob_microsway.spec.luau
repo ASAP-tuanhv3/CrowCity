@@ -252,8 +252,10 @@ return function()
 			expect(FollowerVisualConfig.WALK_FREQ_HZ).to.equal(1.5)
 		end)
 
-		it("test_config_walk_bob_amp_equals_0_15", function()
-			expect(FollowerVisualConfig.WALK_BOB_AMP).to.equal(0.15)
+		it("test_config_walk_bob_amp_equals_0", function()
+			-- BUG-002 tune 2026-05-10: bob disabled (was 0.15). User feedback —
+			-- varying heights in cluster looked broken. All followers same Y plane.
+			expect(FollowerVisualConfig.WALK_BOB_AMP).to.equal(0.0)
 		end)
 
 		it("test_config_standstill_threshold_equals_0_01", function()

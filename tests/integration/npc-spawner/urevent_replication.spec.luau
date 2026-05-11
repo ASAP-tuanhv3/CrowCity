@@ -287,9 +287,12 @@ return function()
 			})
 			NPCSpawner._setStateForTest("Ticking")
 
-			-- 2 NPCs: one inside (5,0,0), one outside (50,0,0)
+			-- BUG-002 tune 2026-05-10: RELEVANCE_CUSHION bumped 25 → 100. Window
+			-- = crowd.radius (10) + cushion (100) = 110 studs. Out-of-range NPC
+			-- moved from (50,0,0) to (200,0,0) to remain outside the wider window.
+			-- 2 NPCs: one inside (5,0,0), one outside (200,0,0).
 			NPCSpawner._seedNpcForTest("nIn", Instance.new("Part"), true, Vector3.new(5, 0, 0))
-			NPCSpawner._seedNpcForTest("nOut", Instance.new("Part"), true, Vector3.new(50, 0, 0))
+			NPCSpawner._seedNpcForTest("nOut", Instance.new("Part"), true, Vector3.new(200, 0, 0))
 
 			NPCSpawner._broadcastTickForTest()
 
@@ -335,7 +338,8 @@ return function()
 			-- (NPCSpawnerClient._parkAll runs first; absent npcIds remain parked).
 			local mockPlayer = buildMockPlayer(1001)
 			local players, network, _urCalls, reliableCalls = buildBroadcastMocks({ mockPlayer })
-			-- Crowd at origin radius 10 — relevance window = 35 studs (10 + cushion 25).
+			-- Crowd at origin radius 10 — relevance window = 110 studs (10 + cushion 100).
+			-- BUG-002 tune 2026-05-10: cushion bumped 25 → 100.
 			local mockCsm = buildMockCsm({
 				{ crowdId = "1001", position = Vector3.new(0, 0, 0), radius = 10 },
 			})
@@ -350,12 +354,12 @@ return function()
 				network = network,
 			})
 			NPCSpawner._setStateForTest("Ticking")
-			-- Inside relevance window (10 studs from origin < 35).
+			-- Inside relevance window (within 110 studs from origin).
 			NPCSpawner._seedNpcForTest("npc1", Instance.new("Part"), true, Vector3.new(0, 0, 0))
 			NPCSpawner._seedNpcForTest("npc2", Instance.new("Part"), true, Vector3.new(10, 0, 10))
-			-- Outside relevance window (100 studs from origin > 35) — should NOT
-			-- be in snapshot.
-			NPCSpawner._seedNpcForTest("npc3", Instance.new("Part"), true, Vector3.new(100, 0, 0))
+			-- Outside relevance window (200 studs from origin > 110) — should NOT
+			-- be in snapshot. BUG-002 tune: bumped from (100,0,0) to (200,0,0).
+			NPCSpawner._seedNpcForTest("npc3", Instance.new("Part"), true, Vector3.new(200, 0, 0))
 
 			-- Act
 			NPCSpawner._sendBootstrapForTest(mockPlayer)
