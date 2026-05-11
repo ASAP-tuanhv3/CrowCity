@@ -29,6 +29,7 @@
 	  _setCSMOverride(csm)                   -- DI seam for tests
 --]]
 
+local Players = game:GetService("Players")
 local ServerStorage = game:GetService("ServerStorage")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 
@@ -84,10 +85,16 @@ type CSMDependency = {
 	destroy: (crowdId: string) -> (),
 	-- CountChanged BindableEvent — story-002 subscribes via .Event:Connect.
 	CountChanged: BindableEvent?,
+	-- CrowdEliminatedServer BindableEvent — story-003 subscribes via .Event:Connect.
+	-- CSM story-006 fires this server-side companion to the client-facing
+	-- reliable CrowdEliminated RemoteEvent.
+	CrowdEliminatedServer: BindableEvent?,
 }
 
--- Forward declaration — defined after createAll, used inside it.
+-- Forward declarations — defined after createAll, used inside it.
 local _onCountChanged: (crowdId: string, newCount: number) -> ()
+local _onEliminated: (crowdId: string) -> ()
+local _onPlayerRemoving: (player: Player) -> ()
 
 -- ---------------------------------------------------------------------------
 -- Module-level state (all private)
@@ -219,6 +226,30 @@ function RoundLifecycle.createAll(participatingPlayers: { Player }): ()
 			"Disconnect"
 		)
 	end
+
+	-- Story-003: subscribe to CSM.CrowdEliminatedServer for F2 eliminationTime
+	-- idempotent record. Janitor auto-disconnects on destroyAll. Test mocks may
+	-- omit the BindableEvent — guard nil-safely.
+	local crowdEliminatedServer = (csm :: any).CrowdEliminatedServer
+	if crowdEliminatedServer ~= nil then
+		_janitor:Add(
+			crowdEliminatedServer.Event:Connect(function(crowdId: string): ()
+				_onEliminated(crowdId)
+			end),
+			"Disconnect"
+		)
+	end
+
+	-- Story-003: subscribe to Players.PlayerRemoving for DC freeze-at-disconnect.
+	-- Janitor auto-disconnects on destroyAll. Independent of CSM's own
+	-- PlayerRemoving handler (CSM story-001) — both fire synchronously in
+	-- undefined order; idempotent guards handle the race.
+	_janitor:Add(
+		Players.PlayerRemoving:Connect(function(player: Player): ()
+			_onPlayerRemoving(player)
+		end),
+		"Disconnect"
+	)
 end
 
 --- F1 peak tracking handler. Strict `>` rule per manifest L102: equal counts
@@ -236,6 +267,45 @@ _onCountChanged = function(crowdId: string, newCount: number): ()
 		record.peakTimestamp = os.clock()
 	end
 	record.finalCount = newCount
+end
+
+--- F2 elimination idempotent handler. First-fire wins per manifest L103:
+--- second fire on already-eliminated crowd is silent no-op. Sets survived=false
+--- so getPlacements ranks the crowd as eliminated.
+--- Silent guard for non-record crowdIds (post-destroy race tolerance per AC-8).
+--- ADR-0005 §F2; CSM story-006 CrowdEliminatedServer BindableEvent contract.
+_onEliminated = function(crowdId: string): ()
+	local record = _crowds[crowdId]
+	if record == nil then
+		return  -- AC-8 silent guard
+	end
+	if record.eliminationTime ~= nil then
+		return  -- AC-9 idempotent — first fire wins
+	end
+	record.eliminationTime = os.clock()
+	record.survived = false
+end
+
+--- DC freeze-at-disconnect handler. AC-17: freezes the disconnecting player's
+--- record (eliminationTime + survived=false) and keeps the record in _crowds
+--- so getPlacements ranks them as Rank 2..N. Idempotent — if record already
+--- has eliminationTime (player was Eliminated before DC), this is a no-op.
+--- Independent of CSM's own PlayerRemoving destroy handler; the two fire in
+--- undefined order — neither depends on the other.
+--- ADR-0005 §Decision (DC freeze path); GDD §Edge Cases/Player-lifecycle.
+_onPlayerRemoving = function(player: Player): ()
+	local crowdId = tostring(player.UserId)
+	local record = _crowds[crowdId]
+	if record == nil then
+		return  -- AC-8 silent guard (player was not a round participant)
+	end
+	if record.eliminationTime ~= nil then
+		return  -- already eliminated; no-op
+	end
+	record.eliminationTime = os.clock()
+	record.survived = false
+	-- Record stays in _crowds for getPlacements ranking; CSM's own
+	-- PlayerRemoving handler destroys the CSM record separately.
 end
 
 --- Tears down the round: Janitor destroyed FIRST (disconnects all subscribers
@@ -428,6 +498,51 @@ end
 
 function RoundLifecycle._setCSMOverride(csm: CSMDependency?): ()
 	_csmOverride = csm
+end
+
+--- **TEST ONLY** — never call from production code.
+--- Fires the private `_onEliminated` handler directly. Used by story-003
+--- tests that need synchronous handler invocation without going through the
+--- BindableEvent + task.wait dance. Production path: CSM fires
+--- `CrowdEliminatedServer.Event` and the Janitor-managed subscription invokes
+--- `_onEliminated`.
+function RoundLifecycle._handleEliminatedForTest(crowdId: string): ()
+	_onEliminated(crowdId)
+end
+
+--- **TEST ONLY** — never call from production code.
+--- Fires the private `_onPlayerRemoving` handler directly. Used by story-003
+--- tests for DC freeze-at-disconnect AC-17 — `Players.PlayerRemoving` is a
+--- Roblox engine signal that cannot be fired from a unit test context.
+--- Production path: Players engine fires `PlayerRemoving` on disconnect and the
+--- Janitor-managed subscription invokes `_onPlayerRemoving`.
+function RoundLifecycle._handlePlayerRemovingForTest(player: Player): ()
+	_onPlayerRemoving(player)
+end
+
+--- **TEST ONLY** — never call from production code.
+--- Returns the eliminationTime for the given crowdId, or nil if no aux record
+--- exists or the crowd has not yet been eliminated. Used by story-003 tests
+--- to assert AC-9 idempotency and AC-17 DC freeze timestamps without
+--- exposing _crowds directly.
+function RoundLifecycle._getEliminationTime(crowdId: string): number?
+	local record = _crowds[crowdId]
+	if record == nil then
+		return nil
+	end
+	return record.eliminationTime
+end
+
+--- **TEST ONLY** — never call from production code.
+--- Returns the survived flag for the given crowdId, or nil if no aux record
+--- exists. Used by story-003 tests to assert eliminated crowds flip
+--- survived=false without exposing _crowds directly.
+function RoundLifecycle._getSurvived(crowdId: string): boolean?
+	local record = _crowds[crowdId]
+	if record == nil then
+		return nil
+	end
+	return record.survived
 end
 
 return RoundLifecycle

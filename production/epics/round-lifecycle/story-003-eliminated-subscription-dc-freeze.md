@@ -1,7 +1,7 @@
 # Story 003: Eliminated subscription + eliminationTime idempotent + DC freeze-at-disconnect
 
 > **Epic**: round-lifecycle
-> **Status**: Ready
+> **Status**: Complete
 > **Layer**: Core
 > **Type**: Logic
 > **Manifest Version**: 2026-04-27
@@ -93,7 +93,20 @@
 
 `tests/unit/round-lifecycle/eliminated_subscription.spec.luau` + `tests/unit/round-lifecycle/dc_freeze.spec.luau`.
 
-**Status**: [ ] Not yet created
+**Status**: [x] Complete (2026-05-11)
+
+## Completion Notes
+**Completed**: 2026-05-11
+**Sprint**: 7 (story 7-11)
+**Criteria**: AC-9 (first fire + idempotent), AC-17 (DC freeze + placements include DC'd), AC-8 (silent guard for non-record crowdId), DC↔Eliminated idempotent race both orders, subscription cleanup via Janitor — all covered.
+**Files**:
+- `src/ServerStorage/Source/RoundLifecycle/init.luau` — `_onEliminated` + `_onPlayerRemoving` handlers; `CrowdEliminatedServer` + `Players.PlayerRemoving` subscriptions wired in `createAll` via Janitor; test seams `_handleEliminatedForTest`, `_handlePlayerRemovingForTest`, `_getEliminationTime`, `_getSurvived` added.
+- `tests/unit/round-lifecycle/eliminated_subscription.spec.luau` — 7 it() blocks covering AC-9 + AC-8 + multi-record isolation + subscription wiring + destroyAll cleanup.
+- `tests/unit/round-lifecycle/dc_freeze.spec.luau` — 6 it() blocks covering AC-17 + DC↔Eliminated idempotent race + subscription cleanup.
+
+**Deviations**: None.
+**Test Evidence**: 2 unit test spec files created at paths declared in story.
+**Code Review**: Skipped (Lean mode).
 
 ---
 
