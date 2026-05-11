@@ -23,7 +23,6 @@
     },
     "ServerScriptService": {
       "$ignoreUnknownInstances": true,
-      "$path": "src/ServerScriptService",
       "TestRunner": {
         "$path": "tests/runner.server.luau"
       }
